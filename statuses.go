@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httpkit
+package runtime
 
 // Statuses lists the most common HTTP status codes to default message
 // taken from http://status.es

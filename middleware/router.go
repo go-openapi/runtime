@@ -22,9 +22,9 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/httpkit"
 	"github.com/gorilla/context"
 	"github.com/naoina/denco"
 )
@@ -104,9 +104,9 @@ func newRouter(ctx *Context, next http.Handler) http.Handler {
 type RoutableAPI interface {
 	HandlerFor(string, string) (http.Handler, bool)
 	ServeErrorFor(string) func(http.ResponseWriter, *http.Request, error)
-	ConsumersFor([]string) map[string]httpkit.Consumer
-	ProducersFor([]string) map[string]httpkit.Producer
-	AuthenticatorsFor(map[string]spec.SecurityScheme) map[string]httpkit.Authenticator
+	ConsumersFor([]string) map[string]runtime.Consumer
+	ProducersFor([]string) map[string]runtime.Producer
+	AuthenticatorsFor(map[string]spec.SecurityScheme) map[string]runtime.Authenticator
 	Formats() strfmt.Registry
 	DefaultProduces() string
 	DefaultConsumes() string
@@ -158,22 +158,22 @@ type routeEntry struct {
 	BasePath       string
 	Operation      *spec.Operation
 	Consumes       []string
-	Consumers      map[string]httpkit.Consumer
+	Consumers      map[string]runtime.Consumer
 	Produces       []string
-	Producers      map[string]httpkit.Producer
+	Producers      map[string]runtime.Producer
 	Parameters     map[string]spec.Parameter
 	Handler        http.Handler
 	Formats        strfmt.Registry
 	Binder         *untypedRequestBinder
-	Authenticators map[string]httpkit.Authenticator
+	Authenticators map[string]runtime.Authenticator
 }
 
 // MatchedRoute represents the route that was matched in this request
 type MatchedRoute struct {
 	routeEntry
 	Params   RouteParams
-	Consumer httpkit.Consumer
-	Producer httpkit.Producer
+	Consumer runtime.Consumer
+	Producer runtime.Producer
 }
 
 func (d *defaultRouter) Lookup(method, path string) (*MatchedRoute, bool) {

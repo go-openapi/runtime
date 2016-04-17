@@ -18,14 +18,14 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/go-swagger/go-swagger/httpkit"
+	"github.com/go-openapi/runtime"
 
 	"gopkg.in/yaml.v2"
 )
 
 // YAMLConsumer creates a consumer for yaml data
-func YAMLConsumer() httpkit.Consumer {
-	return httpkit.ConsumerFunc(func(r io.Reader, v interface{}) error {
+func YAMLConsumer() runtime.Consumer {
+	return runtime.ConsumerFunc(func(r io.Reader, v interface{}) error {
 		buf, err := ioutil.ReadAll(r)
 		if err != nil {
 			return err
@@ -35,8 +35,8 @@ func YAMLConsumer() httpkit.Consumer {
 }
 
 // YAMLProducer creates a producer for yaml data
-func YAMLProducer() httpkit.Producer {
-	return httpkit.ProducerFunc(func(w io.Writer, v interface{}) error {
+func YAMLProducer() runtime.Producer {
+	return runtime.ProducerFunc(func(w io.Writer, v interface{}) error {
 		b, _ := yaml.Marshal(v) // can't make this error come up
 		_, err := w.Write(b)
 		return err

@@ -20,14 +20,14 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-swagger/go-swagger/httpkit"
-	"github.com/go-swagger/go-swagger/internal/testing/petstore"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOperationExecutor(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
-	api.RegisterOperation("get", "/pets", httpkit.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
+	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
 		return []interface{}{
 			map[string]interface{}{"id": 1, "name": "a dog"},
 		}, nil
@@ -46,7 +46,7 @@ func TestOperationExecutor(t *testing.T) {
 	assert.Equal(t, `[{"id":1,"name":"a dog"}]`+"\n", recorder.Body.String())
 
 	spec, api = petstore.NewAPI(t)
-	api.RegisterOperation("get", "/pets", httpkit.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
+	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
 		return nil, errors.New(422, "expected")
 	}))
 

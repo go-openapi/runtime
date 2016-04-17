@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-swagger/go-swagger/httpkit"
-	"github.com/go-swagger/go-swagger/internal/testing/petstore"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,16 +85,16 @@ func TestResponseFormatValidation(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("POST", "/pets", bytes.NewBuffer([]byte(`name: Dog`)))
-	request.Header.Set(httpkit.HeaderContentType, "application/x-yaml")
-	request.Header.Set(httpkit.HeaderAccept, "application/x-yaml")
+	request.Header.Set(runtime.HeaderContentType, "application/x-yaml")
+	request.Header.Set(runtime.HeaderAccept, "application/x-yaml")
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code, recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequest("POST", "/pets", bytes.NewBuffer([]byte(`name: Dog`)))
-	request.Header.Set(httpkit.HeaderContentType, "application/x-yaml")
-	request.Header.Set(httpkit.HeaderAccept, "application/sml")
+	request.Header.Set(runtime.HeaderContentType, "application/x-yaml")
+	request.Header.Set(runtime.HeaderAccept, "application/sml")
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotAcceptable, recorder.Code)

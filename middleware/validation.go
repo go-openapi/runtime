@@ -19,8 +19,8 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
-	"github.com/go-swagger/go-swagger/httpkit"
 )
 
 // NewValidation starts a new validation middleware
@@ -49,7 +49,7 @@ type validation struct {
 
 type untypedBinder map[string]interface{}
 
-func (ub untypedBinder) BindRequest(r *http.Request, route *MatchedRoute, consumer httpkit.Consumer) error {
+func (ub untypedBinder) BindRequest(r *http.Request, route *MatchedRoute, consumer runtime.Consumer) error {
 	if err := route.Binder.Bind(r, route.Params, consumer, ub); err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (v *validation) parameters() {
 }
 
 func (v *validation) contentType() {
-	if len(v.result) == 0 && httpkit.HasBody(v.request) {
+	if len(v.result) == 0 && runtime.HasBody(v.request) {
 		ct, _, err := v.context.ContentType(v.request)
 		if err != nil {
 			v.result = append(v.result, err)
@@ -125,7 +125,7 @@ func (v *validation) contentType() {
 }
 
 func (v *validation) responseFormat() {
-	if str := v.context.ResponseFormat(v.request, v.route.Produces); str == "" && httpkit.HasBody(v.request) {
-		v.result = append(v.result, errors.InvalidResponseFormat(v.request.Header.Get(httpkit.HeaderAccept), v.route.Produces))
+	if str := v.context.ResponseFormat(v.request, v.route.Produces); str == "" && runtime.HasBody(v.request) {
+		v.result = append(v.result, errors.InvalidResponseFormat(v.request.Header.Get(runtime.HeaderAccept), v.route.Produces))
 	}
 }

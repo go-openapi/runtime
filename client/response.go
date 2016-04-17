@@ -18,10 +18,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/go-swagger/go-swagger/client"
+	"github.com/go-openapi/runtime"
 )
 
-var _ client.Response = response{}
+var _ runtime.ClientResponse = response{}
 
 type response struct {
 	resp *http.Response

@@ -22,13 +22,13 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
 	swaggerspec "github.com/go-openapi/spec"
-	"github.com/go-swagger/go-swagger/httpkit"
 	"github.com/stretchr/testify/assert"
 )
 
-func stubAutenticator() httpkit.Authenticator {
-	return httpkit.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) { return false, nil, nil })
+func stubAutenticator() runtime.Authenticator {
+	return runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) { return false, nil, nil })
 }
 
 type stubConsumer struct {
@@ -258,14 +258,14 @@ func TestUntypedAppValidation(t *testing.T) {
 	authenticators := api3.AuthenticatorsFor(definitions)
 	assert.Len(t, authenticators, 1)
 
-	opHandler := httpkit.OperationHandlerFunc(func(data interface{}) (interface{}, error) {
+	opHandler := runtime.OperationHandlerFunc(func(data interface{}) (interface{}, error) {
 		return data, nil
 	})
 	d, err := opHandler.Handle(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, d)
 
-	authenticator := httpkit.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
+	authenticator := runtime.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
 		if str, ok := params.(string); ok {
 			return ok, str, nil
 		}

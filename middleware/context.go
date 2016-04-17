@@ -21,10 +21,10 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/httpkit"
-	"github.com/go-swagger/go-swagger/httpkit/middleware/untyped"
 	"github.com/gorilla/context"
 )
 
@@ -43,14 +43,14 @@ type RequestBinder interface {
 // Responder is an interface for types to implement
 // when they want to be considered for writing HTTP responses
 type Responder interface {
-	WriteResponse(http.ResponseWriter, httpkit.Producer)
+	WriteResponse(http.ResponseWriter, runtime.Producer)
 }
 
 // ResponderFunc wraps a func as a Responder interface
-type ResponderFunc func(http.ResponseWriter, httpkit.Producer)
+type ResponderFunc func(http.ResponseWriter, runtime.Producer)
 
 // WriteResponse writes to the response
-func (fn ResponderFunc) WriteResponse(rw http.ResponseWriter, pr httpkit.Producer) {
+func (fn ResponderFunc) WriteResponse(rw http.ResponseWriter, pr runtime.Producer) {
 	fn(rw, pr)
 }
 
@@ -139,13 +139,13 @@ func (r *routableUntypedAPI) HandlerFor(method, path string) (http.Handler, bool
 func (r *routableUntypedAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
 	return r.api.ServeError
 }
-func (r *routableUntypedAPI) ConsumersFor(mediaTypes []string) map[string]httpkit.Consumer {
+func (r *routableUntypedAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
 	return r.api.ConsumersFor(mediaTypes)
 }
-func (r *routableUntypedAPI) ProducersFor(mediaTypes []string) map[string]httpkit.Producer {
+func (r *routableUntypedAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
 	return r.api.ProducersFor(mediaTypes)
 }
-func (r *routableUntypedAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]httpkit.Authenticator {
+func (r *routableUntypedAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 	return r.api.AuthenticatorsFor(schemes)
 }
 func (r *routableUntypedAPI) Formats() strfmt.Registry {
@@ -229,8 +229,8 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 
 	requestContentType := "*/*"
 	// check and validate content type, select consumer
-	if httpkit.HasBody(request) {
-		ct, _, err := httpkit.ContentType(request.Header)
+	if runtime.HasBody(request) {
+		ct, _, err := runtime.ContentType(request.Header)
 		if err != nil {
 			res = append(res, err)
 		} else {
@@ -250,9 +250,9 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 	}
 
 	// check and validate the response format
-	if len(res) == 0 && httpkit.HasBody(request) {
+	if len(res) == 0 && runtime.HasBody(request) {
 		if str := NegotiateContentType(request, route.Produces, requestContentType); str == "" {
-			res = append(res, errors.InvalidResponseFormat(request.Header.Get(httpkit.HeaderAccept), route.Produces))
+			res = append(res, errors.InvalidResponseFormat(request.Header.Get(runtime.HeaderAccept), route.Produces))
 		}
 	}
 
@@ -279,7 +279,7 @@ func (c *Context) ContentType(request *http.Request) (string, string, *errors.Pa
 		}
 	}
 
-	mt, cs, err := httpkit.ContentType(request.Header)
+	mt, cs, err := runtime.ContentType(request.Header)
 	if err != nil {
 		return "", "", err
 	}
@@ -387,7 +387,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 	}
 
 	format := c.ResponseFormat(r, offers)
-	rw.Header().Set(httpkit.HeaderContentType, format)
+	rw.Header().Set(runtime.HeaderContentType, format)
 
 	if resp, ok := data.(Responder); ok {
 		producers := route.Producers
@@ -406,7 +406,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 
 	if err, ok := data.(error); ok {
 		if format == "" {
-			rw.Header().Set(httpkit.HeaderContentType, httpkit.JSONMime)
+			rw.Header().Set(runtime.HeaderContentType, runtime.JSONMime)
 		}
 		if route == nil || route.Operation == nil {
 			c.api.ServeErrorFor("")(rw, r, err)

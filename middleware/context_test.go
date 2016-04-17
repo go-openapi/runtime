@@ -22,9 +22,9 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
-	"github.com/go-swagger/go-swagger/httpkit"
-	"github.com/go-swagger/go-swagger/httpkit/middleware/untyped"
-	"github.com/go-swagger/go-swagger/internal/testing/petstore"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/internal/testing/petstore"
+	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/gorilla/context"
 	"github.com/stretchr/testify/assert"
 )
@@ -52,11 +52,11 @@ func init() {
 }
 
 func TestContentType_Issue264(t *testing.T) {
-	swspec, err := loads.Spec("../../fixtures/bugs/264/swagger.yml")
+	swspec, err := loads.Spec("../fixtures/bugs/264/swagger.yml")
 	if assert.NoError(t, err) {
 		api := untyped.NewAPI(swspec)
-		api.RegisterConsumer("application/json", httpkit.JSONConsumer())
-		api.RegisterProducer("application/json", httpkit.JSONProducer())
+		api.RegisterConsumer("application/json", runtime.JSONConsumer())
+		api.RegisterProducer("application/json", runtime.JSONProducer())
 		api.RegisterOperation("delete", "/key/{id}", new(stubOperationHandler))
 
 		handler := Serve(swspec, api)
@@ -73,8 +73,8 @@ func TestServe(t *testing.T) {
 
 	// serve spec document
 	request, _ := http.NewRequest("GET", "http://localhost:8080/swagger.json", nil)
-	request.Header.Add("Content-Type", httpkit.JSONMime)
-	request.Header.Add("Accept", httpkit.JSONMime)
+	request.Header.Add("Content-Type", runtime.JSONMime)
+	request.Header.Add("Accept", runtime.JSONMime)
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, request)
@@ -92,7 +92,7 @@ func TestContextAuthorize(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := httpkit.JSONRequest("GET", "/pets", nil)
+	request, _ := runtime.JSONRequest("GET", "/pets", nil)
 
 	v, ok := context.GetOk(request, ctxSecurityPrincipal)
 	assert.False(t, ok)
@@ -183,7 +183,7 @@ func TestContextBindAndValidate(t *testing.T) {
 }
 
 func TestContextRender(t *testing.T) {
-	ct := httpkit.JSONMime
+	ct := runtime.JSONMime
 	spec, api := petstore.NewAPI(t)
 
 	assert.NotNil(t, spec)
@@ -192,7 +192,7 @@ func TestContextRender(t *testing.T) {
 	ctx.router = DefaultRouter(spec, ctx.api)
 
 	request, _ := http.NewRequest("GET", "pets", nil)
-	request.Header.Set(httpkit.HeaderAccept, ct)
+	request.Header.Set(runtime.HeaderAccept, ct)
 	ri, _ := ctx.RouteInfo(request)
 
 	recorder := httptest.NewRecorder()
@@ -212,7 +212,7 @@ func TestContextRender(t *testing.T) {
 	assert.Panics(t, func() { ctx.Respond(recorder, request, []string{}, ri, map[string]interface{}{"name": "hello"}) })
 
 	request, _ = http.NewRequest("GET", "/pets", nil)
-	request.Header.Set(httpkit.HeaderAccept, ct)
+	request.Header.Set(runtime.HeaderAccept, ct)
 	ri, _ = ctx.RouteInfo(request)
 
 	recorder = httptest.NewRecorder()
@@ -245,7 +245,7 @@ func TestContextValidResponseFormat(t *testing.T) {
 	ctx.router = DefaultRouter(spec, ctx.api)
 
 	request, _ := http.NewRequest("GET", "http://localhost:8080", nil)
-	request.Header.Set(httpkit.HeaderAccept, ct)
+	request.Header.Set(runtime.HeaderAccept, ct)
 
 	// check there's nothing there
 	cached, ok := context.GetOk(request, ctxResponseFormat)
@@ -274,7 +274,7 @@ func TestContextInvalidResponseFormat(t *testing.T) {
 	ctx.router = DefaultRouter(spec, ctx.api)
 
 	request, _ := http.NewRequest("GET", "http://localhost:8080", nil)
-	request.Header.Set(httpkit.HeaderAccept, ct)
+	request.Header.Set(runtime.HeaderAccept, ct)
 
 	// check there's nothing there
 	cached, ok := context.GetOk(request, ctxResponseFormat)
@@ -348,7 +348,7 @@ func TestContextValidContentType(t *testing.T) {
 	ctx := NewContext(nil, nil, nil)
 
 	request, _ := http.NewRequest("GET", "http://localhost:8080", nil)
-	request.Header.Set(httpkit.HeaderContentType, ct)
+	request.Header.Set(runtime.HeaderContentType, ct)
 
 	// check there's nothing there
 	_, ok := context.GetOk(request, ctxContentType)
@@ -374,7 +374,7 @@ func TestContextInvalidContentType(t *testing.T) {
 	ctx := NewContext(nil, nil, nil)
 
 	request, _ := http.NewRequest("GET", "http://localhost:8080", nil)
-	request.Header.Set(httpkit.HeaderContentType, ct)
+	request.Header.Set(runtime.HeaderContentType, ct)
 
 	// check there's nothing there
 	_, ok := context.GetOk(request, ctxContentType)

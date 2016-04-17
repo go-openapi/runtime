@@ -28,13 +28,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/client"
-	"github.com/go-swagger/go-swagger/httpkit"
 )
 
 // NewRequest creates a new swagger http client request
-func newRequest(method, pathPattern string, writer client.RequestWriter) (*request, error) {
+func newRequest(method, pathPattern string, writer runtime.ClientRequestWriter) (*request, error) {
 	return &request{
 		pathPattern: pathPattern,
 		method:      method,
@@ -57,7 +56,7 @@ func newRequest(method, pathPattern string, writer client.RequestWriter) (*reque
 type request struct {
 	pathPattern string
 	method      string
-	writer      client.RequestWriter
+	writer      runtime.ClientRequestWriter
 
 	pathParams map[string]string
 	header     http.Header
@@ -70,11 +69,11 @@ type request struct {
 
 var (
 	// ensure interface compliance
-	_ client.Request = new(request)
+	_ runtime.ClientRequest = new(request)
 )
 
 // BuildHTTP creates a new http request based on the data from the params
-func (r *request) BuildHTTP(mediaType string, producers map[string]httpkit.Producer, registry strfmt.Registry) (*http.Request, error) {
+func (r *request) BuildHTTP(mediaType string, producers map[string]runtime.Producer, registry strfmt.Registry) (*http.Request, error) {
 	// build the data
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
@@ -107,7 +106,7 @@ func (r *request) BuildHTTP(mediaType string, producers map[string]httpkit.Produ
 		// check if this is multipart
 		if len(r.fileFields) > 0 {
 			mp := multipart.NewWriter(pw)
-			req.Header.Set(httpkit.HeaderContentType, mp.FormDataContentType())
+			req.Header.Set(runtime.HeaderContentType, mp.FormDataContentType())
 
 			go func() {
 				defer func() {
@@ -155,7 +154,7 @@ func (r *request) BuildHTTP(mediaType string, producers map[string]httpkit.Produ
 	if r.payload != nil {
 		// TODO: infer most appropriate content type based on the producer used,
 		// and the `consumers` section of the spec/operation
-		req.Header.Set(httpkit.HeaderContentType, mediaType)
+		req.Header.Set(runtime.HeaderContentType, mediaType)
 		if rdr, ok := r.payload.(io.ReadCloser); ok {
 			req.Body = rdr
 			return req, nil

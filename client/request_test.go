@@ -24,16 +24,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/client"
-	"github.com/go-swagger/go-swagger/httpkit"
 	"github.com/stretchr/testify/assert"
 )
 
-var testProducers = map[string]httpkit.Producer{
-	httpkit.JSONMime: httpkit.JSONProducer(),
-	httpkit.XMLMime:  httpkit.XMLProducer(),
-	httpkit.TextMime: httpkit.TextProducer(),
+var testProducers = map[string]runtime.Producer{
+	runtime.JSONMime: runtime.JSONProducer(),
+	runtime.XMLMime:  runtime.XMLProducer(),
+	runtime.TextMime: runtime.TextProducer(),
 }
 
 func TestBuildRequest_SetHeaders(t *testing.T) {
@@ -114,7 +113,7 @@ func TestBuildRequest_SetBody(t *testing.T) {
 
 func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
-	reqWrtr := client.RequestWriterFunc(func(req client.Request, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		req.SetBodyParam(bd)
 		req.SetQueryParam("hello", "world")
 		req.SetPathParam("id", "1234")
@@ -122,9 +121,9 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 		return nil
 	})
 	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
-	r.SetHeaderParam(httpkit.HeaderContentType, httpkit.JSONMime)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(httpkit.JSONMime, testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
@@ -141,7 +140,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		Name    string   `xml:"name"`
 		Hobby   string   `xml:"hobby"`
 	}{{xml.Name{}, "Tom", "Organ trail"}, {xml.Name{}, "John", "Bird watching"}}
-	reqWrtr := client.RequestWriterFunc(func(req client.Request, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		req.SetBodyParam(bd)
 		req.SetQueryParam("hello", "world")
 		req.SetPathParam("id", "1234")
@@ -149,9 +148,9 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		return nil
 	})
 	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
-	r.SetHeaderParam(httpkit.HeaderContentType, httpkit.XMLMime)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.XMLMime)
 
-	req, err := r.BuildHTTP(httpkit.XMLMime, testProducers, nil)
+	req, err := r.BuildHTTP(runtime.XMLMime, testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
@@ -164,7 +163,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 
 func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 	bd := "Tom: Organ trail; John: Bird watching"
-	reqWrtr := client.RequestWriterFunc(func(req client.Request, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		req.SetBodyParam(bd)
 		req.SetQueryParam("hello", "world")
 		req.SetPathParam("id", "1234")
@@ -172,9 +171,9 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 		return nil
 	})
 	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
-	r.SetHeaderParam(httpkit.HeaderContentType, httpkit.TextMime)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.TextMime)
 
-	req, err := r.BuildHTTP(httpkit.TextMime, testProducers, nil)
+	req, err := r.BuildHTTP(runtime.TextMime, testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
@@ -186,7 +185,7 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
-	reqWrtr := client.RequestWriterFunc(func(req client.Request, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		req.SetFormParam("something", "some value")
 		req.SetQueryParam("hello", "world")
 		req.SetPathParam("id", "1234")
@@ -194,9 +193,9 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 		return nil
 	})
 	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
-	r.SetHeaderParam(httpkit.HeaderContentType, httpkit.JSONMime)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(httpkit.JSONMime, testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
@@ -209,7 +208,7 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	cont, _ := ioutil.ReadFile("./runtime.go")
-	reqWrtr := client.RequestWriterFunc(func(req client.Request, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		req.SetFormParam("something", "some value")
 		req.SetFileParam("file", mustGetFile("./runtime.go"))
 		req.SetQueryParam("hello", "world")
@@ -218,15 +217,15 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 		return nil
 	})
 	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
-	r.SetHeaderParam(httpkit.HeaderContentType, httpkit.JSONMime)
-	req, err := r.BuildHTTP(httpkit.JSONMime, testProducers, nil)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
+	req, err := r.BuildHTTP(runtime.JSONMime, testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
-		mediaType, params, err := mime.ParseMediaType(req.Header.Get(httpkit.HeaderContentType))
+		mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
 		if assert.NoError(t, err) {
-			assert.Equal(t, httpkit.MultipartFormMime, mediaType)
+			assert.Equal(t, runtime.MultipartFormMime, mediaType)
 			boundary := params["boundary"]
 			mr := multipart.NewReader(req.Body, boundary)
 			defer req.Body.Close()

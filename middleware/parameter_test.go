@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/httpkit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,7 +55,7 @@ func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
 	binder := &untypedParamBinder{
 		parameter: param,
 	}
-	_, _, _, err := binder.readValue(httpkit.Values(nil), reflect.ValueOf(nil))
+	_, _, _, err := binder.readValue(runtime.Values(nil), reflect.ValueOf(nil))
 	if valid {
 		assert.NoError(t, err)
 	} else {

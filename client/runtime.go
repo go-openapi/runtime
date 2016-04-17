@@ -28,9 +28,8 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/client"
-	"github.com/go-swagger/go-swagger/httpkit"
 )
 
 // DefaultTimeout the default request timeout
@@ -40,9 +39,9 @@ var DefaultTimeout = 30 * time.Second
 // to make http requests based on a swagger specification.
 type Runtime struct {
 	DefaultMediaType      string
-	DefaultAuthentication client.AuthInfoWriter
-	Consumers             map[string]httpkit.Consumer
-	Producers             map[string]httpkit.Producer
+	DefaultAuthentication runtime.ClientAuthInfoWriter
+	Consumers             map[string]runtime.Consumer
+	Producers             map[string]runtime.Producer
 
 	Transport http.RoundTripper
 	Jar       http.CookieJar
@@ -58,21 +57,21 @@ type Runtime struct {
 	schemes    []string
 }
 
-// New creates a new default runtime for a swagger api client.
+// New creates a new default runtime for a swagger api runtime.Client
 func New(host, basePath string, schemes []string) *Runtime {
 	var rt Runtime
-	rt.DefaultMediaType = httpkit.JSONMime
+	rt.DefaultMediaType = runtime.JSONMime
 
 	// TODO: actually infer this stuff from the spec
-	rt.Consumers = map[string]httpkit.Consumer{
-		httpkit.JSONMime: httpkit.JSONConsumer(),
-		httpkit.XMLMime:  httpkit.XMLConsumer(),
-		httpkit.TextMime: httpkit.TextConsumer(),
+	rt.Consumers = map[string]runtime.Consumer{
+		runtime.JSONMime: runtime.JSONConsumer(),
+		runtime.XMLMime:  runtime.XMLConsumer(),
+		runtime.TextMime: runtime.TextConsumer(),
 	}
-	rt.Producers = map[string]httpkit.Producer{
-		httpkit.JSONMime: httpkit.JSONProducer(),
-		httpkit.XMLMime:  httpkit.XMLProducer(),
-		httpkit.TextMime: httpkit.TextProducer(),
+	rt.Producers = map[string]runtime.Producer{
+		runtime.JSONMime: runtime.JSONProducer(),
+		runtime.XMLMime:  runtime.XMLProducer(),
+		runtime.TextMime: runtime.TextProducer(),
 	}
 	rt.Transport = http.DefaultTransport
 	rt.Jar = nil
@@ -121,7 +120,7 @@ func (r *Runtime) selectScheme(schemes []string) string {
 
 // Submit a request and when there is a body on success it will turn that into the result
 // all other things are turned into an api error for swagger which retains the status code
-func (r *Runtime) Submit(operation *client.Operation) (interface{}, error) {
+func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error) {
 	params, readResponse, auth := operation.Params, operation.Reader, operation.AuthInfo
 
 	request, err := newRequest(operation.Method, operation.PathPattern, params)
@@ -133,7 +132,7 @@ func (r *Runtime) Submit(operation *client.Operation) (interface{}, error) {
 	for _, mimeType := range operation.ProducesMediaTypes {
 		accept = append(accept, mimeType)
 	}
-	request.SetHeaderParam(httpkit.HeaderAccept, accept...)
+	request.SetHeaderParam(runtime.HeaderAccept, accept...)
 
 	if auth == nil && r.DefaultAuthentication != nil {
 		auth = r.DefaultAuthentication
@@ -173,9 +172,9 @@ func (r *Runtime) Submit(operation *client.Operation) (interface{}, error) {
 	})
 
 	if r.Debug {
-		b, err := httputil.DumpRequestOut(req, true)
-		if err != nil {
-			return nil, err
+		b, err2 := httputil.DumpRequestOut(req, true)
+		if err2 != nil {
+			return nil, err2
 		}
 		fmt.Println(string(b))
 	}
@@ -194,14 +193,14 @@ func (r *Runtime) Submit(operation *client.Operation) (interface{}, error) {
 	defer res.Body.Close()
 
 	if r.Debug {
-		b, err := httputil.DumpResponse(res, true)
-		if err != nil {
-			return nil, err
+		b, err2 := httputil.DumpResponse(res, true)
+		if err2 != nil {
+			return nil, err2
 		}
 		fmt.Println(string(b))
 	}
 
-	ct := res.Header.Get(httpkit.HeaderContentType)
+	ct := res.Header.Get(runtime.HeaderContentType)
 	if ct == "" { // this should really really never occur
 		ct = r.DefaultMediaType
 	}

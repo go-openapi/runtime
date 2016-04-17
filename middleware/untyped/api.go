@@ -23,9 +23,9 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/httpkit"
 )
 
 // NewAPI creates the default untyped API
@@ -37,16 +37,16 @@ func NewAPI(spec *loads.Document) *API {
 	return &API{
 		spec:            spec,
 		analyzer:        an,
-		DefaultProduces: httpkit.JSONMime,
-		DefaultConsumes: httpkit.JSONMime,
-		consumers: map[string]httpkit.Consumer{
-			httpkit.JSONMime: httpkit.JSONConsumer(),
+		DefaultProduces: runtime.JSONMime,
+		DefaultConsumes: runtime.JSONMime,
+		consumers: map[string]runtime.Consumer{
+			runtime.JSONMime: runtime.JSONConsumer(),
 		},
-		producers: map[string]httpkit.Producer{
-			httpkit.JSONMime: httpkit.JSONProducer(),
+		producers: map[string]runtime.Producer{
+			runtime.JSONMime: runtime.JSONProducer(),
 		},
-		authenticators: make(map[string]httpkit.Authenticator),
-		operations:     make(map[string]map[string]httpkit.OperationHandler),
+		authenticators: make(map[string]runtime.Authenticator),
+		operations:     make(map[string]map[string]runtime.OperationHandler),
 		ServeError:     errors.ServeError,
 		Models:         make(map[string]func() interface{}),
 		formats:        strfmt.NewFormats(),
@@ -59,10 +59,10 @@ type API struct {
 	analyzer        *analysis.Spec
 	DefaultProduces string
 	DefaultConsumes string
-	consumers       map[string]httpkit.Consumer
-	producers       map[string]httpkit.Producer
-	authenticators  map[string]httpkit.Authenticator
-	operations      map[string]map[string]httpkit.OperationHandler
+	consumers       map[string]runtime.Consumer
+	producers       map[string]runtime.Producer
+	authenticators  map[string]runtime.Authenticator
+	operations      map[string]map[string]runtime.OperationHandler
 	ServeError      func(http.ResponseWriter, *http.Request, error)
 	Models          map[string]func() interface{}
 	formats         strfmt.Registry
@@ -85,43 +85,43 @@ func (d *API) RegisterFormat(name string, format strfmt.Format, validator strfmt
 }
 
 // RegisterAuth registers an auth handler in this api
-func (d *API) RegisterAuth(scheme string, handler httpkit.Authenticator) {
+func (d *API) RegisterAuth(scheme string, handler runtime.Authenticator) {
 	if d.authenticators == nil {
-		d.authenticators = make(map[string]httpkit.Authenticator)
+		d.authenticators = make(map[string]runtime.Authenticator)
 	}
 	d.authenticators[scheme] = handler
 }
 
 // RegisterConsumer registers a consumer for a media type.
-func (d *API) RegisterConsumer(mediaType string, handler httpkit.Consumer) {
+func (d *API) RegisterConsumer(mediaType string, handler runtime.Consumer) {
 	if d.consumers == nil {
-		d.consumers = map[string]httpkit.Consumer{httpkit.JSONMime: httpkit.JSONConsumer()}
+		d.consumers = map[string]runtime.Consumer{runtime.JSONMime: runtime.JSONConsumer()}
 	}
 	d.consumers[strings.ToLower(mediaType)] = handler
 }
 
 // RegisterProducer registers a producer for a media type
-func (d *API) RegisterProducer(mediaType string, handler httpkit.Producer) {
+func (d *API) RegisterProducer(mediaType string, handler runtime.Producer) {
 	if d.producers == nil {
-		d.producers = map[string]httpkit.Producer{httpkit.JSONMime: httpkit.JSONProducer()}
+		d.producers = map[string]runtime.Producer{runtime.JSONMime: runtime.JSONProducer()}
 	}
 	d.producers[strings.ToLower(mediaType)] = handler
 }
 
 // RegisterOperation registers an operation handler for an operation name
-func (d *API) RegisterOperation(method, path string, handler httpkit.OperationHandler) {
+func (d *API) RegisterOperation(method, path string, handler runtime.OperationHandler) {
 	if d.operations == nil {
-		d.operations = make(map[string]map[string]httpkit.OperationHandler)
+		d.operations = make(map[string]map[string]runtime.OperationHandler)
 	}
 	um := strings.ToUpper(method)
 	if b, ok := d.operations[um]; !ok || b == nil {
-		d.operations[um] = make(map[string]httpkit.OperationHandler)
+		d.operations[um] = make(map[string]runtime.OperationHandler)
 	}
 	d.operations[um][path] = handler
 }
 
 // OperationHandlerFor returns the operation handler for the specified id if it can be found
-func (d *API) OperationHandlerFor(method, path string) (httpkit.OperationHandler, bool) {
+func (d *API) OperationHandlerFor(method, path string) (runtime.OperationHandler, bool) {
 	if d.operations == nil {
 		return nil, false
 	}
@@ -133,8 +133,8 @@ func (d *API) OperationHandlerFor(method, path string) (httpkit.OperationHandler
 }
 
 // ConsumersFor gets the consumers for the specified media types
-func (d *API) ConsumersFor(mediaTypes []string) map[string]httpkit.Consumer {
-	result := make(map[string]httpkit.Consumer)
+func (d *API) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
+	result := make(map[string]runtime.Consumer)
 	for _, mt := range mediaTypes {
 		if consumer, ok := d.consumers[mt]; ok {
 			result[mt] = consumer
@@ -144,8 +144,8 @@ func (d *API) ConsumersFor(mediaTypes []string) map[string]httpkit.Consumer {
 }
 
 // ProducersFor gets the producers for the specified media types
-func (d *API) ProducersFor(mediaTypes []string) map[string]httpkit.Producer {
-	result := make(map[string]httpkit.Producer)
+func (d *API) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
+	result := make(map[string]runtime.Producer)
 	for _, mt := range mediaTypes {
 		if producer, ok := d.producers[mt]; ok {
 			result[mt] = producer
@@ -155,8 +155,8 @@ func (d *API) ProducersFor(mediaTypes []string) map[string]httpkit.Producer {
 }
 
 // AuthenticatorsFor gets the authenticators for the specified security schemes
-func (d *API) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]httpkit.Authenticator {
-	result := make(map[string]httpkit.Authenticator)
+func (d *API) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
+	result := make(map[string]runtime.Authenticator)
 	for k := range schemes {
 		if a, ok := d.authenticators[k]; ok {
 			result[k] = a

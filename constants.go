@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httpkit
+package runtime
 
 const (
 	// HeaderContentType represents a http content-type header, it's value is supposed to be a mime type

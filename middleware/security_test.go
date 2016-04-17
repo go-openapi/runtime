@@ -19,7 +19,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-swagger/go-swagger/internal/testing/petstore"
+	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/stretchr/testify/assert"
 )
 

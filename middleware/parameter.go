@@ -24,11 +24,11 @@ import (
 	"strconv"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-swagger/go-swagger/httpkit"
-	"github.com/go-swagger/go-swagger/internal/validate"
+	validate "github.com/go-openapi/validate/validation"
 )
 
 const defaultMaxMemory = 32 << 20
@@ -104,7 +104,7 @@ func (p *untypedParamBinder) typeForSchema(tpe, format string, items *spec.Items
 		return reflect.MakeSlice(reflect.SliceOf(itemsType), 0, 0).Type()
 
 	case "file":
-		return reflect.TypeOf(&httpkit.File{}).Elem()
+		return reflect.TypeOf(&runtime.File{}).Elem()
 
 	case "object":
 		return reflect.TypeOf(map[string]interface{}{})
@@ -116,7 +116,7 @@ func (p *untypedParamBinder) allowsMulti() bool {
 	return p.parameter.In == "query" || p.parameter.In == "formData"
 }
 
-func (p *untypedParamBinder) readValue(values httpkit.Gettable, target reflect.Value) ([]string, bool, bool, error) {
+func (p *untypedParamBinder) readValue(values runtime.Gettable, target reflect.Value) ([]string, bool, bool, error) {
 	name, in, cf, tpe := p.parameter.Name, p.parameter.In, p.parameter.CollectionFormat, p.parameter.Type
 	if tpe == "array" {
 		if cf == "multi" {
@@ -139,11 +139,11 @@ func (p *untypedParamBinder) readValue(values httpkit.Gettable, target reflect.V
 	return vv, false, hk, nil
 }
 
-func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams, consumer httpkit.Consumer, target reflect.Value) error {
+func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams, consumer runtime.Consumer, target reflect.Value) error {
 	// fmt.Println("binding", p.name, "as", p.Type())
 	switch p.parameter.In {
 	case "query":
-		data, custom, hasKey, err := p.readValue(httpkit.Values(request.URL.Query()), target)
+		data, custom, hasKey, err := p.readValue(runtime.Values(request.URL.Query()), target)
 		if err != nil {
 			return err
 		}
@@ -154,7 +154,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		return p.bindValue(data, hasKey, target)
 
 	case "header":
-		data, custom, hasKey, err := p.readValue(httpkit.Values(request.Header), target)
+		data, custom, hasKey, err := p.readValue(runtime.Values(request.Header), target)
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		var err error
 		var mt string
 
-		mt, _, e := httpkit.ContentType(request.Header)
+		mt, _, e := runtime.ContentType(request.Header)
 		if e != nil {
 			// because of the interface conversion go thinks the error is not nil
 			// so we first check for nil and then set the err var if it's not nil
@@ -207,12 +207,12 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 			if err != nil {
 				return errors.NewParseError(p.Name, p.parameter.In, "", err)
 			}
-			target.Set(reflect.ValueOf(httpkit.File{Data: file, Header: header}))
+			target.Set(reflect.ValueOf(runtime.File{Data: file, Header: header}))
 			return nil
 		}
 
 		if request.MultipartForm != nil {
-			data, custom, hasKey, err := p.readValue(httpkit.Values(request.MultipartForm.Value), target)
+			data, custom, hasKey, err := p.readValue(runtime.Values(request.MultipartForm.Value), target)
 			if err != nil {
 				return err
 			}
@@ -221,7 +221,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 			}
 			return p.bindValue(data, hasKey, target)
 		}
-		data, custom, hasKey, err := p.readValue(httpkit.Values(request.PostForm), target)
+		data, custom, hasKey, err := p.readValue(runtime.Values(request.PostForm), target)
 		if err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 
 	case "body":
 		newValue := reflect.New(target.Type())
-		if !httpkit.HasBody(request) {
+		if !runtime.HasBody(request) {
 			if p.parameter.Default != nil {
 				target.Set(reflect.ValueOf(p.parameter.Default))
 			}

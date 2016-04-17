@@ -19,9 +19,9 @@ import (
 	"reflect"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/httpkit"
 )
 
 // RequestBinder binds and validates the data from a http request
@@ -47,7 +47,7 @@ func newUntypedRequestBinder(parameters map[string]spec.Parameter, spec *spec.Sw
 }
 
 // Bind perform the databinding and validation
-func (o *untypedRequestBinder) Bind(request *http.Request, routeParams RouteParams, consumer httpkit.Consumer, data interface{}) error {
+func (o *untypedRequestBinder) Bind(request *http.Request, routeParams RouteParams, consumer runtime.Consumer, data interface{}) error {
 	val := reflect.Indirect(reflect.ValueOf(data))
 	isMap := val.Kind() == reflect.Map
 	var result []error

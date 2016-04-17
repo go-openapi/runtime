@@ -17,7 +17,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/go-swagger/go-swagger/httpkit"
+	"github.com/go-openapi/runtime"
 )
 
 type errorResp struct {
@@ -26,7 +26,7 @@ type errorResp struct {
 	headers  http.Header
 }
 
-func (e *errorResp) WriteResponse(rw http.ResponseWriter, producer httpkit.Producer) {
+func (e *errorResp) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 	for k, v := range e.headers {
 		for _, val := range v {
 			rw.Header().Add(k, val)

@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/go-swagger/go-swagger/client"
+	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +32,7 @@ func TestResponse(t *testing.T) {
 	under.Header.Set("Blah", "blah blah")
 	under.Body = ioutil.NopCloser(bytes.NewBufferString("some content"))
 
-	var resp client.Response = response{under}
+	var resp runtime.ClientResponse = response{under}
 	assert.EqualValues(t, under.StatusCode, resp.Code())
 	assert.Equal(t, under.Status, resp.Message())
 	assert.Equal(t, "blah blah", resp.GetHeader("blah"))

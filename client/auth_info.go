@@ -17,13 +17,13 @@ package client
 import (
 	"encoding/base64"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-swagger/go-swagger/client"
 )
 
 // BasicAuth provides a basic auth info writer
-func BasicAuth(username, password string) client.AuthInfoWriter {
-	return client.AuthInfoWriterFunc(func(r client.Request, _ strfmt.Registry) error {
+func BasicAuth(username, password string) runtime.ClientAuthInfoWriter {
+	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
 		encoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 		r.SetHeaderParam("Authorization", "Basic "+encoded)
 		return nil
@@ -31,16 +31,16 @@ func BasicAuth(username, password string) client.AuthInfoWriter {
 }
 
 // APIKeyAuth provides an API key auth info writer
-func APIKeyAuth(name, in, value string) client.AuthInfoWriter {
+func APIKeyAuth(name, in, value string) runtime.ClientAuthInfoWriter {
 	if in == "query" {
-		return client.AuthInfoWriterFunc(func(r client.Request, _ strfmt.Registry) error {
+		return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
 			r.SetQueryParam(name, value)
 			return nil
 		})
 	}
 
 	if in == "header" {
-		return client.AuthInfoWriterFunc(func(r client.Request, _ strfmt.Registry) error {
+		return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
 			r.SetHeaderParam(name, value)
 			return nil
 		})
@@ -49,8 +49,8 @@ func APIKeyAuth(name, in, value string) client.AuthInfoWriter {
 }
 
 // BearerToken provides a header based oauth2 bearer access token auth info writer
-func BearerToken(token string) client.AuthInfoWriter {
-	return client.AuthInfoWriterFunc(func(r client.Request, _ strfmt.Registry) error {
+func BearerToken(token string) runtime.ClientAuthInfoWriter {
+	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
 		r.SetHeaderParam("Authorization", "Bearer "+token)
 		return nil
 	})

@@ -19,7 +19,7 @@ Pseudo middleware handler
   import (
   	"net/http"
 
-  	"github.com/go-swagger/go-swagger/errors"
+  	"github.com/go-openapi/errors"
   	"github.com/gorilla/context"
   )
 

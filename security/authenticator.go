@@ -19,12 +19,12 @@ import (
 	"strings"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-swagger/go-swagger/httpkit"
+	"github.com/go-openapi/runtime"
 )
 
 // httpAuthenticator is a function that authenticates a HTTP request
-func httpAuthenticator(handler func(*http.Request) (bool, interface{}, error)) httpkit.Authenticator {
-	return httpkit.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
+func httpAuthenticator(handler func(*http.Request) (bool, interface{}, error)) runtime.Authenticator {
+	return runtime.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
 		if request, ok := params.(*http.Request); ok {
 			return handler(request)
 		}
@@ -39,7 +39,7 @@ type UserPassAuthentication func(string, string) (interface{}, error)
 type TokenAuthentication func(string) (interface{}, error)
 
 // BasicAuth creates a basic auth authenticator with the provided authentication function
-func BasicAuth(authenticate UserPassAuthentication) httpkit.Authenticator {
+func BasicAuth(authenticate UserPassAuthentication) runtime.Authenticator {
 	return httpAuthenticator(func(r *http.Request) (bool, interface{}, error) {
 		if usr, pass, ok := r.BasicAuth(); ok {
 			p, err := authenticate(usr, pass)
@@ -52,7 +52,7 @@ func BasicAuth(authenticate UserPassAuthentication) httpkit.Authenticator {
 
 // APIKeyAuth creates an authenticator that uses a token for authorization.
 // This token can be obtained from either a header or a query string
-func APIKeyAuth(name, in string, authenticate TokenAuthentication) httpkit.Authenticator {
+func APIKeyAuth(name, in string, authenticate TokenAuthentication) runtime.Authenticator {
 	inl := strings.ToLower(in)
 	if inl != "query" && inl != "header" {
 		// panic because this is most likely a typo
