@@ -18,7 +18,8 @@ build:
       - go get -u gopkg.in/yaml.v2
       - go get -u github.com/gorilla/context
       - go get -u github.com/naoina/denco
-      - go get -u github.com/go-openapi/validate
+      - mkdir -p /drone/src/github.com/go-openapi/validate
+      - git clone https://github.com/go-openapi/validate /drone/src/github.com/go-openapi/validate
       - ./hack/build-drone.sh
 
 notify:
