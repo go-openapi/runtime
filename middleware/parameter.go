@@ -28,7 +28,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	validate "github.com/go-openapi/validate/validation"
+	validate "github.com/go-openapi/validate"
 )
 
 const defaultMaxMemory = 32 << 20
