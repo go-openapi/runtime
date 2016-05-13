@@ -379,12 +379,14 @@ func (c *Context) NotFound(rw http.ResponseWriter, r *http.Request) {
 
 // Respond renders the response after doing some content negotiation
 func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []string, route *MatchedRoute, data interface{}) {
-	offers := []string{c.api.DefaultProduces()}
+	offers := []string{}
 	for _, mt := range produces {
 		if mt != c.api.DefaultProduces() {
 			offers = append(offers, mt)
 		}
 	}
+	// the default producer is last so more specific producers take precedence
+	offers = append(offers, c.api.DefaultProduces())
 
 	format := c.ResponseFormat(r, offers)
 	rw.Header().Set(runtime.HeaderContentType, format)
