@@ -23,6 +23,7 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware/untyped"
+	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/context"
@@ -203,6 +204,7 @@ const (
 	ctxAllowedMethods
 	ctxBoundParams
 	ctxSecurityPrincipal
+	ctxSecurityScopes
 
 	ctxConsumer
 )
@@ -340,12 +342,16 @@ func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (interfa
 		return v, nil
 	}
 
-	for _, authenticator := range route.Authenticators {
-		applies, usr, err := authenticator.Authenticate(request)
+	for scheme, authenticator := range route.Authenticators {
+		applies, usr, err := authenticator.Authenticate(&security.ScopedAuthRequest{
+			Request:        request,
+			RequiredScopes: route.Scopes[scheme],
+		})
 		if !applies || err != nil || usr == nil {
 			continue
 		}
 		context.Set(request, ctxSecurityPrincipal, usr)
+		context.Set(request, ctxSecurityScopes, route.Scopes[scheme])
 		return usr, nil
 	}
 

@@ -28,6 +28,18 @@ func httpAuthenticator(handler func(*http.Request) (bool, interface{}, error)) r
 		if request, ok := params.(*http.Request); ok {
 			return handler(request)
 		}
+		if scoped, ok := params.(*ScopedAuthRequest); ok {
+			return handler(scoped.Request)
+		}
+		return false, nil, nil
+	})
+}
+
+func scopedAuthenticator(handler func(*ScopedAuthRequest) (bool, interface{}, error)) runtime.Authenticator {
+	return runtime.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
+		if request, ok := params.(*ScopedAuthRequest); ok {
+			return handler(request)
+		}
 		return false, nil, nil
 	})
 }
@@ -81,29 +93,35 @@ func APIKeyAuth(name, in string, authenticate TokenAuthentication) runtime.Authe
 	})
 }
 
+// ScopedAuthRequest contains both a http request and the required scopes for a particular operation
+type ScopedAuthRequest struct {
+	Request        *http.Request
+	RequiredScopes []string
+}
+
 // BearerAuth for use with oauth2 flows
-func BearerAuth(name string, scopes []string, authenticate ScopedTokenAuthentication) runtime.Authenticator {
+func BearerAuth(name string, authenticate ScopedTokenAuthentication) runtime.Authenticator {
 	const prefix = "Bearer "
-	return httpAuthenticator(func(r *http.Request) (bool, interface{}, error) {
+	return scopedAuthenticator(func(r *ScopedAuthRequest) (bool, interface{}, error) {
 		var token string
-		hdr := r.Header.Get("Authorization")
+		hdr := r.Request.Header.Get("Authorization")
 		if strings.HasPrefix(hdr, prefix) {
 			token = strings.TrimPrefix(hdr, prefix)
 		}
 		if token == "" {
-			qs := r.URL.Query()
+			qs := r.Request.URL.Query()
 			token = qs.Get("access_token")
 		}
-		ct, _, _ := runtime.ContentType(r.Header)
+		ct, _, _ := runtime.ContentType(r.Request.Header)
 		if token == "" && (ct == "application/x-www-form-urlencoded" || ct == "multipart/form-data") {
-			token = r.FormValue("access_token")
+			token = r.Request.FormValue("access_token")
 		}
 
 		if token == "" {
 			return false, nil, nil
 		}
 
-		p, err := authenticate(token, scopes)
+		p, err := authenticate(token, r.RequiredScopes)
 		return true, p, err
 	})
 }
