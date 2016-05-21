@@ -144,6 +144,27 @@ func TestRouterCanonicalBasePath(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 }
 
+func TestRouter_EscapedPath(t *testing.T) {
+	spec, api := petstore.NewAPI(t)
+	spec.Spec().BasePath = "/api/"
+	context := NewContext(spec, api, nil)
+	mw := newRouter(context, http.HandlerFunc(terminator))
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/api/pets/123", nil)
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/api/pets/abc%2Fdef", nil)
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	ri, _ := context.RouteInfo(request)
+	assert.Equal(t, "abc%2Fdef", ri.Params.Get("id"))
+}
+
 func TestRouterStruct(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	router := DefaultRouter(spec, newRoutableUntypedAPI(spec, api, new(Context)))
