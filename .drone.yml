@@ -21,7 +21,8 @@ build:
       - go get -u github.com/go-openapi/errors
       - go get -u github.com/go-openapi/loads
       - go get -u github.com/go-openapi/strfmt
-      - go get -u github.com/go-openapi/validate
+      - mkdir -p /drone/src/github.com/go-openapi/validate
+      - git clone https://github.com/go-openapi/validate /drone/src/github.com/go-openapi/validate
       - ./hack/build-drone.sh
 
 notify:
