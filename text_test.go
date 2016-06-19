@@ -38,4 +38,8 @@ func TestTextProducer(t *testing.T) {
 	err := prod.Produce(rw, consProdText)
 	assert.NoError(t, err)
 	assert.Equal(t, consProdText, rw.Body.String())
+	rw2 := httptest.NewRecorder()
+	err2 := prod.Produce(rw2, &consProdText)
+	assert.NoError(t, err2)
+	assert.Equal(t, consProdText, rw2.Body.String())
 }
