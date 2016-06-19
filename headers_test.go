@@ -42,13 +42,13 @@ func TestParseContentType(t *testing.T) {
 	headers := http.Header(map[string][]string{})
 	for _, v := range data {
 		if v.hdr != "" {
-			headers.Set("content-type", v.hdr)
+			headers.Set("Content-Type", v.hdr)
 		} else {
-			headers.Del("content-type")
+			headers.Del("Content-Type")
 		}
 		ct, cs, err := ContentType(headers)
 		if v.err == nil {
-			assert.NoError(t, err, "input: %q", v.hdr)
+			assert.NoError(t, err, "input: %q, err: %v", v.hdr, err)
 		} else {
 			assert.Error(t, err, "input: %q", v.hdr)
 			assert.IsType(t, &errors.ParseError{}, err, "input: %q", v.hdr)
