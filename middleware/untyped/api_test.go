@@ -117,7 +117,6 @@ func TestUntypedAppValidation(t *testing.T) {
         "security": [
           {"basic":[]}
         ],
-        "operationId": "someOperation",
         "parameters": [
           {
             "name": "skip",
@@ -162,7 +161,6 @@ func TestUntypedAppValidation(t *testing.T) {
 	        "security": [
 	          {"basic":[]}
 	        ],
-	  			"operationId": "someOperation",
 	  			"parameters": [
 	  				{
 				  		"name": "skip",
