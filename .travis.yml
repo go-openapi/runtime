@@ -15,7 +15,7 @@ install:
 - go get -u github.com/go-openapi/strfmt
 - go get -u github.com/go-openapi/validate
 script:
-- go test -v -race -cover -coverprofile=coverage.txt -covermode=atomic ./...
+- ./hack/build-travis.sh
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 notifications:
