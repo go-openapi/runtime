@@ -1,8 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-mkdir -p /drone/{testresults,coverage,dist}
-go test -race -timeout 20m -v ./... | go-junit-report -dir /drone/testresults
+go test -race -timeout 20m -v ./...
 
 # Run test coverage on each subdirectories and merge the coverage profile.
 echo "mode: ${GOCOVMODE-atomic}" > coverage.txt
@@ -16,7 +15,7 @@ do
   if [ -f $pth/profile.out ]
   then
       cat $pth/profile.out | tail -n +2 >> coverage.txt
-      # rm $pth/profile.out
+      rm $pth/profile.out
   fi
 done
 
