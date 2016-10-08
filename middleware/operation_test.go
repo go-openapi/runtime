@@ -35,7 +35,7 @@ func TestOperationExecutor(t *testing.T) {
 
 	context := NewContext(spec, api, nil)
 	context.router = DefaultRouter(spec, context.api)
-	mw := newOperationExecutor(context)
+	mw := NewOperationExecutor(context)
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/pets", nil)
@@ -52,7 +52,7 @@ func TestOperationExecutor(t *testing.T) {
 
 	context = NewContext(spec, api, nil)
 	context.router = DefaultRouter(spec, context.api)
-	mw = newOperationExecutor(context)
+	mw = NewOperationExecutor(context)
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequest("GET", "/pets", nil)

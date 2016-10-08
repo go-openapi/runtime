@@ -35,7 +35,7 @@ func terminator(rw http.ResponseWriter, r *http.Request) {
 func TestRouterMiddleware(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	context := NewContext(spec, api, nil)
-	mw := newRouter(context, http.HandlerFunc(terminator))
+	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/api/pets", nil)
@@ -61,7 +61,7 @@ func TestRouterMiddleware(t *testing.T) {
 
 	spec, api = petstore.NewRootAPI(t)
 	context = NewContext(spec, api, nil)
-	mw = newRouter(context, http.HandlerFunc(terminator))
+	mw = NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequest("GET", "/pets", nil)
@@ -135,7 +135,7 @@ func TestRouterCanonicalBasePath(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	spec.Spec().BasePath = "/api///"
 	context := NewContext(spec, api, nil)
-	mw := newRouter(context, http.HandlerFunc(terminator))
+	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/api/pets", nil)
@@ -148,7 +148,7 @@ func TestRouter_EscapedPath(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	spec.Spec().BasePath = "/api/"
 	context := NewContext(spec, api, nil)
-	mw := newRouter(context, http.HandlerFunc(terminator))
+	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/api/pets/123", nil)
