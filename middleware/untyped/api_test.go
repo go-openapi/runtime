@@ -57,7 +57,7 @@ func (s *stubOperationHandler) Handle(params interface{}) (interface{}, error) {
 }
 
 func TestUntypedAPIRegistrations(t *testing.T) {
-	api := NewAPI(new(loads.Document))
+	api := NewAPI(new(loads.Document)).WithJSONDefaults()
 
 	api.RegisterConsumer("application/yada", new(stubConsumer))
 	api.RegisterProducer("application/yada-2", new(stubProducer))
