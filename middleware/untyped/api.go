@@ -74,10 +74,10 @@ func (d *API) WithJSONDefaults() *API {
 
 // WithoutJSONDefaults clears the json defaults for this api
 func (d *API) WithoutJSONDefaults() *API {
-	d.DefaultConsumes = runtime.JSONMime
-	d.DefaultProduces = runtime.JSONMime
-	d.consumers[runtime.JSONMime] = runtime.JSONConsumer()
-	d.producers[runtime.JSONMime] = runtime.JSONProducer()
+	d.DefaultConsumes = ""
+	d.DefaultProduces = ""
+	delete(d.consumers, runtime.JSONMime)
+	delete(d.producers, runtime.JSONMime)
 	return d
 }
 
@@ -218,7 +218,7 @@ func (d *API) validate() error {
 	if err := d.verify("produces", produces, d.analyzer.RequiredProduces()); err != nil {
 		return err
 	}
-	if err := d.verify("operation", operations, d.analyzer.OperationIDs()); err != nil {
+	if err := d.verify("operation", operations, d.analyzer.OperationMethodPaths()); err != nil {
 		return err
 	}
 
@@ -226,7 +226,6 @@ func (d *API) validate() error {
 	if err := d.verify("auth scheme", authenticators, requiredAuths); err != nil {
 		return err
 	}
-	fmt.Printf("comparing %s with %s\n", strings.Join(definedAuths, ","), strings.Join(requiredAuths, ","))
 	if err := d.verify("security definitions", definedAuths, requiredAuths); err != nil {
 		return err
 	}
