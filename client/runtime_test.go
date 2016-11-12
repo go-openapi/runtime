@@ -27,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
@@ -593,6 +595,34 @@ func TestRuntime_OverrideClient(t *testing.T) {
 	runtime.clientOnce.Do(func() { i++ })
 	assert.Equal(t, client, runtime.client)
 	assert.Equal(t, 0, i)
+}
+
+func TestRuntime_OverrideClientOperation(t *testing.T) {
+	client := &http.Client{}
+	rt := NewWithClient("", "/", []string{"https"}, client)
+	var i int
+	rt.clientOnce.Do(func() { i++ })
+	assert.Equal(t, client, rt.client)
+	assert.Equal(t, 0, i)
+
+	var seen *http.Client
+	rt.do = func(_ context.Context, cl *http.Client, _ *http.Request) (*http.Response, error) {
+		seen = cl
+		res := new(http.Response)
+		res.StatusCode = 200
+		res.Body = ioutil.NopCloser(bytes.NewBufferString("OK"))
+		return res, nil
+	}
+	client2 := new(http.Client)
+	if assert.NotEqual(t, client, client2) {
+		_, err := rt.Submit(&runtime.ClientOperation{
+			Client: client2,
+		})
+		if assert.NoError(t, err) {
+
+			assert.Equal(t, client2, seen)
+		}
+	}
 }
 
 func TestRuntime_PreserveTrailingSlash(t *testing.T) {
