@@ -91,6 +91,17 @@ func New(host, basePath string, schemes []string) *Runtime {
 	return &rt
 }
 
+// NewWithClient allows you to create a new transport with a configured http.Client
+func NewWithClient(host, basePath string, schemes []string, client *http.Client) *Runtime {
+	rt := New(host, basePath, schemes)
+	if client != nil {
+		rt.clientOnce.Do(func() {
+			rt.client = client
+		})
+	}
+	return rt
+}
+
 func (r *Runtime) pickScheme(schemes []string) string {
 	if v := r.selectScheme(r.schemes); v != "" {
 		return v

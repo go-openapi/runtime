@@ -586,6 +586,15 @@ func TestRuntime_OverrideScheme(t *testing.T) {
 	assert.Equal(t, "https", sch)
 }
 
+func TestRuntime_OverrideClient(t *testing.T) {
+	client := &http.Client{}
+	runtime := NewWithClient("", "/", []string{"https"}, client)
+	var i int
+	runtime.clientOnce.Do(func() { i++ })
+	assert.Equal(t, client, runtime.client)
+	assert.Equal(t, 0, i)
+}
+
 func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	var redirected bool
 
