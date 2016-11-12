@@ -217,6 +217,9 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	if client == nil {
 		client = r.client
 	}
+	if r.do == nil {
+		r.do = ctxhttp.Do
+	}
 	res, err := r.do(ctx, client, req) // make requests, by default follows 10 redirects before failing
 	if err != nil {
 		return nil, err
