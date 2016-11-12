@@ -501,6 +501,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 
 	hu, _ := url.Parse(server.URL)
 	rt := New(hu.Host, "/", []string{"http"})
+	rt.do = nil
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      "GET",
