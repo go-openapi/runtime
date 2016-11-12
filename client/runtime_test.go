@@ -614,6 +614,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 		return res, nil
 	}
 	client2 := new(http.Client)
+	client2.Timeout = 3 * time.Second
 	if assert.NotEqual(t, client, client2) {
 		_, err := rt.Submit(&runtime.ClientOperation{
 			Client: client2,
