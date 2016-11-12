@@ -27,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
@@ -499,6 +501,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 
 	hu, _ := url.Parse(server.URL)
 	rt := New(hu.Host, "/", []string{"http"})
+	rt.do = nil
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      "GET",
@@ -584,6 +587,51 @@ func TestRuntime_OverrideScheme(t *testing.T) {
 	runtime := New("", "/", []string{"https"})
 	sch := runtime.pickScheme([]string{"http"})
 	assert.Equal(t, "https", sch)
+}
+
+func TestRuntime_OverrideClient(t *testing.T) {
+	client := &http.Client{}
+	runtime := NewWithClient("", "/", []string{"https"}, client)
+	var i int
+	runtime.clientOnce.Do(func() { i++ })
+	assert.Equal(t, client, runtime.client)
+	assert.Equal(t, 0, i)
+}
+
+func TestRuntime_OverrideClientOperation(t *testing.T) {
+	client := &http.Client{}
+	rt := NewWithClient("", "/", []string{"https"}, client)
+	var i int
+	rt.clientOnce.Do(func() { i++ })
+	assert.Equal(t, client, rt.client)
+	assert.Equal(t, 0, i)
+
+	var seen *http.Client
+	rt.do = func(_ context.Context, cl *http.Client, _ *http.Request) (*http.Response, error) {
+		seen = cl
+		res := new(http.Response)
+		res.StatusCode = 200
+		res.Body = ioutil.NopCloser(bytes.NewBufferString("OK"))
+		return res, nil
+	}
+
+	client2 := new(http.Client)
+	client2.Timeout = 3 * time.Second
+	if assert.NotEqual(t, client, client2) {
+		_, err := rt.Submit(&runtime.ClientOperation{
+			Client: client2,
+			Params: runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
+				return nil
+			}),
+			Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+				return nil, nil
+			}),
+		})
+		if assert.NoError(t, err) {
+
+			assert.Equal(t, client2, seen)
+		}
+	}
 }
 
 func TestRuntime_PreserveTrailingSlash(t *testing.T) {
