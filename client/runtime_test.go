@@ -613,11 +613,18 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 		res.Body = ioutil.NopCloser(bytes.NewBufferString("OK"))
 		return res, nil
 	}
+
 	client2 := new(http.Client)
 	client2.Timeout = 3 * time.Second
 	if assert.NotEqual(t, client, client2) {
 		_, err := rt.Submit(&runtime.ClientOperation{
 			Client: client2,
+			Params: runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
+				return nil
+			}),
+			Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+				return nil, nil
+			}),
 		})
 		if assert.NoError(t, err) {
 
