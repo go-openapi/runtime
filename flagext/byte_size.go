@@ -21,3 +21,13 @@ func (b *ByteSize) UnmarshalFlag(value string) error {
 	*b = ByteSize(int(sz))
 	return nil
 }
+
+// String method for a bytesize (pflag value and stringer interface)
+func (b ByteSize) String() string {
+	return units.HumanSize(float64(b))
+}
+
+// Set the value of this bytesize (pflag value interfaces)
+func (b *ByteSize) Set(value string) error {
+	return b.UnmarshalFlag(value)
+}

@@ -10,6 +10,11 @@ func TestMarshalBytesize(t *testing.T) {
 	}
 }
 
+func TestStringBytesize(t *testing.T) {
+	v := ByteSize(2048).String()
+	assert.Equal(t, "2.048 kB", v)
+}
+
 func TestUnmarshalBytesize(t *testing.T) {
 	var b ByteSize
 	err := b.UnmarshalFlag("notASize")
@@ -18,5 +23,16 @@ func TestUnmarshalBytesize(t *testing.T) {
 	err = b.UnmarshalFlag("1MB")
 	if assert.NoError(t, err) {
 		assert.Equal(t, ByteSize(1000000), b)
+	}
+}
+
+func TestSetBytesize(t *testing.T) {
+	var b ByteSize
+	err := b.Set("notASize")
+	assert.Error(t, err)
+
+	err = b.Set("2MB")
+	if assert.NoError(t, err) {
+		assert.Equal(t, ByteSize(2000000), b)
 	}
 }
