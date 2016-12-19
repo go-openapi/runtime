@@ -31,3 +31,8 @@ func (b ByteSize) String() string {
 func (b *ByteSize) Set(value string) error {
 	return b.UnmarshalFlag(value)
 }
+
+// Type returns the type of the pflag value (pflag value interface)
+func (b *ByteSize) Type() string {
+	return "byte-size"
+}

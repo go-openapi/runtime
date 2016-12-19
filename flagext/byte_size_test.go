@@ -36,3 +36,8 @@ func TestSetBytesize(t *testing.T) {
 		assert.Equal(t, ByteSize(2000000), b)
 	}
 }
+
+func TestTypeBytesize(t *testing.T) {
+	var b ByteSize
+	assert.Equal(t, "byte-size", b.Type())
+}
