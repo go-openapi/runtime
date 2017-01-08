@@ -3,6 +3,7 @@ package middleware
 import (
 	"io"
 	"net/http"
+	"path"
 	"testing"
 
 	"github.com/go-openapi/runtime"
@@ -33,7 +34,7 @@ func TestBindRequest_BodyValidation(t *testing.T) {
 	api.DefaultConsumes = runtime.JSONMime
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	req, err := http.NewRequest("GET", "/pets", new(eofReader))
+	req, err := http.NewRequest("GET", path.Join(spec.BasePath(), "/pets"), new(eofReader))
 	if assert.NoError(t, err) {
 		req.Header.Set("Content-Type", runtime.JSONMime)
 
@@ -60,7 +61,7 @@ func TestBindRequest_DeleteNoBody(t *testing.T) {
 	api.DefaultConsumes = runtime.JSONMime
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	req, err := http.NewRequest("DELETE", "/pets/123", new(eofReader))
+	req, err := http.NewRequest("DELETE", path.Join(spec.BasePath(), "/pets/123"), new(eofReader))
 	if assert.NoError(t, err) {
 		req.Header.Set("Accept", "*/*")
 
@@ -76,7 +77,7 @@ func TestBindRequest_DeleteNoBody(t *testing.T) {
 		}
 	}
 
-	req, err = http.NewRequest("DELETE", "/pets/123", new(eofReader))
+	req, err = http.NewRequest("DELETE", path.Join(spec.BasePath(), "/pets/123"), new(eofReader))
 	if assert.NoError(t, err) {
 		req.Header.Set("Accept", "*/*")
 		req.Header.Set("Content-Type", runtime.JSONMime)
