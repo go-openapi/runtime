@@ -32,43 +32,43 @@ func TestContentTypeValidation(t *testing.T) {
 	context.router = DefaultRouter(spec, context.api)
 	mw := newValidation(context, http.HandlerFunc(terminator))
 
-	// recorder := httptest.NewRecorder()
-	// request, _ := http.NewRequest("GET", "/api/pets", nil)
-	// request.Header.Add("Accept", "*/*")
-	// mw.ServeHTTP(recorder, request)
-	// assert.Equal(t, http.StatusOK, recorder.Code)
-
-	// recorder = httptest.NewRecorder()
-	// request, _ = http.NewRequest("POST", "/api/pets", nil)
-	// request.Header.Add("content-type", "application(")
-	// request.ContentLength = 1
-
-	// mw.ServeHTTP(recorder, request)
-	// assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	// assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
-
-	// recorder = httptest.NewRecorder()
-	// request, _ = http.NewRequest("POST", "/api/pets", nil)
-	// request.Header.Add("Accept", "application/json")
-	// request.Header.Add("content-type", "text/html")
-	// request.ContentLength = 1
-
-	// mw.ServeHTTP(recorder, request)
-	// assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
-	// assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
-
-	// recorder = httptest.NewRecorder()
-	// request, _ = http.NewRequest("POST", "/api/pets", nil)
-	// request.Header.Add("Accept", "application/json")
-	// request.Header.Add("content-type", "text/html")
-	// request.TransferEncoding = []string{"chunked"}
-
-	// mw.ServeHTTP(recorder, request)
-	// assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
-	// assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
-
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("POST", "/api/pets", nil)
+	request, _ := http.NewRequest("GET", "/api/pets", nil)
+	request.Header.Add("Accept", "*/*")
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request.Header.Add("content-type", "application(")
+	request.ContentLength = 1
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request.Header.Add("Accept", "application/json")
+	request.Header.Add("content-type", "text/html")
+	request.ContentLength = 1
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request.Header.Add("Accept", "application/json")
+	request.Header.Add("content-type", "text/html")
+	request.TransferEncoding = []string{"chunked"}
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/api/pets", nil)
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("content-type", "text/html")
 

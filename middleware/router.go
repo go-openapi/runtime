@@ -68,30 +68,14 @@ func NewRouter(ctx *Context, next http.Handler) http.Handler {
 	if ctx.router == nil {
 		ctx.router = DefaultRouter(ctx.spec, ctx.api)
 	}
-	// basePath := path.Clean(ctx.spec.BasePath())
-	// isRoot := basePath == "" || basePath == "/"
-	// for strings.HasSuffix(basePath, "/") {
-	// 	basePath = basePath[:len(basePath)-1]
-	// }
 
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		defer context.Clear(r)
-		// use context to lookup routes
-		// if isRoot {
 		if _, ok := ctx.RouteInfo(r); ok {
 			next.ServeHTTP(rw, r)
 			return
 		}
-		// } else {
-		// ep := r.URL.EscapedPath()
-		// if len(r.URL.Path) < len(ep) {
-		// 	r.URL.Path = ep
-		// 	if _, ok := ctx.RouteInfo(r); ok {
-		// 		next.ServeHTTP(rw, r)
-		// 		return
-		// 	}
-		// }
-		// }
+
 		// Not found, check if it exists in the other methods first
 		if others := ctx.AllowedMethods(r); len(others) > 0 {
 			ctx.Respond(rw, r, ctx.analyzer.RequiredProduces(), nil, errors.MethodNotAllowed(r.Method, others))
