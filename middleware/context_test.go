@@ -92,7 +92,7 @@ func TestContextAuthorize(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := runtime.JSONRequest("GET", "/pets", nil)
+	request, _ := runtime.JSONRequest("GET", "/api/pets", nil)
 
 	v, ok := context.GetOk(request, ctxSecurityPrincipal)
 	assert.False(t, ok)
@@ -137,7 +137,7 @@ func TestContextNegotiateContentType(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := http.NewRequest("POST", "/pets", nil)
+	request, _ := http.NewRequest("POST", "/api/pets", nil)
 	// request.Header.Add("Accept", "*/*")
 	request.Header.Add("content-type", "text/html")
 
@@ -159,7 +159,7 @@ func TestContextBindAndValidate(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := http.NewRequest("POST", "/pets", nil)
+	request, _ := http.NewRequest("POST", "/api/pets", nil)
 	request.Header.Add("Accept", "*/*")
 	request.Header.Add("content-type", "text/html")
 	request.ContentLength = 1
@@ -232,7 +232,7 @@ func TestContextRender(t *testing.T) {
 	// assert.Panics(t, func() { ctx.Respond(recorder, request, []string{}, ri, map[string]interface{}{"name": "hello"}) })
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("DELETE", "/pets/1", nil)
+	request, _ = http.NewRequest("DELETE", "/api/pets/1", nil)
 	ri, _ = ctx.RouteInfo(request)
 	ctx.Respond(recorder, request, ri.Produces, ri, nil)
 	assert.Equal(t, 204, recorder.Code)
@@ -300,7 +300,7 @@ func TestContextValidRoute(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := http.NewRequest("GET", "/pets", nil)
+	request, _ := http.NewRequest("GET", "/api/pets", nil)
 
 	// check there's nothing there
 	_, ok := context.GetOk(request, ctxMatchedRoute)

@@ -59,6 +59,12 @@ func TestRouterMiddleware(t *testing.T) {
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/pets", nil)
+
+	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
+
 	spec, api = petstore.NewRootAPI(t)
 	context = NewContext(spec, api, nil)
 	mw = NewRouter(context, http.HandlerFunc(terminator))
@@ -162,17 +168,21 @@ func TestRouter_EscapedPath(t *testing.T) {
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	ri, _ := context.RouteInfo(request)
-	assert.Equal(t, "abc%2Fdef", ri.Params.Get("id"))
+	if assert.NotNil(t, ri) {
+		if assert.NotNil(t, ri.Params) {
+			assert.Equal(t, "abc%2Fdef", ri.Params.Get("id"))
+		}
+	}
 }
 
 func TestRouterStruct(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	router := DefaultRouter(spec, newRoutableUntypedAPI(spec, api, new(Context)))
 
-	methods := router.OtherMethods("post", "/pets/{id}")
+	methods := router.OtherMethods("post", "/api/pets/{id}")
 	assert.Len(t, methods, 2)
 
-	entry, ok := router.Lookup("delete", "/pets/{id}")
+	entry, ok := router.Lookup("delete", "/api/pets/{id}")
 	assert.True(t, ok)
 	assert.NotNil(t, entry)
 	assert.Len(t, entry.Params, 1)
