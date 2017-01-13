@@ -24,6 +24,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -598,6 +599,32 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		actual := res.([]task)
 		assert.EqualValues(t, result, actual)
 	}
+}
+
+func TestRuntime_DebugValue(t *testing.T) {
+	original := os.Getenv("DEBUG")
+
+	// Emtpy DEBUG means Debug is False
+	os.Setenv("DEBUG", "")
+	runtime := New("", "/", []string{"https"})
+	assert.False(t, runtime.Debug)
+
+	// Non-Empty Debug means Debug is True
+
+	os.Setenv("DEBUG", "1")
+	runtime = New("", "/", []string{"https"})
+	assert.True(t, runtime.Debug)
+
+	os.Setenv("DEBUG", "true")
+	runtime = New("", "/", []string{"https"})
+	assert.True(t, runtime.Debug)
+
+	os.Setenv("DEBUG", "foo")
+	runtime = New("", "/", []string{"https"})
+	assert.True(t, runtime.Debug)
+
+	// Make sure DEBUG is initial value once again
+	os.Setenv("DEBUG", original)
 }
 
 func TestRuntime_OverrideScheme(t *testing.T) {
