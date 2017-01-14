@@ -42,4 +42,26 @@ func TestTextProducer(t *testing.T) {
 	err2 := prod.Produce(rw2, &consProdText)
 	assert.NoError(t, err2)
 	assert.Equal(t, consProdText, rw2.Body.String())
+
+	// should always work with type aliases
+	// as an alias is sometimes given by generated go-swagger code
+	type alias string
+	aliasProdText := alias(consProdText)
+	rw3 := httptest.NewRecorder()
+	err3 := prod.Produce(rw3, aliasProdText)
+	assert.NoError(t, err3)
+	assert.Equal(t, consProdText, rw3.Body.String())
+	rw4 := httptest.NewRecorder()
+	err4 := prod.Produce(rw4, &aliasProdText)
+	assert.NoError(t, err4)
+	assert.Equal(t, consProdText, rw4.Body.String())
+
+	// should not work with anything that's not (indirectly) a string
+	rw5 := httptest.NewRecorder()
+	err5 := prod.Produce(rw5, 42)
+	assert.Error(t, err5)
+	// nil values should also be safely caught with an error
+	rw6 := httptest.NewRecorder()
+	err6 := prod.Produce(rw6, nil)
+	assert.Error(t, err6)
 }
