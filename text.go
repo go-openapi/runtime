@@ -21,8 +21,6 @@ import (
 	"io"
 	"reflect"
 	"unsafe"
-
-	"github.com/go-openapi/swag"
 )
 
 // TextConsumer creates a new text consumer
@@ -42,29 +40,21 @@ func TextConsumer() Consumer {
 // TextProducer creates a new text producer
 func TextProducer() Producer {
 	return ProducerFunc(func(writer io.Writer, data interface{}) error {
-		var buf *bytes.Buffer
-		switch tped := data.(type) {
-		case *string:
-			buf = bytes.NewBufferString(swag.StringValue(tped))
-		case string:
-			buf = bytes.NewBufferString(tped)
-		default:
-			if data == nil {
-				return errors.New("no data given to produce text from")
-			}
-
-			t, v := reflect.TypeOf(data), reflect.ValueOf(data)
-			if t.Kind() == reflect.Ptr {
-				v = v.Elem()
-				t = t.Elem()
-			}
-
-			if t.Kind() != reflect.String {
-				return fmt.Errorf("%T is not supported by the TextProducer", data)
-			}
-
-			buf = bytes.NewBufferString(v.String())
+		if data == nil {
+			return errors.New("no data given to produce text from")
 		}
+
+		t, v := reflect.TypeOf(data), reflect.ValueOf(data)
+		if t.Kind() == reflect.Ptr {
+			v = v.Elem()
+			t = t.Elem()
+		}
+
+		if t.Kind() != reflect.String {
+			return fmt.Errorf("%T is not a supported type by the TextProducer", data)
+		}
+
+		buf := bytes.NewBufferString(v.String())
 		_, err := buf.WriteTo(writer)
 		return err
 	})
