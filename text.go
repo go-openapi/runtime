@@ -16,11 +16,11 @@ package runtime
 
 import (
 	"bytes"
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
 	"reflect"
-	"unsafe"
 )
 
 // TextConsumer creates a new text consumer
@@ -32,8 +32,27 @@ func TextConsumer() Consumer {
 			return err
 		}
 		b := buf.Bytes()
-		*(data.(*string)) = *(*string)(unsafe.Pointer(&b))
-		return nil
+
+		if tu, ok := data.(encoding.TextUnmarshaler); ok {
+			err := tu.UnmarshalText(b)
+			if err != nil {
+				return fmt.Errorf("text consumer: %v", err)
+			}
+
+			return nil
+		}
+
+		t := reflect.TypeOf(data)
+		if data != nil && t.Kind() == reflect.Ptr {
+			v := reflect.Indirect(reflect.ValueOf(data))
+			if t.Elem().Kind() == reflect.String {
+				v.SetString(string(b))
+				return nil
+			}
+		}
+
+		return fmt.Errorf("%v (%T) is not supported by the TextConsumer, %s",
+			data, data, "can be resolved by supporting TextUnmarshaler interface")
 	})
 }
 
@@ -44,18 +63,26 @@ func TextProducer() Producer {
 			return errors.New("no data given to produce text from")
 		}
 
-		t, v := reflect.TypeOf(data), reflect.ValueOf(data)
-		if t.Kind() == reflect.Ptr {
-			v = v.Elem()
-			t = t.Elem()
+		if tm, ok := data.(encoding.TextMarshaler); ok {
+			txt, err := tm.MarshalText()
+			if err != nil {
+				return fmt.Errorf("text producer: %v", err)
+			}
+			_, err = writer.Write(txt)
+			return err
 		}
 
-		if t.Kind() != reflect.String {
+		if str, ok := data.(fmt.Stringer); ok {
+			_, err := writer.Write([]byte(str.String()))
+			return err
+		}
+
+		v := reflect.Indirect(reflect.ValueOf(data))
+		if v.Kind() != reflect.String {
 			return fmt.Errorf("%T is not a supported type by the TextProducer", data)
 		}
 
-		buf := bytes.NewBufferString(v.String())
-		_, err := buf.WriteTo(writer)
+		_, err := writer.Write([]byte(v.String()))
 		return err
 	})
 }
