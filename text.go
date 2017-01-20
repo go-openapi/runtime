@@ -26,6 +26,10 @@ import (
 // TextConsumer creates a new text consumer
 func TextConsumer() Consumer {
 	return ConsumerFunc(func(reader io.Reader, data interface{}) error {
+		if reader == nil {
+			return errors.New("TextConsumer requires a reader") // early exit
+		}
+
 		buf := new(bytes.Buffer)
 		_, err := buf.ReadFrom(reader)
 		if err != nil {
@@ -59,6 +63,10 @@ func TextConsumer() Consumer {
 // TextProducer creates a new text producer
 func TextProducer() Producer {
 	return ProducerFunc(func(writer io.Writer, data interface{}) error {
+		if writer == nil {
+			return errors.New("TextProducer requires a writer") // early exit
+		}
+
 		if data == nil {
 			return errors.New("no data given to produce text from")
 		}

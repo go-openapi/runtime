@@ -47,6 +47,9 @@ func TestTextConsumer(t *testing.T) {
 	// when readers can't be read, those errors will be propogated as well
 	assert.Error(t, cons.Consume(new(nopReader), &tu))
 
+	// readers can also not be nil
+	assert.Error(t, cons.Consume(nil, &tu))
+
 	// can't consume nil ptr's or unsupported types
 	assert.Error(t, cons.Consume(bytes.NewBuffer([]byte(consProdText)), nil))
 	assert.Error(t, cons.Consume(bytes.NewBuffer([]byte(consProdText)), 42))
@@ -118,6 +121,9 @@ func TestTextProducer(t *testing.T) {
 	rw8 := httptest.NewRecorder()
 	err8 := prod.Produce(rw8, nil)
 	assert.Error(t, err8)
+
+	// writer can not be nil
+	assert.Error(t, prod.Produce(nil, &textMarshalDummy{answer}))
 
 	// should not work for a textMarshaler that returns an error during marshalling
 	rw9 := httptest.NewRecorder()
