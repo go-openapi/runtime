@@ -178,7 +178,7 @@ func (d *defaultRouter) Lookup(method, path string) (*MatchedRoute, bool) {
 		}
 	}
 	if router, ok := d.routers[mth]; ok {
-		if m, rp, ok := router.Lookup(path); ok && m != nil {
+		if m, rp, ok := router.Lookup(fpath.Clean(path)); ok && m != nil {
 			if entry, ok := m.(*routeEntry); ok {
 				debugLog("found a route for %s %s with %d parameters", method, path, len(entry.Parameters))
 				var params RouteParams
@@ -201,7 +201,7 @@ func (d *defaultRouter) OtherMethods(method, path string) []string {
 	var methods []string
 	for k, v := range d.routers {
 		if k != mn {
-			if _, _, ok := v.Lookup(path); ok {
+			if _, _, ok := v.Lookup(fpath.Clean(path)); ok {
 				methods = append(methods, k)
 				continue
 			}
