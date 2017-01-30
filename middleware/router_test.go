@@ -204,3 +204,23 @@ func petAPIRouterBuilder(spec *loads.Document, api *untyped.API, analyzed *analy
 
 	return builder
 }
+
+func TestPathConverter(t *testing.T) {
+	cases := []struct {
+		swagger string
+		denco   string
+	}{
+		{"/", "/"},
+		{"/something", "/something"},
+		{"/{id}", "/:id"},
+		{"/{petid}", "/:petid"},
+		{"/{pet_id}", "/:pet_id"},
+		{"/{petId}", "/:petId"},
+		{"/{pet-id}", "/:pet-id"},
+	}
+
+	for _, tc := range cases {
+		actual := pathConverter.ReplaceAllString(tc.swagger, ":$1")
+		assert.Equal(t, tc.denco, actual, "expected swagger path %s to match %s but got %s", tc.swagger, tc.denco, actual)
+	}
+}
