@@ -6,13 +6,13 @@ import "github.com/stretchr/testify/assert"
 func TestMarshalBytesize(t *testing.T) {
 	v, err := ByteSize(1024).MarshalFlag()
 	if assert.NoError(t, err) {
-		assert.Equal(t, "1.024 kB", v)
+		assert.Equal(t, "1.024kB", v)
 	}
 }
 
 func TestStringBytesize(t *testing.T) {
 	v := ByteSize(2048).String()
-	assert.Equal(t, "2.048 kB", v)
+	assert.Equal(t, "2.048kB", v)
 }
 
 func TestUnmarshalBytesize(t *testing.T) {
