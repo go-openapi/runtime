@@ -213,6 +213,7 @@ func TestPathConverter(t *testing.T) {
 		{"/", "/"},
 		{"/something", "/something"},
 		{"/{id}", "/:id"},
+		{"/{id}/something/{anotherId}", "/:id/something/:anotherId"},
 		{"/{petid}", "/:petid"},
 		{"/{pet_id}", "/:pet_id"},
 		{"/{petId}", "/:petId"},

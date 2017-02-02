@@ -210,7 +210,7 @@ func (d *defaultRouter) OtherMethods(method, path string) []string {
 	return methods
 }
 
-var pathConverter = regexp.MustCompile(`{(.+)}`)
+var pathConverter = regexp.MustCompile(`{(.+?)}`)
 
 func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Operation) {
 	mn := strings.ToUpper(method)
