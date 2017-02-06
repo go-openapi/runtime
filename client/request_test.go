@@ -206,6 +206,30 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 	}
 }
 
+func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		req.SetFormParam("something", "some value")
+		req.SetQueryParam("hello", "world")
+		req.SetPathParam("id", "1234")
+		req.SetHeaderParam("X-Rate-Limit", "200")
+		return nil
+	})
+	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
+	r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "/flats/1234/", req.URL.Path)
+		assert.Condition(t, func() bool { return req.ContentLength > 0 },
+			"ContentLength must great than 0. got %d", req.ContentLength)
+		expected := []byte("something=some+value")
+		actual, _ := ioutil.ReadAll(req.Body)
+		assert.Equal(t, expected, actual)
+	}
+}
+
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	cont, _ := ioutil.ReadFile("./runtime.go")
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
