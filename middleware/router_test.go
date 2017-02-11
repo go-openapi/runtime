@@ -170,7 +170,7 @@ func TestRouter_EscapedPath(t *testing.T) {
 	ri, _ := context.RouteInfo(request)
 	if assert.NotNil(t, ri) {
 		if assert.NotNil(t, ri.Params) {
-			assert.Equal(t, "abc%2Fdef", ri.Params.Get("id"))
+			assert.Equal(t, "abc/def", ri.Params.Get("id"))
 		}
 	}
 }

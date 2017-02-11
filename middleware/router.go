@@ -16,6 +16,7 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
 	fpath "path"
 	"regexp"
 	"strings"
@@ -183,7 +184,12 @@ func (d *defaultRouter) Lookup(method, path string) (*MatchedRoute, bool) {
 				debugLog("found a route for %s %s with %d parameters", method, path, len(entry.Parameters))
 				var params RouteParams
 				for _, p := range rp {
-					params = append(params, RouteParam{Name: p.Name, Value: p.Value})
+					v, err := url.QueryUnescape(p.Value)
+					if err != nil {
+						debugLog("failed to escape %q: %v", p.Value, err)
+						v = p.Value
+					}
+					params = append(params, RouteParam{Name: p.Name, Value: v})
 				}
 				return &MatchedRoute{routeEntry: *entry, Params: params}, true
 			}
