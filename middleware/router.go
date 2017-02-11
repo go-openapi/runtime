@@ -232,6 +232,8 @@ func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Oper
 		}
 
 		record := denco.NewRecord(pathConverter.ReplaceAllString(path, ":$1"), &routeEntry{
+			BasePath:       bp,
+			PathPattern:    path,
 			Operation:      operation,
 			Handler:        handler,
 			Consumes:       consumes,
