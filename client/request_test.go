@@ -111,6 +111,25 @@ func TestBuildRequest_SetBody(t *testing.T) {
 	assert.Equal(t, bd, r.payload)
 }
 
+func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		req.SetBodyParam(nil)
+		req.SetQueryParam("hello", "world")
+		req.SetPathParam("id", "1234")
+		req.SetHeaderParam("X-Rate-Limit", "200")
+		return nil
+	})
+	r, _ := newRequest("POST", "/flats/{id}/", reqWrtr)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "/flats/1234/", req.URL.Path)
+		assert.Equal(t, runtime.JSONMime, req.Header.Get(runtime.HeaderContentType))
+	}
+}
+
 func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
