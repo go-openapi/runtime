@@ -17,6 +17,7 @@ package runtime
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
@@ -113,6 +114,26 @@ func TestTextProducer(t *testing.T) {
 	assert.NoError(t, err6)
 	assert.Equal(t, answer, rw6.Body.String())
 
+	rw10 := httptest.NewRecorder()
+	err10 := prod.Produce(rw10, errors.New(answer))
+	assert.NoError(t, err10)
+	assert.Equal(t, answer, rw10.Body.String())
+
+	rw11 := httptest.NewRecorder()
+	err11 := prod.Produce(rw11, Error{Message: answer})
+	assert.NoError(t, err11)
+	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, answer), rw11.Body.String())
+
+	rw12 := httptest.NewRecorder()
+	err12 := prod.Produce(rw12, &Error{Message: answer})
+	assert.NoError(t, err12)
+	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, answer), rw12.Body.String())
+
+	rw13 := httptest.NewRecorder()
+	err13 := prod.Produce(rw13, []string{answer})
+	assert.NoError(t, err13)
+	assert.Equal(t, fmt.Sprintf(`[%q]`, answer), rw13.Body.String())
+
 	// should not work with anything that's not (indirectly) a string
 	rw7 := httptest.NewRecorder()
 	err7 := prod.Produce(rw7, 42)
@@ -129,6 +150,10 @@ func TestTextProducer(t *testing.T) {
 	rw9 := httptest.NewRecorder()
 	err9 := prod.Produce(rw9, new(textMarshalDummy))
 	assert.Error(t, err9)
+}
+
+type Error struct {
+	Message string `json:"message"`
 }
 
 type stringerDummy struct {

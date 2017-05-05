@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,6 +88,31 @@ func TestByteStreamProducer(t *testing.T) {
 		assert.Equal(t, expected, rdr.String())
 		rdr.Reset()
 	}
+
+	// errors can also be used to produce
+	if assert.NoError(t, cons.Produce(&rdr, errors.New(expected))) {
+		assert.Equal(t, expected, rdr.String())
+		rdr.Reset()
+	}
+
+	// structs can also be used to produce
+	if assert.NoError(t, cons.Produce(&rdr, Error{Message: expected})) {
+		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+		rdr.Reset()
+	}
+
+	// struct pointers can also be used to produce
+	if assert.NoError(t, cons.Produce(&rdr, &Error{Message: expected})) {
+		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+		rdr.Reset()
+	}
+
+	// slices can also be used to produce
+	if assert.NoError(t, cons.Produce(&rdr, []string{expected})) {
+		assert.Equal(t, fmt.Sprintf(`[%q]`, expected), rdr.String())
+		rdr.Reset()
+	}
+
 	type binarySlice []byte
 	if assert.NoError(t, cons.Produce(&rdr, binarySlice(expected))) {
 		assert.Equal(t, expected, rdr.String())
