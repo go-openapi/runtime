@@ -196,7 +196,7 @@ func TestContextRender(t *testing.T) {
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
 
-	request, _ := http.NewRequest("GET", "pets", nil)
+	request, _ := http.NewRequest("GET", "/api/pets", nil)
 	request.Header.Set(runtime.HeaderAccept, ct)
 	ri, request, _ := ctx.RouteInfo(request)
 
@@ -214,10 +214,10 @@ func TestContextRender(t *testing.T) {
 
 	// Panic when route is nil and there is not a producer for the requested response format
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "pets", nil)
+	request, _ = http.NewRequest("GET", "/api/pets", nil)
 	assert.Panics(t, func() { ctx.Respond(recorder, request, []string{}, nil, map[string]interface{}{"name": "hello"}) })
 
-	request, _ = http.NewRequest("GET", "/pets", nil)
+	request, _ = http.NewRequest("GET", "/api/pets", nil)
 	request.Header.Set(runtime.HeaderAccept, ct)
 	ri, request, _ = ctx.RouteInfo(request)
 
