@@ -68,7 +68,8 @@ func (fn ResponderFunc) WriteResponse(rw http.ResponseWriter, pr runtime.Produce
 }
 
 // Context is a type safe wrapper around an untyped request context
-// used throughout to store request context with the gorilla context module
+// used throughout to store request context with the standard context attached
+// to the http.Request
 type Context struct {
 	spec     *loads.Document
 	analyzer *analysis.Spec
