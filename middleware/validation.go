@@ -75,6 +75,13 @@ func validateContentType(allowed []string, actual string) error {
 	if swag.ContainsStringsCI(allowed, mt) {
 		return nil
 	}
+	if swag.ContainsStringsCI(allowed, "*/*") {
+		return nil
+	}
+	parts := strings.Split(actual, "/")
+	if len(parts) == 2 && swag.ContainsStringsCI(allowed, parts[0]+"/*") {
+		return nil
+	}
 	return errors.InvalidContentType(actual, allowed)
 }
 
