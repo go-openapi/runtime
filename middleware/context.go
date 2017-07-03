@@ -15,6 +15,7 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -29,7 +30,6 @@ import (
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/gorilla/context"
 )
 
 // Debug when true turns on verbose logging
@@ -106,10 +106,10 @@ func newRoutableUntypedAPI(spec *loads.Document, api *untyped.API, context *Cont
 
 				var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					// lookup route info in the context
-					route, _ := context.RouteInfo(r)
+					r, route, _ := context.RouteInfo(r)
 
 					// bind and validate the request using reflection
-					bound, validation := context.BindAndValidate(r, route)
+					r, bound, validation := context.BindAndValidate(r, route)
 					if validation != nil {
 						context.Respond(w, r, route.Produces, route, validation)
 						return
@@ -292,72 +292,76 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 }
 
 // ContentType gets the parsed value of a content type
-func (c *Context) ContentType(request *http.Request) (string, string, error) {
-	if v, ok := context.GetOk(request, ctxContentType); ok {
-		if val, ok := v.(*contentTypeValue); ok {
-			return val.MediaType, val.Charset, nil
+func (c *Context) ContentType(request *http.Request) (*http.Request, string, string, error) {
+	if val := request.Context().Value(ctxContentType); val != nil {
+		if v, ok := val.(*contentTypeValue); ok {
+			return request, v.MediaType, v.Charset, nil
 		}
 	}
 
 	mt, cs, err := runtime.ContentType(request.Header)
 	if err != nil {
-		return "", "", err
+		return request, "", "", err
 	}
-	context.Set(request, ctxContentType, &contentTypeValue{mt, cs})
-	return mt, cs, nil
+	request = request.WithContext(context.WithValue(request.Context(), ctxContentType, &contentTypeValue{mt, cs}))
+	return request, mt, cs, nil
 }
 
 // LookupRoute looks a route up and returns true when it is found
 func (c *Context) LookupRoute(request *http.Request) (*MatchedRoute, bool) {
-	if route, ok := c.router.Lookup(request.Method, request.URL.EscapedPath()); ok {
+	if route, ok := c.router.Lookup(request.Method, request.URL.Path); ok {
 		return route, ok
 	}
 	return nil, false
 }
 
 // RouteInfo tries to match a route for this request
-func (c *Context) RouteInfo(request *http.Request) (*MatchedRoute, bool) {
-	if v, ok := context.GetOk(request, ctxMatchedRoute); ok {
-		if val, ok := v.(*MatchedRoute); ok {
-			return val, ok
+func (c *Context) RouteInfo(request *http.Request) (*http.Request, *MatchedRoute, bool) {
+	if val := request.Context().Value(ctxMatchedRoute); val != nil {
+		if v, ok := val.(*MatchedRoute); ok {
+			return request, v, ok
 		}
 	}
 
 	if route, ok := c.LookupRoute(request); ok {
-		context.Set(request, ctxMatchedRoute, route)
-		return route, ok
+		request = request.WithContext(context.WithValue(request.Context(), ctxMatchedRoute, route))
+		return request, route, ok
 	}
 
-	return nil, false
+	return request, nil, false
 }
 
 // ResponseFormat negotiates the response content type
-func (c *Context) ResponseFormat(r *http.Request, offers []string) string {
-	if v, ok := context.GetOk(r, ctxResponseFormat); ok {
-		if val, ok := v.(string); ok {
-			return val
+func (c *Context) ResponseFormat(r *http.Request, offers []string) (*http.Request, string) {
+	if val := r.Context().Value(ctxResponseFormat); val != nil {
+		if v, ok := val.(string); ok {
+			return r, v
 		}
 	}
 
 	format := NegotiateContentType(r, offers, "")
 	if format != "" {
-		context.Set(r, ctxResponseFormat, format)
+		r = r.WithContext(context.WithValue(r.Context(), ctxResponseFormat, format))
+		return r, format
 	}
-	return format
+	return r, format
 }
 
 // AllowedMethods gets the allowed methods for the path of this request
 func (c *Context) AllowedMethods(request *http.Request) []string {
-	return c.router.OtherMethods(request.Method, request.URL.EscapedPath())
+	return c.router.OtherMethods(request.Method, request.URL.Path)
 }
 
 // Authorize authorizes the request
-func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (interface{}, error) {
-	if route == nil || len(route.Authenticators) == 0 {
-		return nil, nil
+func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (*http.Request, interface{}, error) {
+	if len(route.Authenticators) == 0 {
+		return request, nil, nil
 	}
-	if v, ok := context.GetOk(request, ctxSecurityPrincipal); ok {
-		return v, nil
+	if route == nil || len(route.Authenticators) == 0 {
+		return request, nil, nil
+	}
+	if v := request.Context().Value(ctxSecurityPrincipal); v != nil {
+		return request, v, nil
 	}
 
 	var lastError error
@@ -372,38 +376,38 @@ func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (interfa
 			}
 			continue
 		}
-		context.Set(request, ctxSecurityPrincipal, usr)
-		context.Set(request, ctxSecurityScopes, route.Scopes[scheme])
-		return usr, nil
+		request = request.WithContext(context.WithValue(request.Context(), ctxSecurityPrincipal, usr))
+		request = request.WithContext(context.WithValue(request.Context(), ctxSecurityScopes, route.Scopes[scheme]))
+		return request, usr, nil
 	}
 
 	if lastError != nil {
-		return nil, lastError
+		return request, nil, lastError
 	}
 
-	return nil, errors.Unauthenticated("invalid credentials")
+	return request, nil, errors.Unauthenticated("invalid credentials")
 }
 
 // BindAndValidate binds and validates the request
-func (c *Context) BindAndValidate(request *http.Request, matched *MatchedRoute) (interface{}, error) {
-	if v, ok := context.GetOk(request, ctxBoundParams); ok {
-		if val, ok := v.(*validation); ok {
-			debugLog("got cached validation (valid: %t)", len(val.result) == 0)
-			if len(val.result) > 0 {
-				return val.bound, errors.CompositeValidationError(val.result...)
+func (c *Context) BindAndValidate(request *http.Request, matched *MatchedRoute) (*http.Request, interface{}, error) {
+	if val := request.Context().Value(ctxBoundParams); val != nil {
+		if v, ok := val.(*validation); ok {
+			debugLog("got cached validation (valid: %t)", len(v.result) == 0)
+			if len(v.result) > 0 {
+				return request, v.bound, errors.CompositeValidationError(v.result...)
 			}
-			return val.bound, nil
+			return request, v.bound, nil
 		}
 	}
 	result := validateRequest(c, request, matched)
 	if result != nil {
-		context.Set(request, ctxBoundParams, result)
+		request = request.WithContext(context.WithValue(request.Context(), ctxBoundParams, result))
 	}
 	if len(result.result) > 0 {
-		return result.bound, errors.CompositeValidationError(result.result...)
+		return request, result.bound, errors.CompositeValidationError(result.result...)
 	}
 	debugLog("no validation errors found")
-	return result.bound, nil
+	return request, result.bound, nil
 }
 
 // NotFound the default not found responder for when no route has been matched yet
@@ -422,7 +426,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 	// the default producer is last so more specific producers take precedence
 	offers = append(offers, c.api.DefaultProduces())
 
-	format := c.ResponseFormat(r, offers)
+	r, format := c.ResponseFormat(r, offers)
 	rw.Header().Set(runtime.HeaderContentType, format)
 
 	if resp, ok := data.(Responder); ok {
