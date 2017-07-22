@@ -458,7 +458,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		producers := route.Producers
 		prod, ok := producers[format]
 		if !ok {
-			prods := c.api.ProducersFor([]string{c.api.DefaultProduces()})
+			prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 			pr, ok := prods[c.api.DefaultProduces()]
 			if !ok {
 				panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
@@ -486,7 +486,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		if r.Method == "HEAD" {
 			return
 		}
-		producers := c.api.ProducersFor(offers)
+		producers := c.api.ProducersFor(normalizeOffers(offers))
 		prod, ok := producers[format]
 		if !ok {
 			panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
@@ -507,7 +507,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		prod, ok := producers[format]
 		if !ok {
 			if !ok {
-				prods := c.api.ProducersFor([]string{c.api.DefaultProduces()})
+				prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 				pr, ok := prods[c.api.DefaultProduces()]
 				if !ok {
 					panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
