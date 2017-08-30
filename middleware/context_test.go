@@ -131,6 +131,32 @@ func TestContextAuthorize(t *testing.T) {
 	assert.Equal(t, request, reqCtx)
 }
 
+func TestContextAuthorize_WithAuthorizer(t *testing.T) {
+	spec, api := petstore.NewAPI(t)
+	ctx := NewContext(spec, api, nil)
+	ctx.router = DefaultRouter(spec, ctx.api)
+
+	request, _ := runtime.JSONRequest("POST", "/api/pets", nil)
+
+	ri, reqWithCtx, ok := ctx.RouteInfo(request)
+	assert.True(t, ok)
+	assert.NotNil(t, reqWithCtx)
+
+	request = reqWithCtx
+
+	request.SetBasicAuth("topuser", "topuser")
+	p, reqWithCtx, err := ctx.Authorize(request, ri)
+	assert.Error(t, err)
+	assert.Nil(t, p)
+	assert.Nil(t, reqWithCtx)
+
+	request.SetBasicAuth("admin", "admin")
+	p, reqWithCtx, err = ctx.Authorize(request, ri)
+	assert.NoError(t, err)
+	assert.Equal(t, "admin", p)
+	assert.NotNil(t, reqWithCtx)
+}
+
 func TestContextNegotiateContentType(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	ctx := NewContext(spec, api, nil)
@@ -233,6 +259,7 @@ func TestContextRender(t *testing.T) {
 	ri, request, _ = ctx.RouteInfo(request)
 	ctx.Respond(recorder, request, ri.Produces, ri, nil)
 	assert.Equal(t, 204, recorder.Code)
+
 }
 
 func TestContextValidResponseFormat(t *testing.T) {
