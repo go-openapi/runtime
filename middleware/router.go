@@ -112,7 +112,6 @@ type defaultRouteBuilder struct {
 
 type defaultRouter struct {
 	spec    *loads.Document
-	api     RoutableAPI
 	routers map[string]*denco.Router
 }
 
@@ -258,7 +257,7 @@ func (d *defaultRouteBuilder) Build() *defaultRouter {
 	routers := make(map[string]*denco.Router)
 	for method, records := range d.records {
 		router := denco.New()
-		router.Build(records)
+		_ = router.Build(records)
 		routers[method] = router
 	}
 	return &defaultRouter{
