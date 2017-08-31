@@ -172,6 +172,9 @@ func (r *routableUntypedAPI) ProducersFor(mediaTypes []string) map[string]runtim
 func (r *routableUntypedAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 	return r.api.AuthenticatorsFor(schemes)
 }
+func (r *routableUntypedAPI) Authorizer() runtime.Authorizer {
+	return r.api.Authorizer()
+}
 func (r *routableUntypedAPI) Formats() strfmt.Registry {
 	return r.api.Formats()
 }
@@ -391,6 +394,11 @@ func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (interfa
 				lastError = err
 			}
 			continue
+		}
+		if route.Authorizer != nil {
+			if err := route.Authorizer.Authorize(request, usr); err != nil {
+				return nil, nil, errors.New(http.StatusForbidden, err.Error())
+			}
 		}
 		rCtx = stdContext.WithValue(rCtx, ctxSecurityPrincipal, usr)
 		rCtx = stdContext.WithValue(rCtx, ctxSecurityScopes, route.Scopes[scheme])
