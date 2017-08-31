@@ -39,13 +39,6 @@ func (s *stubOperationHandler) Handle(params interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-type testBinder struct {
-}
-
-func (t *testBinder) BindRequest(r *http.Request, m *MatchedRoute) error {
-	return nil
-}
-
 func init() {
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
@@ -266,7 +259,7 @@ func TestContextValidResponseFormat(t *testing.T) {
 	assert.Equal(t, ct, cached)
 
 	// check if the cast works and fetch from cache too
-	mt, request = ctx.ResponseFormat(request, []string{ct})
+	mt, _ = ctx.ResponseFormat(request, []string{ct})
 	assert.Equal(t, ct, mt)
 }
 

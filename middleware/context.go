@@ -75,7 +75,6 @@ type Context struct {
 	analyzer *analysis.Spec
 	api      RoutableAPI
 	router   Router
-	formats  strfmt.Registry
 }
 
 type routableUntypedAPI struct {
@@ -225,12 +224,9 @@ const (
 	ctxContentType
 	ctxResponseFormat
 	ctxMatchedRoute
-	ctxAllowedMethods
 	ctxBoundParams
 	ctxSecurityPrincipal
 	ctxSecurityScopes
-
-	ctxConsumer
 )
 
 type contentTypeValue struct {
@@ -542,7 +538,7 @@ func (c *Context) APIHandler(builder Builder) http.Handler {
 		Title:    title,
 	}
 
-	return Spec("", c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(builder)))
+	return Spec("", c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(b)))
 }
 
 // RoutesHandler returns a handler to serve the API, just the routes and the contract defined in the swagger spec
