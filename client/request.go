@@ -117,8 +117,8 @@ func (r *request) BuildHTTP(mediaType string, producers map[string]runtime.Produ
 				}()
 
 				for fn, v := range r.formFields {
-					if len(v) > 0 {
-						if err := mp.WriteField(fn, v[0]); err != nil {
+					for _, vi := range v {
+						if err := mp.WriteField(fn, vi); err != nil {
 							pw.CloseWithError(err)
 							log.Println(err)
 						}
