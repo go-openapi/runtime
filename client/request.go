@@ -91,7 +91,7 @@ func (r *request) BuildHTTP(mediaType string, producers map[string]runtime.Produ
 	buf := bytes.NewBuffer(nil)
 	if r.payload != nil || len(r.formFields) > 0 || len(r.fileFields) > 0 {
 		body = ioutil.NopCloser(buf)
-		if r.fileFields != nil {
+		if (runtime.MultipartFormMime == mediaType && len(r.formFields) > 0) || r.fileFields != nil {
 			pr, pw = io.Pipe()
 			body = pr
 		}
@@ -106,7 +106,7 @@ func (r *request) BuildHTTP(mediaType string, producers map[string]runtime.Produ
 	// check if this is a form type request
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
 		// check if this is multipart
-		if len(r.fileFields) > 0 {
+		if runtime.MultipartFormMime == mediaType || len(r.fileFields) > 0 {
 			mp := multipart.NewWriter(pw)
 			req.Header.Set(runtime.HeaderContentType, mp.FormDataContentType())
 

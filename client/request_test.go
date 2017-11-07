@@ -15,6 +15,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"io/ioutil"
@@ -22,6 +23,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-openapi/runtime"
@@ -246,6 +248,37 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 		expected := []byte("something=some+value")
 		actual, _ := ioutil.ReadAll(req.Body)
 		assert.Equal(t, expected, actual)
+	}
+}
+
+func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		_ = req.SetFormParam("something", "some value")
+		_ = req.SetQueryParam("hello", "world")
+		_ = req.SetPathParam("id", "1234")
+		_ = req.SetHeaderParam("X-Rate-Limit", "200")
+		return nil
+	})
+	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
+	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
+
+	req, err := r.BuildHTTP(runtime.MultipartFormMime, testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "/flats/1234/", req.URL.Path)
+		expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
+		expected2 := []byte("some value")
+		actual, _ := ioutil.ReadAll(req.Body)
+		actuallines := bytes.Split(actual, []byte("\r\n"))
+		assert.Equal(t, 6, len(actuallines))
+		boundary := string(actuallines[0])
+		lastboundary := string(actuallines[4])
+		assert.True(t, strings.HasPrefix(boundary, "--"))
+		assert.True(t, strings.HasPrefix(lastboundary, "--") && strings.HasSuffix(lastboundary, "--"))
+		assert.Equal(t, lastboundary, boundary + "--")
+		assert.Equal(t, expected1, actuallines[1])
+		assert.Equal(t, expected2, actuallines[3])
 	}
 }
 
