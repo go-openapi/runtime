@@ -92,7 +92,16 @@ func TestBuildRequest_SetFile(t *testing.T) {
 	if assert.NoError(t, err) {
 		fl, ok := r.fileFields["file"]
 		if assert.True(t, ok) {
-			assert.Equal(t, "runtime.go", filepath.Base(fl.Name()))
+			assert.Equal(t, "runtime.go", filepath.Base(fl[0].Name()))
+		}
+	}
+	// success adds a file param with multiple files
+	err = r.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
+	if assert.NoError(t, err) {
+		fl, ok := r.fileFields["otherfiles"]
+		if assert.True(t, ok) {
+			assert.Equal(t, "runtime.go", filepath.Base(fl[0].Name()))
+			assert.Equal(t, "request.go", filepath.Base(fl[1].Name()))
 		}
 	}
 }
@@ -319,9 +328,11 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	cont, _ := ioutil.ReadFile("./runtime.go")
+	cont2, _ := ioutil.ReadFile("./request.go")
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
+		_ = req.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
 		_ = req.SetQueryParam("hello", "world")
 		_ = req.SetPathParam("id", "1234")
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
@@ -343,12 +354,18 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 			frm, err := mr.ReadForm(1 << 20)
 			if assert.NoError(t, err) {
 				assert.Equal(t, "some value", frm.Value["something"][0])
-				mpff := frm.File["file"][0]
-				mpf, _ := mpff.Open()
-				defer mpf.Close()
-				assert.Equal(t, "runtime.go", mpff.Filename)
-				actual, _ := ioutil.ReadAll(mpf)
-				assert.Equal(t, cont, actual)
+				fileverifier := func(name string, index int, filename string, content []byte) {
+					mpff := frm.File[name][index]
+					mpf, _ := mpff.Open()
+					defer mpf.Close()
+					assert.Equal(t, filename, mpff.Filename)
+					actual, _ := ioutil.ReadAll(mpf)
+					assert.Equal(t, content, actual)
+				}
+				fileverifier("file", 0, "runtime.go", cont)
+
+				fileverifier("otherfiles", 0, "runtime.go", cont)
+				fileverifier("otherfiles", 1, "request.go", cont2)
 			}
 		}
 	}
