@@ -50,6 +50,12 @@ type ClientRequest interface {
 	SetBodyParam(interface{}) error
 
 	SetTimeout(time.Duration) error
+
+	GetMethod() string
+
+	GetPath() string
+
+	GetBody() []byte
 }
 
 // NamedReadCloser represents a named ReadCloser interface

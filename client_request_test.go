@@ -53,6 +53,12 @@ func (t *trw) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
+func (t *trw) GetMethod() string { return "" }
+
+func (t *trw) GetPath() string { return "" }
+
+func (t *trw) GetBody() []byte { return nil }
+
 func TestRequestWriterFunc(t *testing.T) {
 
 	hand := ClientRequestWriterFunc(func(r ClientRequest, reg strfmt.Registry) error {
