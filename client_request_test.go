@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -52,6 +53,8 @@ func (t *trw) SetBodyParam(body interface{}) error {
 func (t *trw) SetTimeout(timeout time.Duration) error {
 	return nil
 }
+
+func (t *trw) GetQueryParams() url.Values { return nil }
 
 func (t *trw) GetMethod() string { return "" }
 

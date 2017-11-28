@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -44,6 +45,8 @@ type ClientRequest interface {
 	SetFormParam(string, ...string) error
 
 	SetPathParam(string, string) error
+
+	GetQueryParams() url.Values
 
 	SetFileParam(string, ...NamedReadCloser) error
 

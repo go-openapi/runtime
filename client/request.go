@@ -275,6 +275,15 @@ func (r *request) SetQueryParam(name string, values ...string) error {
 	return nil
 }
 
+// GetQueryParams returns a copy of all query params currently set for the request
+func (r *request) GetQueryParams() url.Values {
+	var result = make(url.Values)
+	for key, value := range r.query {
+		result[key] = append([]string{}, value...)
+	}
+	return result
+}
+
 // SetFormParam adds a forn param to the request
 // when there is only 1 value provided for the varargs, it will set it.
 // when there are several values provided for the varargs it will add it (no overriding)
