@@ -117,9 +117,11 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 		}
 	}
 	req, err := http.NewRequest(r.method, urlPath, body)
+
 	if err != nil {
 		return nil, err
 	}
+
 	req.URL.RawQuery = r.query.Encode()
 	req.Header = r.header
 
@@ -176,7 +178,6 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 		req.ContentLength = int64(len(formString))
 		// write the form values as the body
 		r.buf.WriteString(formString)
-
 		return req, nil
 	}
 
@@ -196,6 +197,19 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 			req.Body = ioutil.NopCloser(rdr)
 
 			return req, nil
+		}
+
+		req.GetBody = func() (io.ReadCloser, error) {
+			var b bytes.Buffer
+			producer := producers[mediaType]
+			if err := producer.Produce(&b, r.payload); err != nil {
+				return nil, err
+			}
+
+			if _, err := r.buf.Write(b.Bytes()); err != nil {
+				return nil, err
+			}
+			return ioutil.NopCloser(&b), nil
 		}
 
 		// set the content length of the request or else a chunked transfer is
