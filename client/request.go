@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -74,11 +75,11 @@ var (
 )
 
 // BuildHTTP creates a new http request based on the data from the params
-func (r *request) BuildHTTP(mediaType string, producers map[string]runtime.Producer, registry strfmt.Registry) (*http.Request, error) {
-	return r.buildHTTP(mediaType, producers, registry, nil)
+func (r *request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry) (*http.Request, error) {
+	return r.buildHTTP(mediaType, basePath, producers, registry, nil)
 }
 
-func (r *request) buildHTTP(mediaType string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	// build the data
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
@@ -91,9 +92,16 @@ func (r *request) buildHTTP(mediaType string, producers map[string]runtime.Produ
 	}
 
 	// create http request
-	path := r.pathPattern
+	var reinstateSlash bool
+	if r.pathPattern != "" && r.pathPattern != "/" && r.pathPattern[len(r.pathPattern)-1] == '/' {
+		reinstateSlash = true
+	}
+	urlPath := path.Join(basePath, r.pathPattern)
 	for k, v := range r.pathParams {
-		path = strings.Replace(path, "{"+k+"}", v, -1)
+		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1)
+	}
+	if reinstateSlash {
+		urlPath = urlPath + "/"
 	}
 
 	var body io.ReadCloser
@@ -108,7 +116,7 @@ func (r *request) buildHTTP(mediaType string, producers map[string]runtime.Produ
 			body = pr
 		}
 	}
-	req, err := http.NewRequest(r.method, path, body)
+	req, err := http.NewRequest(r.method, urlPath, body)
 	if err != nil {
 		return nil, err
 	}
