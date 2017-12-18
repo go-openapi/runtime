@@ -68,6 +68,7 @@ type NamedReadCloser interface {
 	Name() string
 }
 
+// NamedReader creates a NamedReadCloser for use as file upload
 func NamedReader(name string, rdr io.Reader) NamedReadCloser {
 	rc, ok := rdr.(io.ReadCloser)
 	if !ok {
