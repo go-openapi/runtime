@@ -58,12 +58,22 @@ type TLSClientOptions struct {
 	// LoadedCertificate is set.
 	LoadedKey crypto.PrivateKey
 
-	// CA is a path to a PEM-encoded certificate.
+	// CA is a path to a PEM-encoded certificate that specifies the root certificate
+	// to use when validating the TLS certificate presented by the server. If this field
+	// is not set, the system certificate pool is used.
 	CA string
 
-	ServerName         string
+	// ServerName specifies the hostname to use when verifying the server certificate.
+	// If this field is set then InsecureSkipVerify will be ignored and treated as
+	// false.
+	ServerName string
+
+	// InsecureSkipVerify controls whether the certificate chain and hostname presented
+	// by the server are validated. If false, any certificate is accepted.
 	InsecureSkipVerify bool
-	_                  struct{}
+
+	// Prevents callers using unkeyed fields.
+	_ struct{}
 }
 
 // TLSClientAuth creates a tls.Config for mutual auth
