@@ -75,10 +75,11 @@ var (
 )
 
 func (r *request) isMultipart(mediaType string) bool {
-	forFormMine := runtime.MultipartFormMime == mediaType && (len(r.formFields) > 0 || len(r.fileFields) > 0)
-	forURLMime := runtime.URLencodedFormMime == mediaType && len(r.fileFields) > 0
-	becauseFiles := runtime.MultipartFormMime != mediaType && runtime.URLencodedFormMime != mediaType && len(r.fileFields) > 0
-	return forFormMine || forURLMime || becauseFiles
+	if len(r.fileFields) > 0 {
+		return true
+	}
+
+	return runtime.MultipartFormMime == mediaType
 }
 
 // BuildHTTP creates a new http request based on the data from the params
