@@ -276,6 +276,12 @@ func (r *Runtime) selectScheme(schemes []string) string {
 	}
 	return scheme
 }
+func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
+	if left == nil {
+		return right
+	}
+	return left
+}
 
 // EnableConnectionReuse drains the remaining body from a response
 // so that go will reuse the TCP connections.
@@ -285,23 +291,18 @@ func (r *Runtime) selectScheme(schemes []string) string {
 // So instead it's provided as a http client middleware that can be used to override
 // any request.
 func (r *Runtime) EnableConnectionReuse() {
-	if r.client != nil {
-		tr := r.Transport
-		if tr == nil {
-			tr = http.DefaultTransport
-		}
-		r.Transport = KeepAliveTransport(tr)
+	if r.client == nil {
+		r.Transport = KeepAliveTransport(
+			transportOrDefault(r.Transport, http.DefaultTransport),
+		)
 		return
 	}
 
-	tr := r.client.Transport
-	if tr == nil {
-		tr = r.Transport
-		if tr == nil {
-			tr = http.DefaultTransport
-		}
-	}
-	r.client.Transport = KeepAliveTransport(tr)
+	r.client.Transport = KeepAliveTransport(
+		transportOrDefault(r.client.Transport,
+			transportOrDefault(r.Transport, http.DefaultTransport),
+		),
+	)
 }
 
 // Submit a request and when there is a body on success it will turn that into the result
