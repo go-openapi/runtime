@@ -607,7 +607,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 
 	hu, _ := url.Parse(server.URL)
 	rt := New(hu.Host, "/", []string{"http"})
-	rt.do = nil
+	rt.Do = nil
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      "GET",
@@ -739,7 +739,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 	assert.Equal(t, 0, i)
 
 	var seen *http.Client
-	rt.do = func(_ context.Context, cl *http.Client, _ *http.Request) (*http.Response, error) {
+	rt.Do = func(_ context.Context, cl *http.Client, _ *http.Request) (*http.Response, error) {
 		seen = cl
 		res := new(http.Response)
 		res.StatusCode = 200
