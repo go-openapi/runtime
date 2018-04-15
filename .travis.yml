@@ -17,6 +17,9 @@ install:
 - go get -u github.com/go-openapi/validate
 - go get -u github.com/docker/go-units
 script:
+- pushd $GOPATH/src/github.com/go-openapi/analysis
+- git checkout auth-fixes
+- popd
 - ./hack/coverage
 after_success:
 - bash <(curl -s https://codecov.io/bash)
