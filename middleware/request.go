@@ -15,6 +15,8 @@
 package middleware
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 
@@ -46,7 +48,7 @@ func newUntypedRequestBinder(parameters map[string]spec.Parameter, spec *spec.Sw
 	}
 }
 
-// Bind perform the databinding and validation
+// Bind perform the databinding and validation. Data can be an JSON object or a custom Golang type.
 func (o *untypedRequestBinder) Bind(request *http.Request, routeParams RouteParams, consumer runtime.Consumer, data interface{}) error {
 	val := reflect.Indirect(reflect.ValueOf(data))
 	isMap := val.Kind() == reflect.Map
@@ -85,9 +87,15 @@ func (o *untypedRequestBinder) Bind(request *http.Request, routeParams RoutePara
 		}
 
 		if binder.validator != nil {
-			rr := binder.validator.Validate(target.Interface())
-			if rr != nil && rr.HasErrors() {
-				result = append(result, rr.AsError())
+			// convert to JSON representation (interface{} maps, slices or primitive types) because
+			// validation cannot operate on Golang structs.
+			if jsonTarget, err := toJSON(target.Interface()); err != nil {
+				result = append(result, fmt.Errorf("failed to convert to JSON: %v", err))
+			} else {
+				rr := binder.validator.Validate(jsonTarget)
+				if rr != nil && rr.HasErrors() {
+					result = append(result, rr.AsError())
+				}
 			}
 		}
 
@@ -101,4 +109,16 @@ func (o *untypedRequestBinder) Bind(request *http.Request, routeParams RoutePara
 	}
 
 	return nil
+}
+
+func toJSON(x interface{}) (interface{}, error) {
+	bs, err := json.Marshal(x)
+	if err != nil {
+		return nil, err
+	}
+	var jsonTarget interface{}
+	if err := json.Unmarshal(bs, &jsonTarget); err != nil {
+		return nil, err
+	}
+	return jsonTarget, nil
 }
