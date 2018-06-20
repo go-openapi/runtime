@@ -418,8 +418,10 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 
 	cons, ok := r.Consumers[mt]
 	if !ok {
-		// scream about not knowing what to do
-		return nil, fmt.Errorf("no consumer: %q", ct)
+		if cons, ok = r.Consumers["*/*"]; !ok {
+			// scream about not knowing what to do
+			return nil, fmt.Errorf("no consumer: %q", ct)
+		}
 	}
 	return readResponse.ReadResponse(response{res}, cons)
 }
