@@ -193,6 +193,8 @@ type Runtime struct {
 	Debug  bool
 	logger logger.Logger
 
+	timeout time.Duration
+
 	clientOnce *sync.Once
 	client     *http.Client
 	schemes    []string
@@ -231,6 +233,8 @@ func New(host, basePath string, schemes []string) *Runtime {
 
 	rt.Debug = logger.DebugEnabled()
 	rt.logger = logger.StandardLogger{}
+
+	rt.timeout = DefaultTimeout
 
 	if len(schemes) > 0 {
 		rt.schemes = schemes
@@ -316,6 +320,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	request.timeout = r.timeout
 
 	var accept []string
 	accept = append(accept, operation.ProducesMediaTypes...)
@@ -440,4 +445,10 @@ func (r *Runtime) SetDebug(debug bool) {
 func (r *Runtime) SetLogger(logger logger.Logger) {
 	r.logger = logger
 	middleware.Logger = logger
+}
+
+// SetTimeout sets the timeout for all requests at the transport level.
+// This overrides the default timeout.
+func (r *Runtime) SetTimeout(timeout time.Duration) {
+	r.timeout = timeout
 }
