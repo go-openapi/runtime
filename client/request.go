@@ -176,8 +176,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					if err != nil {
 						pw.CloseWithError(err)
 						log.Println(err)
-					}
-					if _, err := io.Copy(wrtr, fi); err != nil {
+					} else if _, err := io.Copy(wrtr, fi); err != nil {
 						pw.CloseWithError(err)
 						log.Println(err)
 					}
