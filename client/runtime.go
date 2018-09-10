@@ -29,8 +29,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
+	"context"
 	"golang.org/x/net/context/ctxhttp"
 
 	"github.com/go-openapi/runtime"
