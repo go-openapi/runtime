@@ -352,11 +352,19 @@ func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) er
 	return nil
 }
 
+func (r *request) GetFileParam() map[string][]runtime.NamedReadCloser {
+	return r.fileFields
+}
+
 // SetBodyParam sets a body parameter on the request.
 // This does not yet serialze the object, this happens as late as possible.
 func (r *request) SetBodyParam(payload interface{}) error {
 	r.payload = payload
 	return nil
+}
+
+func (r *request) GetBodyParam() interface{} {
+	return r.payload
 }
 
 // SetTimeout sets the timeout for a request
