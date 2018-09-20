@@ -338,7 +338,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 		}
 	}
 
-	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime {
+	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
 		return nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
 	}
 
