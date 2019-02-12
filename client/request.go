@@ -286,6 +286,11 @@ func (r *request) SetHeaderParam(name string, values ...string) error {
 	return nil
 }
 
+// GetHeaderParams returns the all headers currently set for the request
+func (r *request) GetHeaderParams() http.Header {
+	return r.header
+}
+
 // SetQueryParam adds a query param to the request
 // when there is only 1 value provided for the varargs, it will set it.
 // when there are several values provided for the varargs it will add it (no overriding)
