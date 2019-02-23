@@ -91,11 +91,19 @@ func FailedBasicAuthCtx(ctx context.Context) string {
 
 // BasicAuth creates a basic auth authenticator with the provided authentication function
 func BasicAuth(authenticate UserPassAuthentication) runtime.Authenticator {
+	return BasicAuthRealm(DefaultRealmName, authenticate)
+}
+
+// BasicAuthBasicAuthRealm creates a basic auth authenticator with the provided authentication function and realm name
+func BasicAuthRealm(realm string, authenticate UserPassAuthentication) runtime.Authenticator {
 	return HttpAuthenticator(func(r *http.Request) (bool, interface{}, error) {
 		if usr, pass, ok := r.BasicAuth(); ok {
 			p, err := authenticate(usr, pass)
 			if err != nil {
-				*r = *r.WithContext(context.WithValue(r.Context(), failedBasicAuth, DefaultRealmName))
+				if realm == "" {
+					realm = DefaultRealmName
+				}
+				*r = *r.WithContext(context.WithValue(r.Context(), failedBasicAuth, realm))
 			}
 			return true, p, err
 		}
@@ -106,11 +114,20 @@ func BasicAuth(authenticate UserPassAuthentication) runtime.Authenticator {
 
 // BasicAuthCtx creates a basic auth authenticator with the provided authentication function with support for context.Context
 func BasicAuthCtx(authenticate UserPassAuthenticationCtx) runtime.Authenticator {
+	return BasicAuthRealmCtx(DefaultRealmName, authenticate)
+}
+
+// BasicAuthCtx creates a basic auth authenticator with the provided authentication function and realm name with support for context.Context
+func BasicAuthRealmCtx(realm string, authenticate UserPassAuthenticationCtx) runtime.Authenticator {
+	if realm == "" {
+		realm = DefaultRealmName
+	}
+
 	return HttpAuthenticator(func(r *http.Request) (bool, interface{}, error) {
 		if usr, pass, ok := r.BasicAuth(); ok {
 			ctx, p, err := authenticate(r.Context(), usr, pass)
 			if err != nil {
-				ctx = context.WithValue(ctx, failedBasicAuth, DefaultRealmName)
+				ctx = context.WithValue(ctx, failedBasicAuth, realm)
 			}
 			*r = *r.WithContext(ctx)
 			return true, p, err
