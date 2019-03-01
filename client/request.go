@@ -213,9 +213,6 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 				return nil, err
 			}
 
-			if _, err := r.buf.Write(b.Bytes()); err != nil {
-				return nil, err
-			}
 			return ioutil.NopCloser(&b), nil
 		}
 
