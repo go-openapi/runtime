@@ -3,18 +3,11 @@ after_success:
 go:
 - 1.11.x
 - 1.12.x
+env:
+  global:
+    - GO111MODULE=on
 install:
-- go get -u github.com/axw/gocov/gocov
-- go get -u gopkg.in/matm/v1/gocov-html
-- go get -u github.com/cee-dub/go-junit-report
-- go get -u github.com/stretchr/testify/assert
-- go get -u gopkg.in/yaml.v2
-- go get -u github.com/go-openapi/analysis
-- go get -u github.com/go-openapi/errors
-- go get -u github.com/go-openapi/loads
-- go get -u github.com/go-openapi/strfmt
-- go get -u github.com/go-openapi/validate
-- go get -u github.com/docker/go-units
+- go mod download
 language: go
 notifications:
   slack:
