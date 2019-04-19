@@ -15,6 +15,7 @@ require (
 	github.com/go-openapi/validate v0.18.0
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190320223903-b7391e95e576 // indirect

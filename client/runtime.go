@@ -35,6 +35,7 @@ import (
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
@@ -421,7 +422,12 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 			return nil, fmt.Errorf("no consumer: %q", ct)
 		}
 	}
-	return readResponse.ReadResponse(response{res}, cons)
+
+	resp, err := readResponse.ReadResponse(response{res}, cons)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "[%v %v][%d] %v Content-Type: %+v", operation.Method, operation.PathPattern, res.StatusCode, operation.ID, res.Header.Get("Content-Type"))
+	}
+	return resp, nil
 }
 
 // SetDebug changes the debug flag.
