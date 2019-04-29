@@ -86,6 +86,15 @@ type TLSClientOptions struct {
 	// the verifiedChains argument will always be nil.
 	VerifyPeerCertificate func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 
+	// SessionTicketsDisabled may be set to true to disable session ticket and
+	// PSK (resumption) support. Note that on clients, session ticket support is
+	// also disabled if ClientSessionCache is nil.
+	SessionTicketsDisabled bool
+
+	// ClientSessionCache is a cache of ClientSessionState entries for TLS
+	// session resumption. It is only used by clients.
+	ClientSessionCache tls.ClientSessionCache
+
 	// Prevents callers using unkeyed fields.
 	_ struct{}
 }
@@ -133,6 +142,8 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	cfg.InsecureSkipVerify = opts.InsecureSkipVerify
 
 	cfg.VerifyPeerCertificate = opts.VerifyPeerCertificate
+	cfg.SessionTicketsDisabled = opts.SessionTicketsDisabled
+	cfg.ClientSessionCache = opts.ClientSessionCache
 
 	// When no CA certificate is provided, default to the system cert pool
 	// that way when a request is made to a server known by the system trust store,
