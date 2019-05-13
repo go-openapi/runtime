@@ -75,6 +75,17 @@ type TLSClientOptions struct {
 	// by the server are validated. If false, any certificate is accepted.
 	InsecureSkipVerify bool
 
+	// VerifyPeerCertificate, if not nil, is called after normal
+	// certificate verification. It receives the raw ASN.1 certificates
+	// provided by the peer and also any verified chains that normal processing found.
+	// If it returns a non-nil error, the handshake is aborted and that error results.
+	//
+	// If normal verification fails then the handshake will abort before
+	// considering this callback. If normal verification is disabled by
+	// setting InsecureSkipVerify then this callback will be considered but
+	// the verifiedChains argument will always be nil.
+	VerifyPeerCertificate func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
+
 	// Prevents callers using unkeyed fields.
 	_ struct{}
 }
@@ -120,6 +131,8 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	}
 
 	cfg.InsecureSkipVerify = opts.InsecureSkipVerify
+
+	cfg.VerifyPeerCertificate = opts.VerifyPeerCertificate
 
 	// When no CA certificate is provided, default to the system cert pool
 	// that way when a request is made to a server known by the system trust store,
