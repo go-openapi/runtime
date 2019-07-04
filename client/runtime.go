@@ -374,6 +374,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	}
 	req.URL.Scheme = r.pickScheme(operation.Schemes)
 	req.URL.Host = r.Host
+	req.Host = r.Host
 
 	r.clientOnce.Do(func() {
 		r.client = &http.Client{

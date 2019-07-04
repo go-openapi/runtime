@@ -549,6 +549,8 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		if req.URL.Scheme != "https" {
 			return nil, errors.New("this was not a https request")
 		}
+		assert.Equal(t, "localhost:3245", req.Host)
+		assert.Equal(t, "localhost:3245", req.URL.Host)
 		var resp http.Response
 		resp.StatusCode = 200
 		resp.Header = make(http.Header)
