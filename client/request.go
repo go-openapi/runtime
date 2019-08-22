@@ -93,12 +93,6 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 		return nil, err
 	}
 
-	if auth != nil {
-		if err := auth.AuthenticateRequest(r, registry); err != nil {
-			return nil, err
-		}
-	}
-
 	// create http request
 	var reinstateSlash bool
 	if r.pathPattern != "" && r.pathPattern != "/" && r.pathPattern[len(r.pathPattern)-1] == '/' {
@@ -241,6 +235,12 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 
 	if runtime.CanHaveBody(req.Method) && req.Body == nil && req.Header.Get(runtime.HeaderContentType) == "" {
 		req.Header.Set(runtime.HeaderContentType, mediaType)
+	}
+
+	if auth != nil {
+		if err := auth.AuthenticateRequest(r, registry); err != nil {
+			return nil, err
+		}
 	}
 
 	return req, nil
