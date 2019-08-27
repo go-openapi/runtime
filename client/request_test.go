@@ -174,17 +174,19 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
-		_ = req.SetQueryParam("hello", "wrong")
-		_ = req.SetPathParam("id", "wrong")
+		_ = req.SetQueryParam("hello", "world")
+		_ = req.SetPathParam("id", "1234")
 		_ = req.SetHeaderParam("X-Rate-Limit", "wrong")
 		return nil
 	})
 
 	auth := runtime.ClientAuthInfoWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
-		_ = req.SetBodyParam(bd)
-		_ = req.SetQueryParam("hello", "world")
-		_ = req.SetPathParam("id", "1234")
+		_ = req.SetQueryParam("hello", "wrong")
+		_ = req.SetPathParam("id", "wrong")
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
+		// Make sure the body is accessible to the auth function
+		expectedBody, _ := json.Marshal(bd)
+		assert.Equal(t, append(expectedBody, '\n'), req.GetBody())
 		return nil
 	})
 
