@@ -9,12 +9,12 @@ type Logger interface {
 
 func DebugEnabled() bool {
 	d := os.Getenv("SWAGGER_DEBUG")
-	if d == "" || d == "false" || d == "0" {
-		return false
+	if d != "" && d != "false" && d != "0" {
+		return true
 	}
 	d = os.Getenv("DEBUG")
-	if d == "" || d == "false" || d == "0" {
-		return false
+	if d != "" && d != "false" && d != "0" {
+		return true
 	}
-	return true
+	return false
 }
