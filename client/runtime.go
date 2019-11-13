@@ -66,6 +66,13 @@ type TLSClientOptions struct {
 	// If this field (and CA) is not set, the system certificate pool is used.
 	LoadedCA *x509.Certificate
 
+	// LoadedCAPool specifies a pool of RootCAs to use when validating the server's TLS certificate.
+	// If set, it will be combined with the the other loaded certificates (see LoadedCA and CA).
+	// If neither LoadedCA or CA is set, the provided pool with override the system
+	// certificate pool.
+	// The caller must not use the supplied pool after calling TLSClientAuth.
+	LoadedCAPool *x509.CertPool
+
 	// ServerName specifies the hostname to use when verifying the server certificate.
 	// If this field is set then InsecureSkipVerify will be ignored and treated as
 	// false.
@@ -149,7 +156,7 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	// that way when a request is made to a server known by the system trust store,
 	// the name is still verified
 	if opts.LoadedCA != nil {
-		caCertPool := x509.NewCertPool()
+		caCertPool := basePool(opts.LoadedCAPool)
 		caCertPool.AddCert(opts.LoadedCA)
 		cfg.RootCAs = caCertPool
 	} else if opts.CA != "" {
@@ -158,9 +165,11 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("tls client ca: %v", err)
 		}
-		caCertPool := x509.NewCertPool()
+		caCertPool := basePool(opts.LoadedCAPool)
 		caCertPool.AppendCertsFromPEM(caCert)
 		cfg.RootCAs = caCertPool
+	} else if opts.LoadedCAPool != nil {
+		cfg.RootCAs = opts.LoadedCAPool
 	}
 
 	// apply servername overrride
@@ -172,6 +181,13 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	cfg.BuildNameToCertificate()
 
 	return cfg, nil
+}
+
+func basePool(pool *x509.CertPool) *x509.CertPool {
+	if pool == nil {
+		return x509.NewCertPool()
+	}
+	return pool
 }
 
 // TLSTransport creates a http client transport suitable for mutual tls auth
