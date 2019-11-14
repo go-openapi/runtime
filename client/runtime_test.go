@@ -152,6 +152,66 @@ func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
 	}
 }
 
+func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
+
+	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
+	require.NoError(t, err)
+
+	block, _ := pem.Decode(certPem)
+	require.NotNil(t, block)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	require.NoError(t, err)
+
+	pool := x509.NewCertPool()
+	pool.AddCert(cert)
+
+	var opts TLSClientOptions
+	opts.LoadedCAPool = pool
+
+	cfg, err := TLSClientAuth(opts)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, cfg) {
+			require.NotNil(t, cfg.RootCAs)
+
+			// Using require.Len prints the (very large and incomprehensible)
+			// Subjects list on failure, so instead use require.Equal.
+			require.Equal(t, 1, len(cfg.RootCAs.Subjects()))
+		}
+	}
+}
+
+func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
+
+	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
+	require.NoError(t, err)
+
+	block, _ := pem.Decode(certPem)
+	require.NotNil(t, block)
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	require.NoError(t, err)
+
+	pool, err := x509.SystemCertPool()
+	require.NoError(t, err)
+	startingCertCount := len(pool.Subjects())
+
+	var opts TLSClientOptions
+	opts.LoadedCAPool = pool
+	opts.LoadedCA = cert
+
+	cfg, err := TLSClientAuth(opts)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, cfg) {
+			require.NotNil(t, cfg.RootCAs)
+
+			// Using require.Len prints the (very large and incomprehensible)
+			// Subjects list on failure, so instead use require.Equal.
+			require.Equal(t, startingCertCount+1, len(cfg.RootCAs.Subjects()))
+		}
+	}
+}
+
 func TestRuntime_TLSAuthConfigWithVerifyPeerCertificate(t *testing.T) {
 	var opts TLSClientOptions
 	opts.InsecureSkipVerify = true
