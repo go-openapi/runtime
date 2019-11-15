@@ -448,6 +448,7 @@ func TestRouter_Build_withoutSizeHint(t *testing.T) {
 		{[]string{"/user"}, 0},
 		{[]string{"/user/:id"}, 1},
 		{[]string{"/user/:id/post"}, 1},
+		{[]string{"/user/:id/post:validate"}, 2},
 		{[]string{"/user/:id/:group"}, 2},
 		{[]string{"/user/:id/post/:cid"}, 2},
 		{[]string{"/user/:id/post/:cid", "/admin/:id/post/:cid"}, 2},
@@ -487,6 +488,7 @@ func TestRouter_Build_withSizeHint(t *testing.T) {
 		{"/user/:id", 3, 3},
 		{"/user/:id/:group", 0, 0},
 		{"/user/:id/:group", 1, 1},
+		{"/user/:id/:group:validate", 1, 1},
 	} {
 		r := denco.New()
 		r.SizeHint = v.sizeHint
