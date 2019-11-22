@@ -929,6 +929,10 @@ func TestRuntime_DebugValue(t *testing.T) {
 	runtime = New("", "/", []string{"https"})
 	assert.True(t, runtime.Debug)
 
+	_ = os.Setenv("DEBUG", "false")
+	runtime = New("", "/", []string{"https"})
+	assert.False(t, runtime.Debug)
+
 	_ = os.Setenv("DEBUG", "foo")
 	runtime = New("", "/", []string{"https"})
 	assert.True(t, runtime.Debug)
