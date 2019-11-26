@@ -36,6 +36,8 @@ func TestTextConsumer(t *testing.T) {
 	assert.Equal(t, consProdText, str)
 
 	var tu textUnmarshalDummy
+	
+	var ti interface{} = ""
 
 	// can consume as a TextUnmarshaler
 	err3 := cons.Consume(bytes.NewBuffer([]byte(consProdText)), &tu)
@@ -45,12 +47,15 @@ func TestTextConsumer(t *testing.T) {
 	// text unmarshal objects can return an error as well, this will be propagated
 	assert.NoError(t, cons.Consume(bytes.NewBuffer(nil), &tu))
 
+	// can consume as a nil interface
+	assert.NoError(t, cons.Consume(bytes.NewBuffer(nil), &ti))
+	
 	// when readers can't be read, those errors will be propogated as well
 	assert.Error(t, cons.Consume(new(nopReader), &tu))
-
+	
 	// readers can also not be nil
 	assert.Error(t, cons.Consume(nil, &tu))
-
+	
 	// can't consume nil ptr's or unsupported types
 	assert.Error(t, cons.Consume(bytes.NewBuffer([]byte(consProdText)), nil))
 	assert.Error(t, cons.Consume(bytes.NewBuffer([]byte(consProdText)), 42))
