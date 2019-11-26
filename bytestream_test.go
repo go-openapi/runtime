@@ -39,7 +39,7 @@ func TestByteStreamConsumer(t *testing.T) {
 	}
 	
 	// can consume as a nil interface with a binary slice concrete type
-	var bi interface {} = []byte
+	var bi interface{} = []byte
 	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bi)) {
 		assert.Equal(t, expected, string(bs2))
 	}
