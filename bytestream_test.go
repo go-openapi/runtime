@@ -37,6 +37,12 @@ func TestByteStreamConsumer(t *testing.T) {
 	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bs2)) {
 		assert.Equal(t, expected, string(bs2))
 	}
+	
+	// can consume as a nil interface with a binary slice concrete type
+	var bi interface {} = []byte
+	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bi)) {
+		assert.Equal(t, expected, string(bs2))
+	}
 
 	// passing in a nilslice wil result in an error
 	var ns *[]byte
