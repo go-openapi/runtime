@@ -77,7 +77,7 @@ func ByteStreamConsumer(opts ...byteStreamOpt) Consumer {
 		}
 
 		if t := reflect.TypeOf(data); data != nil && t.Kind() == reflect.Ptr {
-			v := *data
+			v := reflect.Indirect(reflect.ValueOf(data))
 			if t = v.Type(); t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
 				v.SetBytes(b)
 				return nil
