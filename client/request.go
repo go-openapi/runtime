@@ -154,7 +154,11 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					buf := bytes.NewBuffer([]byte{})
 
 					// Need to read the data so that we can detect the content type
-					io.Copy(buf, fi)
+					_, err := io.Copy(buf, fi)
+					if err != nil {
+						pw.CloseWithError(err)
+						log.Println(err)
+					}
 					fileBytes := buf.Bytes()
 					fileContentType := http.DetectContentType(fileBytes)
 
