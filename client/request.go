@@ -156,7 +156,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					// Need to read the data so that we can detect the content type
 					_, err := io.Copy(buf, fi)
 					if err != nil {
-						pw.CloseWithError(err)
+						_ = pw.CloseWithError(err)
 						log.Println(err)
 					}
 					fileBytes := buf.Bytes()
