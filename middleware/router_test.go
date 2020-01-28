@@ -23,9 +23,10 @@ import (
 
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/loads"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/go-openapi/runtime/middleware/untyped"
-	"github.com/stretchr/testify/assert"
 )
 
 func terminator(rw http.ResponseWriter, r *http.Request) {
@@ -90,7 +91,6 @@ func TestRouterMiddleware(t *testing.T) {
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
-
 }
 
 func TestRouterBuilder(t *testing.T) {

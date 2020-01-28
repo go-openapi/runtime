@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-openapi/runtime"
 )
 
 type countAuthenticator struct {
@@ -202,7 +203,7 @@ func TestAuthenticateOptional(t *testing.T) {
 	ra2 := RouteAuthenticator{
 		allowAnonymous: true,
 		Schemes:        []string{""},
-		Scopes:         map[string][]string{"": []string{}},
+		Scopes:         map[string][]string{"": {}},
 	}
 
 	ra3 := RouteAuthenticator{

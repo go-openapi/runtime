@@ -16,10 +16,11 @@ package runtime
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const consProdCSV = `name,country,age

@@ -23,9 +23,10 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
-	"github.com/go-openapi/runtime"
 	swaggerspec "github.com/go-openapi/spec"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/go-openapi/runtime"
 )
 
 func stubAutenticator() runtime.Authenticator {

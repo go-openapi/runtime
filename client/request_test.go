@@ -31,10 +31,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-openapi/runtime"
 )
 
 var testProducers = map[string]runtime.Producer{
@@ -530,7 +531,6 @@ func (t *testRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, er
 }
 
 func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
-
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusCreated)
 		_, err := rw.Write([]byte("test result"))
