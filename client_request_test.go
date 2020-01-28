@@ -75,7 +75,6 @@ func (t *trw) GetHeaderParams() http.Header {
 }
 
 func TestRequestWriterFunc(t *testing.T) {
-
 	hand := ClientRequestWriterFunc(func(r ClientRequest, reg strfmt.Registry) error {
 		_ = r.SetHeaderParam("blah", "blah blah")
 		_ = r.SetBodyParam(struct{ Name string }{"Adriana"})

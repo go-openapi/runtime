@@ -18,15 +18,25 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	apierrors "github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/go-openapi/runtime/middleware/untyped"
-	"github.com/stretchr/testify/assert"
 )
+
+type stubBindRequester struct {
+}
+
+func (s *stubBindRequester) BindRequest(*http.Request, *MatchedRoute) error {
+	return nil
+}
 
 type stubOperationHandler struct {
 }
@@ -43,6 +53,20 @@ func init() {
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
 
+func assertApiError(t *testing.T, wantCode int, err error) {
+	t.Helper()
+
+	assert.NotNil(t, err)
+
+	ce, ok := err.(*apierrors.CompositeError)
+	assert.True(t, ok)
+	assert.NotEmpty(t, ce.Errors)
+
+	ae, ok := ce.Errors[0].(apierrors.Error)
+	assert.True(t, ok)
+	assert.Equal(t, wantCode, int(ae.Code()))
+}
+
 func TestContentType_Issue264(t *testing.T) {
 	swspec, err := loads.Spec("../fixtures/bugs/264/swagger.yml")
 	if assert.NoError(t, err) {
@@ -56,6 +80,23 @@ func TestContentType_Issue264(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, 200, recorder.Code)
+	}
+}
+
+func TestContentType_Issue172(t *testing.T) {
+	swspec, err := loads.Spec("../fixtures/bugs/172/swagger.yml")
+	if assert.NoError(t, err) {
+		api := untyped.NewAPI(swspec)
+		api.RegisterConsumer("application/vnd.cia.v1+json", runtime.JSONConsumer())
+		api.RegisterProducer("application/vnd.cia.v1+json", runtime.JSONProducer())
+		api.RegisterOperation("get", "/pets", new(stubOperationHandler))
+
+		handler := Serve(swspec, api)
+		request, _ := http.NewRequest("GET", "/pets", nil)
+		request.Header.Add("Accept", "application/json")
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusNotAcceptable, recorder.Code)
 	}
 }
 
@@ -175,6 +216,34 @@ func TestContextNegotiateContentType(t *testing.T) {
 	assert.Equal(t, ri.Produces[0], res)
 }
 
+func TestContextBindValidRequest(t *testing.T) {
+	spec, api := petstore.NewAPI(t)
+	ctx := NewContext(spec, api, nil)
+	ctx.router = DefaultRouter(spec, ctx.api)
+
+	// invalid content-type value
+	request, _ := http.NewRequest("POST", "/api/pets", strings.NewReader(`{"name":"dog"}`))
+	request.Header.Add("content-type", "/json")
+
+	ri, request, _ := ctx.RouteInfo(request)
+	assertApiError(t, 400, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+
+	// unsupported content-type value
+	request, _ = http.NewRequest("POST", "/api/pets", strings.NewReader(`{"name":"dog"}`))
+	request.Header.Add("content-type", "text/html")
+
+	ri, request, _ = ctx.RouteInfo(request)
+	assertApiError(t, http.StatusUnsupportedMediaType, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+
+	// unacceptable accept value
+	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request.Header.Add("Accept", "application/vnd.cia.v1+json")
+	request.Header.Add("content-type", "application/json")
+
+	ri, request, _ = ctx.RouteInfo(request)
+	assertApiError(t, http.StatusNotAcceptable, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+}
+
 func TestContextBindAndValidate(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	ctx := NewContext(spec, api, nil)
@@ -259,7 +328,6 @@ func TestContextRender(t *testing.T) {
 	ri, request, _ = ctx.RouteInfo(request)
 	ctx.Respond(recorder, request, ri.Produces, ri, nil)
 	assert.Equal(t, 204, recorder.Code)
-
 }
 
 func TestContextValidResponseFormat(t *testing.T) {

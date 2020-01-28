@@ -26,9 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/go-openapi/runtime"
 )
 
 func TestUntypedFormPost(t *testing.T) {
@@ -113,7 +114,6 @@ func TestUntypedFileUpload(t *testing.T) {
 }
 
 func TestUntypedBindingTypesForValid(t *testing.T) {
-
 	op2 := parametersForAllTypes("")
 	binder := newUntypedRequestBinder(op2, nil, strfmt.Default)
 
@@ -160,5 +160,4 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	assert.Equal(t, score, data["score"])
 	pb, _ := base64.URLEncoding.DecodeString(picture)
 	assert.EqualValues(t, pb, data["picture"].(strfmt.Base64))
-
 }

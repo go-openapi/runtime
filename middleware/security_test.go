@@ -19,8 +19,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/go-openapi/runtime/internal/testing/petstore"
 )
 
 func TestSecurityMiddleware(t *testing.T) {
@@ -55,5 +56,4 @@ func TestSecurityMiddleware(t *testing.T) {
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
-
 }

@@ -57,5 +57,4 @@ func TestParseContentType(t *testing.T) {
 		assert.Equal(t, v.mt, ct, "input: %q", v.hdr)
 		assert.Equal(t, v.cs, cs, "input: %q", v.hdr)
 	}
-
 }

@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestOperationExecutor(t *testing.T) {

@@ -61,6 +61,7 @@ var negotiateContentTypeTests = []struct {
 	{"application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3", []string{"text/plain"}, "", "text/plain"},
 	{"application/json", []string{"application/json; charset=utf-8", "image/png"}, "", "application/json; charset=utf-8"},
 	{"application/json; charset=utf-8", []string{"application/json; charset=utf-8", "image/png"}, "", "application/json; charset=utf-8"},
+	{"application/json", []string{"application/vnd.cia.v1+json"}, "", ""},
 }
 
 func TestNegotiateContentType(t *testing.T) {

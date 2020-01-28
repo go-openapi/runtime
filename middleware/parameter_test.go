@@ -22,10 +22,11 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/go-openapi/runtime"
 )
 
 // type email struct {
@@ -69,7 +70,6 @@ func requiredError(param *spec.Parameter) *errors.Validation {
 }
 
 func validateRequiredTest(t *testing.T, param *spec.Parameter, value reflect.Value) {
-
 	binder := np(param)
 	err := binder.bindValue([]string{}, true, value)
 	assert.Error(t, err)
