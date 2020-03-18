@@ -19,10 +19,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestServeSpecMiddleware(t *testing.T) {
@@ -53,4 +52,5 @@ func TestServeSpecMiddleware(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
+
 }

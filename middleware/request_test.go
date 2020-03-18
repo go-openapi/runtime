@@ -27,11 +27,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/go-openapi/runtime"
 )
 
 type stubConsumer struct {
@@ -220,6 +219,7 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 }
 
 func TestRequestBindingForInvalid(t *testing.T) {
+
 	invalidParam := spec.QueryParam("some")
 
 	op1 := map[string]spec.Parameter{"Some": *invalidParam}
@@ -279,6 +279,7 @@ func TestRequestBindingForInvalid(t *testing.T) {
 }
 
 func TestRequestBindingForValid(t *testing.T) {
+
 	for _, fmt := range []string{"csv", "pipes", "tsv", "ssv", "multi"} {
 		op1 := parametersForJSONRequestParams(fmt)
 
@@ -469,4 +470,5 @@ func TestBindingFileUpload(t *testing.T) {
 
 	data = fileRequest{}
 	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+
 }

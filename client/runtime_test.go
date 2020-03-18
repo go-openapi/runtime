@@ -32,11 +32,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/go-openapi/runtime"
 )
 
 // task This describes a task. Tasks require a content property to be set.
@@ -69,6 +68,7 @@ func TestRuntime_TLSAuthConfig(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
+
 	keyPem, err := ioutil.ReadFile("../fixtures/certs/myclient.key")
 	require.NoError(t, err)
 
@@ -99,6 +99,7 @@ func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
+
 	keyPem, err := ioutil.ReadFile("../fixtures/certs/myclient-ecc.key")
 	require.NoError(t, err)
 
@@ -130,6 +131,7 @@ func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
+
 	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 
@@ -151,6 +153,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
+
 	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 
@@ -179,6 +182,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
+
 	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 

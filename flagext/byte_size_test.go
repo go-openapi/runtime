@@ -1,10 +1,7 @@
 package flagext
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
+import "testing"
+import "github.com/stretchr/testify/assert"
 
 func TestMarshalBytesize(t *testing.T) {
 	v, err := ByteSize(1024).MarshalFlag()

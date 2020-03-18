@@ -29,9 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-
 	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/strfmt"
 )
 
 // NewRequest creates a new swagger http client request
@@ -182,6 +181,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					}
 				}
 			}
+
 		}()
 
 		goto DoneChoosingBodySource
@@ -216,6 +216,7 @@ DoneChoosingBodySource:
 	}
 
 	if auth != nil {
+
 		// If we're not using r.buf as our http.Request's body,
 		// either the payload is an io.Reader or io.ReadCloser,
 		// or we're doing a multipart form/file.
@@ -237,8 +238,10 @@ DoneChoosingBodySource:
 		//
 		var copyErr error
 		if buf, ok := body.(*bytes.Buffer); body != nil && (!ok || buf != r.buf) {
+
 			var copied bool
 			r.getBody = func(r *request) []byte {
+
 				if copied {
 					return getRequestBuffer(r)
 				}
@@ -271,6 +274,7 @@ DoneChoosingBodySource:
 		if authErr != nil {
 			return nil, authErr
 		}
+
 	}
 
 	// create http request

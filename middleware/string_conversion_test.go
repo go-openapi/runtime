@@ -102,6 +102,7 @@ func IntParamTest(t *testing.T, pName string, val reflect.Value, defVal, expecte
 }
 
 func TestParamBinding(t *testing.T) {
+
 	actual := new(SomeOperationParams)
 	val := reflect.ValueOf(actual).Elem()
 	pName := "Name"
@@ -246,6 +247,7 @@ func TestParamBinding(t *testing.T) {
 }
 
 func TestSliceConversion(t *testing.T) {
+
 	actual := new(SomeOperationParams)
 	val := reflect.ValueOf(actual).Elem()
 
