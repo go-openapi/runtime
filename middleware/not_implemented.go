@@ -65,9 +65,3 @@ func Error(code int, data interface{}, headers ...http.Header) Responder {
 		headers:  hdr,
 	}
 }
-
-func eMsg(msg string) errResult { return errResult{Message: msg} }
-
-type errResult struct {
-	Message string `json:"message"`
-}
