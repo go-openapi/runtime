@@ -4,8 +4,6 @@ info:
   title: 'Test'
 schemes:
   - http
-produces:
-  - application/vnd.cia.v1+json
 
 paths:
   /pets:
@@ -43,7 +41,9 @@ paths:
       description: Creates a new pet in the store.  Duplicates are allowed
       operationId: addPet
       consumes:
-        - application/vnd.cia.v1+json
+        - application/json
+      produces:
+        - application/json
       parameters:
         - name: pet
           in: body

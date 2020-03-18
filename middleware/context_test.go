@@ -53,7 +53,7 @@ func init() {
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
 }
 
-func assertApiError(t *testing.T, wantCode int, err error) {
+func assertAPIError(t *testing.T, wantCode int, err error) {
 	t.Helper()
 
 	assert.NotNil(t, err)
@@ -97,6 +97,22 @@ func TestContentType_Issue172(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusNotAcceptable, recorder.Code)
+	}
+}
+
+func TestContentType_Issue174(t *testing.T) {
+	swspec, err := loads.Spec("../fixtures/bugs/174/swagger.yml")
+	if assert.NoError(t, err) {
+		api := untyped.NewAPI(swspec)
+		api.RegisterConsumer("application/json", runtime.JSONConsumer())
+		api.RegisterProducer("application/json", runtime.JSONProducer())
+		api.RegisterOperation("get", "/pets", new(stubOperationHandler))
+
+		handler := Serve(swspec, api)
+		request, _ := http.NewRequest("GET", "/pets", nil)
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
 	}
 }
 
@@ -226,14 +242,14 @@ func TestContextBindValidRequest(t *testing.T) {
 	request.Header.Add("content-type", "/json")
 
 	ri, request, _ := ctx.RouteInfo(request)
-	assertApiError(t, 400, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+	assertAPIError(t, 400, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
 
 	// unsupported content-type value
 	request, _ = http.NewRequest("POST", "/api/pets", strings.NewReader(`{"name":"dog"}`))
 	request.Header.Add("content-type", "text/html")
 
 	ri, request, _ = ctx.RouteInfo(request)
-	assertApiError(t, http.StatusUnsupportedMediaType, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+	assertAPIError(t, http.StatusUnsupportedMediaType, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
 
 	// unacceptable accept value
 	request, _ = http.NewRequest("POST", "/api/pets", nil)
@@ -241,7 +257,24 @@ func TestContextBindValidRequest(t *testing.T) {
 	request.Header.Add("content-type", "application/json")
 
 	ri, request, _ = ctx.RouteInfo(request)
-	assertApiError(t, http.StatusNotAcceptable, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+	assertAPIError(t, http.StatusNotAcceptable, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+}
+
+func TestContextBindValidRequest_Issue174(t *testing.T) {
+	spec, err := loads.Spec("../fixtures/bugs/174/swagger.yml")
+	assert.NoError(t, err)
+
+	api := untyped.NewAPI(spec)
+	api.RegisterConsumer("application/json", runtime.JSONConsumer())
+	api.RegisterProducer("application/json", runtime.JSONProducer())
+	api.RegisterOperation("get", "/pets", new(stubOperationHandler))
+
+	ctx := NewContext(spec, api, nil)
+	ctx.router = DefaultRouter(spec, ctx.api)
+
+	request, _ := http.NewRequest("GET", "/pets", nil)
+	ri, request, _ := ctx.RouteInfo(request)
+	assert.NoError(t, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
 }
 
 func TestContextBindAndValidate(t *testing.T) {
