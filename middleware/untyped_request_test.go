@@ -34,7 +34,7 @@ import (
 
 func TestUntypedFormPost(t *testing.T) {
 	params := parametersForFormUpload()
-	binder := newUntypedRequestBinder(params, nil, strfmt.Default)
+	binder := NewUntypedRequestBinder(params, nil, strfmt.Default)
 
 	urlStr := "http://localhost:8002/hello"
 	req, _ := http.NewRequest("POST", urlStr, bytes.NewBufferString(`name=the-name&age=32`))
@@ -115,7 +115,7 @@ func TestUntypedFileUpload(t *testing.T) {
 
 func TestUntypedBindingTypesForValid(t *testing.T) {
 	op2 := parametersForAllTypes("")
-	binder := newUntypedRequestBinder(op2, nil, strfmt.Default)
+	binder := NewUntypedRequestBinder(op2, nil, strfmt.Default)
 
 	confirmed := true
 	name := "thomas"
