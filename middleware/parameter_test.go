@@ -65,8 +65,8 @@ func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
 	}
 }
 
-func requiredError(param *spec.Parameter) *errors.Validation {
-	return errors.Required(param.Name, param.In)
+func requiredError(param *spec.Parameter, data interface{}) *errors.Validation {
+	return errors.Required(param.Name, param.In, data)
 }
 
 func validateRequiredTest(t *testing.T, param *spec.Parameter, value reflect.Value) {
@@ -74,19 +74,19 @@ func validateRequiredTest(t *testing.T, param *spec.Parameter, value reflect.Val
 	err := binder.bindValue([]string{}, true, value)
 	assert.Error(t, err)
 	assert.NotNil(t, param)
-	assert.EqualError(t, requiredError(param), err.Error())
+	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 	err = binder.bindValue([]string{""}, true, value)
 	if assert.Error(t, err) {
-		assert.EqualError(t, requiredError(param), err.Error())
+		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 	}
 
 	// should be impossible data, but let's go with it
 	err = binder.bindValue([]string{"a"}, false, value)
 	assert.Error(t, err)
-	assert.EqualError(t, requiredError(param), err.Error())
+	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 	err = binder.bindValue([]string{""}, false, value)
 	assert.Error(t, err)
-	assert.EqualError(t, requiredError(param), err.Error())
+	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 }
 
 func validateRequiredAllowEmptyTest(t *testing.T, param *spec.Parameter, value reflect.Value) {
@@ -99,10 +99,10 @@ func validateRequiredAllowEmptyTest(t *testing.T, param *spec.Parameter, value r
 		assert.NoError(t, err)
 		err = binder.bindValue([]string{"1"}, false, value)
 		assert.Error(t, err)
-		assert.EqualError(t, requiredError(param), err.Error())
+		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 		err = binder.bindValue([]string{""}, false, value)
 		assert.Error(t, err)
-		assert.EqualError(t, requiredError(param), err.Error())
+		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
 	}
 }
 
