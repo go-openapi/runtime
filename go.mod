@@ -15,7 +15,9 @@ require (
 	github.com/vektah/gqlparser v1.1.2 // indirect
 	go.mongodb.org/mongo-driver v1.3.4 // indirect
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
 
 go 1.13
