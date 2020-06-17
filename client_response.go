@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"gopkg.in/square/go-jose.v2/json"
+	"encoding/json"
 )
 
 // A ClientResponse represents a client response
