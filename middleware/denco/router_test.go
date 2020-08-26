@@ -26,6 +26,7 @@ func routes() []denco.Record {
 		{"/:year/:month/:day", "testroute8"},
 		{"/user/:id", "testroute9"},
 		{"/a/to/b/:param/*routepath", "testroute10"},
+		{"/path/with/key=:value", "testroute14"},
 	}
 }
 
@@ -211,6 +212,7 @@ func TestRouter_Lookup(t *testing.T) {
 		{"/user/777", "testroute9", []denco.Param{{"id", "777"}}, true},
 		{"/a/to/b/p1/some/wildcard/params", "testroute10", []denco.Param{{"param", "p1"}, {"routepath", "some/wildcard/params"}}, true},
 		{"/missing", nil, nil, false},
+		{"/path/with/key=value", "testroute14", []denco.Param{{"value", "value"}}, true},
 	}
 	runLookupTest(t, routes(), testcases)
 
