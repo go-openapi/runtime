@@ -16,7 +16,6 @@ package yamlpc
 
 import (
 	"io"
-	"io/ioutil"
 
 	"github.com/go-openapi/runtime"
 
@@ -26,19 +25,16 @@ import (
 // YAMLConsumer creates a consumer for yaml data
 func YAMLConsumer() runtime.Consumer {
 	return runtime.ConsumerFunc(func(r io.Reader, v interface{}) error {
-		buf, err := ioutil.ReadAll(r)
-		if err != nil {
-			return err
-		}
-		return yaml.Unmarshal(buf, v)
+		dec := yaml.NewDecoder(r)
+		return dec.Decode(v)
 	})
 }
 
 // YAMLProducer creates a producer for yaml data
 func YAMLProducer() runtime.Producer {
 	return runtime.ProducerFunc(func(w io.Writer, v interface{}) error {
-		b, _ := yaml.Marshal(v) // can't make this error come up
-		_, err := w.Write(b)
-		return err
+		enc := yaml.NewEncoder(w)
+		defer enc.Close()
+		return enc.Encode(v)
 	})
 }

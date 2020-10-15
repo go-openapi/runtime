@@ -50,13 +50,23 @@ func TestYAMLProducer(t *testing.T) {
 	assert.Equal(t, consProdYAML, rw.Body.String())
 }
 
-type failReader struct {
+type failReaderWriter struct {
 }
 
-func (f *failReader) Read(p []byte) (n int, err error) {
+func (f *failReaderWriter) Read(p []byte) (n int, err error) {
 	return 0, errors.New("expected")
 }
+
+func (f *failReaderWriter) Write(p []byte) (n int, err error) {
+	return 0, errors.New("expected")
+}
+
+func TestFailYAMLWriter(t *testing.T) {
+	prod := YAMLProducer()
+	assert.Error(t, prod.Produce(&failReaderWriter{}, nil))
+}
+
 func TestFailYAMLReader(t *testing.T) {
 	cons := YAMLConsumer()
-	assert.Error(t, cons.Consume(&failReader{}, nil))
+	assert.Error(t, cons.Consume(&failReaderWriter{}, nil))
 }
