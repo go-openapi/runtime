@@ -203,7 +203,7 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 
 	request.SetBasicAuth("topuser", "topuser")
 	p, reqWithCtx, err := ctx.Authorize(request, ri)
-	assert.Error(t, err)
+	assertAPIError(t, apierrors.InvalidTypeCode, err)
 	assert.Nil(t, p)
 	assert.Nil(t, reqWithCtx)
 
@@ -212,6 +212,15 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "admin", p)
 	assert.NotNil(t, reqWithCtx)
+
+	request.SetBasicAuth("anyother", "anyother")
+	p, reqWithCtx, err = ctx.Authorize(request, ri)
+	assert.Error(t, err)
+	ae, ok := err.(apierrors.Error)
+	assert.True(t, ok)
+	assert.Equal(t, http.StatusForbidden, int(ae.Code()))
+	assert.Nil(t, p)
+	assert.Nil(t, reqWithCtx)
 }
 
 func TestContextNegotiateContentType(t *testing.T) {

@@ -52,6 +52,8 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 			return "admin", nil
 		} else if username == "topuser" && password == "topuser" {
 			return "topuser", nil
+		} else if username == "anyother" && password == "anyother" {
+			return "anyother", nil
 		}
 		return nil, errors.Unauthenticated("basic")
 	}))
@@ -63,7 +65,11 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	}))
 	api.RegisterAuthorizer(runtime.AuthorizerFunc(func(r *http.Request, user interface{}) error {
 		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && user.(string) != "admin" {
-			return goerrors.New("unauthorized")
+			if user.(string) == "topuser" {
+				return errors.CompositeValidationError(errors.New(errors.InvalidTypeCode, "unauthorized"))
+			} else {
+				return goerrors.New("unauthorized")
+			}
 		}
 		return nil
 	}))
