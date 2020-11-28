@@ -26,7 +26,7 @@ func TestAuthInfoWriter(t *testing.T) {
 		return r.SetHeaderParam("authorization", "Bearer the-token-goes-here")
 	})
 
-	tr := new(trw)
+	tr := new(TestClientRequest)
 	err := hand.AuthenticateRequest(tr, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "Bearer the-token-goes-here", tr.Headers.Get("Authorization"))

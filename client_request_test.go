@@ -15,64 +15,11 @@
 package runtime
 
 import (
-	"net/http"
-	"net/url"
 	"testing"
-	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 )
-
-type trw struct {
-	Headers http.Header
-	Body    interface{}
-}
-
-func (t *trw) SetHeaderParam(name string, values ...string) error {
-	if t.Headers == nil {
-		t.Headers = make(http.Header)
-	}
-	t.Headers.Set(name, values[0])
-	return nil
-}
-
-func (t *trw) SetQueryParam(_ string, _ ...string) error { return nil }
-
-func (t *trw) SetFormParam(_ string, _ ...string) error { return nil }
-
-func (t *trw) SetPathParam(_ string, _ string) error { return nil }
-
-func (t *trw) SetFileParam(_ string, _ ...NamedReadCloser) error { return nil }
-
-func (t *trw) SetBodyParam(body interface{}) error {
-	t.Body = body
-	return nil
-}
-
-func (t *trw) SetTimeout(timeout time.Duration) error {
-	return nil
-}
-
-func (t *trw) GetQueryParams() url.Values { return nil }
-
-func (t *trw) GetMethod() string { return "" }
-
-func (t *trw) GetPath() string { return "" }
-
-func (t *trw) GetBody() []byte { return nil }
-
-func (t *trw) GetBodyParam() interface{} {
-	return t.Body
-}
-
-func (t *trw) GetFileParam() map[string][]NamedReadCloser {
-	return nil
-}
-
-func (t *trw) GetHeaderParams() http.Header {
-	return t.Headers
-}
 
 func TestRequestWriterFunc(t *testing.T) {
 	hand := ClientRequestWriterFunc(func(r ClientRequest, reg strfmt.Registry) error {
@@ -81,7 +28,7 @@ func TestRequestWriterFunc(t *testing.T) {
 		return nil
 	})
 
-	tr := new(trw)
+	tr := new(TestClientRequest)
 	_ = hand.WriteToRequest(tr, nil)
 	assert.Equal(t, "blah blah", tr.Headers.Get("blah"))
 	assert.Equal(t, "Adriana", tr.Body.(struct{ Name string }).Name)
