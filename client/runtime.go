@@ -82,7 +82,7 @@ type TLSClientOptions struct {
 	ServerName string
 
 	// InsecureSkipVerify controls whether the certificate chain and hostname presented
-	// by the server are validated. If false, any certificate is accepted.
+	// by the server are validated. If true, any certificate is accepted.
 	InsecureSkipVerify bool
 
 	// VerifyPeerCertificate, if not nil, is called after normal
