@@ -93,10 +93,16 @@ func TestContentType_Issue172(t *testing.T) {
 
 		handler := Serve(swspec, api)
 		request, _ := http.NewRequest("GET", "/pets", nil)
-		request.Header.Add("Accept", "application/json")
+		request.Header.Add("Accept", "application/json+special")
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusNotAcceptable, recorder.Code)
+
+		// acceptable as defined as default by the API (not explicit in the spec)
+		request.Header.Add("Accept", "application/json")
+		recorder = httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
 	}
 }
 
