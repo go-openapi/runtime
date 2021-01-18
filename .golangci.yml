@@ -39,3 +39,4 @@ linters:
     - nestif
     - godot
     - errorlint
+    - noctx
