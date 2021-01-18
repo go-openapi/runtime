@@ -119,10 +119,15 @@ func TestRouterBuilder(t *testing.T) {
 	rec := postRecords[0]
 	assert.Equal(t, rec.Key, "/pets")
 	val := rec.Value.(*routeEntry)
-	assert.Len(t, val.Consumers, 1)
-	assert.Len(t, val.Producers, 1)
-	assert.Len(t, val.Consumes, 1)
-	assert.Len(t, val.Produces, 1)
+	assert.Len(t, val.Consumers, 2)
+	assert.Len(t, val.Producers, 2)
+	assert.Len(t, val.Consumes, 2)
+	assert.Len(t, val.Produces, 2)
+
+	assert.Contains(t, val.Consumers, "application/json")
+	assert.Contains(t, val.Producers, "application/x-yaml")
+	assert.Contains(t, val.Consumes, "application/json")
+	assert.Contains(t, val.Produces, "application/x-yaml")
 
 	assert.Len(t, val.Parameters, 1)
 
