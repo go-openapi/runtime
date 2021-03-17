@@ -67,3 +67,14 @@ func TestBearerTokenAuth(t *testing.T) {
 
 	assert.Equal(t, "Bearer the-shared-token", r.header.Get("Authorization"))
 }
+
+func TestCompose(t *testing.T) {
+	r, _ := newRequest("GET", "/", nil)
+
+	writer := Compose(APIKeyAuth("x-api-key", "header", "the-api-key"), APIKeyAuth("x-secret-key", "header", "the-secret-key"))
+	err := writer.AuthenticateRequest(r, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "the-api-key", r.header.Get("x-api-key"))
+	assert.Equal(t, "the-secret-key", r.header.Get("x-secret-key"))
+}
