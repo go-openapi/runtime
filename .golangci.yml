@@ -40,3 +40,4 @@ linters:
     - godot
     - errorlint
     - noctx
+    - interfacer
