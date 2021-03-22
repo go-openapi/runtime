@@ -16,12 +16,8 @@ jobs:
       with:
         go-version: 1.16.2
 
-    - name: set environment variable
-      run: |
-        echo 'ACTIONS_ALLOW_UNSECURE_COMMANDS="true"' >> $GITHUB_ENV
-
     - name: Setup gotestsum
-      uses: autero1/action-gotestsum@v0.1.0
+      uses: autero1/action-gotestsum@v1.0.0
       with:
         gotestsum_version: 1.6.2
 
