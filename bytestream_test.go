@@ -84,6 +84,12 @@ func TestByteStreamProducer(t *testing.T) {
 		rdr.Reset()
 	}
 
+	// string can also be used to produce
+	if assert.NoError(t, cons.Produce(&rdr, expected)) {
+		assert.Equal(t, expected, rdr.String())
+		rdr.Reset()
+	}
+
 	// binary slices can also be used to produce
 	if assert.NoError(t, cons.Produce(&rdr, []byte(expected))) {
 		assert.Equal(t, expected, rdr.String())
