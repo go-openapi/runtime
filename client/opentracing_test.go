@@ -62,6 +62,19 @@ func Test_TracingRuntime_submit(t *testing.T) {
 	t.Parallel()
 	tracer := mocktracer.New()
 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
+	testSubmit(t, testOperation(ctx), tracer)
+}
+
+func Test_TracingRuntime_submit_nullAuthInfo(t *testing.T) {
+	t.Parallel()
+	tracer := mocktracer.New()
+	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
+	operation := testOperation(ctx)
+	operation.AuthInfo = nil
+	testSubmit(t, operation, tracer)
+}
+
+func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktracer.MockTracer) {
 
 	header := map[string][]string{}
 	r := newOpenTracingTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
@@ -71,7 +84,7 @@ func Test_TracingRuntime_submit(t *testing.T) {
 			Value: "service",
 		}})
 
-	_, err := r.Submit(testOperation(ctx))
+	_, err := r.Submit(operation)
 	require.NoError(t, err)
 
 	if assert.Len(t, tracer.FinishedSpans(), 1) {
