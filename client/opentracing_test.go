@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/mocktracer"
@@ -37,7 +38,7 @@ type mockRuntime struct {
 }
 
 func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (interface{}, error) {
-	_ = operation.AuthInfo.AuthenticateRequest(&m.req, nil)
+	_ = operation.Params.WriteToRequest(&m.req, nil)
 	_, _ = operation.Reader.ReadResponse(&tres{}, nil)
 	return nil, nil
 }
@@ -53,6 +54,9 @@ func testOperation(ctx context.Context) *runtime.ClientOperation {
 		Reader: runtime.ClientResponseReaderFunc(func(runtime.ClientResponse, runtime.Consumer) (interface{}, error) {
 			return nil, nil
 		}),
+		Params: runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+			return nil
+		}),
 		AuthInfo: PassThroughAuth,
 		Context:  ctx,
 	}
@@ -62,19 +66,28 @@ func Test_TracingRuntime_submit(t *testing.T) {
 	t.Parallel()
 	tracer := mocktracer.New()
 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
-	testSubmit(t, testOperation(ctx), tracer)
+	testSubmit(t, testOperation(ctx), tracer, 1)
 }
 
-func Test_TracingRuntime_submit_nullAuthInfo(t *testing.T) {
+func Test_TracingRuntime_submit_nilAuthInfo(t *testing.T) {
 	t.Parallel()
 	tracer := mocktracer.New()
 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
 	operation := testOperation(ctx)
 	operation.AuthInfo = nil
-	testSubmit(t, operation, tracer)
+	testSubmit(t, operation, tracer, 1)
 }
 
-func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktracer.MockTracer) {
+func Test_TracingRuntime_submit_nilContext(t *testing.T) {
+	t.Parallel()
+	tracer := mocktracer.New()
+	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
+	operation := testOperation(ctx)
+	operation.Context = nil
+	testSubmit(t, operation, tracer, 0) // just don't panic
+}
+
+func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktracer.MockTracer, expectedSpans int) {
 
 	header := map[string][]string{}
 	r := newOpenTracingTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
@@ -87,9 +100,11 @@ func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktr
 	_, err := r.Submit(operation)
 	require.NoError(t, err)
 
-	if assert.Len(t, tracer.FinishedSpans(), 1) {
+	assert.Len(t, tracer.FinishedSpans(), expectedSpans)
+
+	if expectedSpans == 1 {
 		span := tracer.FinishedSpans()[0]
-		assert.Equal(t, "get_cluster", span.OperationName)
+		assert.Equal(t, "getCluster", span.OperationName)
 		assert.Equal(t, map[string]interface{}{
 			"component":        "go-openapi",
 			"http.method":      "GET",
