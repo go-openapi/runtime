@@ -62,6 +62,8 @@ var negotiateContentTypeTests = []struct {
 	{"application/json", []string{"application/json; charset=utf-8", "image/png"}, "", "application/json; charset=utf-8"},
 	{"application/json; charset=utf-8", []string{"application/json; charset=utf-8", "image/png"}, "", "application/json; charset=utf-8"},
 	{"application/json", []string{"application/vnd.cia.v1+json"}, "", ""},
+	// Default header of java clients
+	{"text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2", []string{"application/json"}, "", "application/json"},
 }
 
 func TestNegotiateContentType(t *testing.T) {
