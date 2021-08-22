@@ -278,7 +278,14 @@ DoneChoosingBodySource:
 	if r.pathPattern != "" && r.pathPattern != "/" && r.pathPattern[len(r.pathPattern)-1] == '/' {
 		reinstateSlash = true
 	}
-	urlPath := path.Join(basePath, r.pathPattern)
+
+	basePathURL, err := url.Parse(basePath)
+	if err != nil {
+		return nil, err
+	}
+	basePathQueryParams := basePathURL.Query()
+
+	urlPath := path.Join(basePathURL.Path, r.pathPattern)
 	for k, v := range r.pathParams {
 		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1)
 	}
@@ -289,6 +296,15 @@ DoneChoosingBodySource:
 	req, err := http.NewRequest(r.method, urlPath, body)
 	if err != nil {
 		return nil, err
+	}
+
+	originalParams := r.GetQueryParams()
+
+	for k, v := range basePathQueryParams {
+		_, present := originalParams[k]
+		if !present {
+			r.SetQueryParam(k, v...)
+		}
 	}
 
 	req.URL.RawQuery = r.query.Encode()
