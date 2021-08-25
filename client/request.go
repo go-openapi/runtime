@@ -279,6 +279,7 @@ DoneChoosingBodySource:
 		reinstateSlash = true
 	}
 
+	// In case the basePath includes hardcoded query parameters, parse those out
 	basePathURL, err := url.Parse(basePath)
 	if err != nil {
 		return nil, err
@@ -300,6 +301,8 @@ DoneChoosingBodySource:
 
 	originalParams := r.GetQueryParams()
 
+	// Merge the query parameters extracted from the basePath with the ones set by
+	// the client in this struct. In case of conflict, the client wins.
 	for k, v := range basePathQueryParams {
 		_, present := originalParams[k]
 		if !present {
