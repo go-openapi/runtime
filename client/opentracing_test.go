@@ -29,6 +29,9 @@ func (r tres) Message() string {
 func (r tres) GetHeader(_ string) string {
 	return "the header"
 }
+func (r tres) GetHeaders(_ string) []string {
+	return []string{"the headers", "the headers2"}
+}
 func (r tres) Body() io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewBufferString("the content"))
 }
