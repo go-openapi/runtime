@@ -279,7 +279,9 @@ DoneChoosingBodySource:
 		reinstateSlash = true
 	}
 
-	// In case the basePath includes hardcoded query parameters, parse those out
+	// In case the basePath includes hardcoded query parameters, parse those out before
+	// constructing the final path. The parameters themselves will be merged with the
+	// ones set by the client, with the priority given to the latter.
 	basePathURL, err := url.Parse(basePath)
 	if err != nil {
 		return nil, err
