@@ -308,7 +308,7 @@ DoneChoosingBodySource:
 	for k, v := range basePathQueryParams {
 		_, present := originalParams[k]
 		if !present {
-			r.SetQueryParam(k, v...)
+			_ = r.SetQueryParam(k, v...)
 		}
 	}
 
