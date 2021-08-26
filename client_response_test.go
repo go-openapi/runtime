@@ -35,6 +35,9 @@ func (r response) Message() string {
 func (r response) GetHeader(_ string) string {
 	return "the header"
 }
+func (r response) GetHeaders(_ string) []string {
+	return []string{"the headers", "the headers2"}
+}
 func (r response) Body() io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewBufferString("the content"))
 }

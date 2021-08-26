@@ -37,5 +37,6 @@ func TestResponse(t *testing.T) {
 	assert.EqualValues(t, under.StatusCode, resp.Code())
 	assert.Equal(t, under.Status, resp.Message())
 	assert.Equal(t, "blah blah", resp.GetHeader("blah"))
+	assert.Equal(t, []string{"blah blah"}, resp.GetHeaders("blah"))
 	assert.Equal(t, under.Body, resp.Body())
 }
