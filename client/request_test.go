@@ -517,7 +517,7 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	}
 }
 
-func TestBuildRequest_BuildHTTP_BasePathWithParameters(t *testing.T) {
+func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetBodyParam(nil)
 		_ = req.SetQueryParam("hello", "world")
@@ -534,18 +534,50 @@ func TestBuildRequest_BuildHTTP_BasePathWithParameters(t *testing.T) {
 	}
 }
 
-func TestBuildRequest_BuildHTTP_BasePathWithConflictingParameters(t *testing.T) {
+func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetBodyParam(nil)
 		_ = req.SetQueryParam("hello", "world")
 		_ = req.SetPathParam("id", "1234")
 		return nil
 	})
-	r, _ := newRequest("POST", "/flats/{id}/", reqWrtr)
+	r, _ := newRequest("POST", "/flats/{id}/?foo=bar", reqWrtr)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "bar", req.URL.Query().Get("foo"))
+		assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	}
+}
+
+func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		_ = req.SetBodyParam(nil)
+		_ = req.SetPathParam("id", "1234")
+		return nil
+	})
+	r, _ := newRequest("POST", "/flats/{id}/?hello=world", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
 	if assert.NoError(t, err) && assert.NotNil(t, req) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	}
+}
+
+func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		_ = req.SetBodyParam(nil)
+		_ = req.SetQueryParam("hello", "there")
+		_ = req.SetPathParam("id", "1234")
+		return nil
+	})
+	r, _ := newRequest("POST", "/flats/{id}/?hello=world", reqWrtr)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "there", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
 	}
 }

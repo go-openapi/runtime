@@ -273,22 +273,36 @@ DoneChoosingBodySource:
 		}
 	}
 
-	// create http request
-	var reinstateSlash bool
-	if r.pathPattern != "" && r.pathPattern != "/" && r.pathPattern[len(r.pathPattern)-1] == '/' {
-		reinstateSlash = true
-	}
-
-	// In case the basePath includes hardcoded query parameters, parse those out before
-	// constructing the final path. The parameters themselves will be merged with the
-	// ones set by the client, with the priority given to the latter.
+	// In case the basePath or the request pathPattern include static query parameters,
+	// parse those out before constructing the final path. The parameters themselves
+	// will be merged with the ones set by the client, with the priority given first to
+	// the ones set by the client, then the path pattern, and lastly the base path.
 	basePathURL, err := url.Parse(basePath)
 	if err != nil {
 		return nil, err
 	}
-	basePathQueryParams := basePathURL.Query()
+	staticQueryParams := basePathURL.Query()
 
-	urlPath := path.Join(basePathURL.Path, r.pathPattern)
+	pathPatternURL, err := url.Parse(r.pathPattern)
+	if err != nil {
+		return nil, err
+	}
+	for name, values := range pathPatternURL.Query() {
+		if _, present := staticQueryParams[name]; present {
+			staticQueryParams.Del(name)
+		}
+		for _, value := range values {
+			staticQueryParams.Add(name, value)
+		}
+	}
+
+	// create http request
+	var reinstateSlash bool
+	if pathPatternURL.Path != "" && pathPatternURL.Path != "/" && pathPatternURL.Path[len(pathPatternURL.Path)-1] == '/' {
+		reinstateSlash = true
+	}
+
+	urlPath := path.Join(basePathURL.Path, pathPatternURL.Path)
 	for k, v := range r.pathParams {
 		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1)
 	}
@@ -305,7 +319,7 @@ DoneChoosingBodySource:
 
 	// Merge the query parameters extracted from the basePath with the ones set by
 	// the client in this struct. In case of conflict, the client wins.
-	for k, v := range basePathQueryParams {
+	for k, v := range staticQueryParams {
 		_, present := originalParams[k]
 		if !present {
 			if err = r.SetQueryParam(k, v...); err != nil {
