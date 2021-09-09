@@ -139,6 +139,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					if err := mp.WriteField(fn, vi); err != nil {
 						pw.CloseWithError(err)
 						log.Println(err)
+						return
 					}
 				}
 			}
@@ -158,6 +159,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					if err != nil {
 						_ = pw.CloseWithError(err)
 						log.Println(err)
+						return
 					}
 					fileContentType := http.DetectContentType(buf)
 					newFi := runtime.NamedReader(fi.Name(), io.MultiReader(bytes.NewReader(buf[:size]), fi))
@@ -173,7 +175,9 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 					if err != nil {
 						pw.CloseWithError(err)
 						log.Println(err)
-					} else if _, err := io.Copy(wrtr, newFi); err != nil {
+						return
+					}
+					if _, err := io.Copy(wrtr, newFi); err != nil {
 						pw.CloseWithError(err)
 						log.Println(err)
 					}
