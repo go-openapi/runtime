@@ -32,11 +32,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-openapi/runtime"
+	goruntime "runtime"
 )
 
 // task This describes a task. Tasks require a content property to be set.
@@ -188,8 +189,14 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
 	cert, err := x509.ParseCertificate(block.Bytes)
 	require.NoError(t, err)
 
-	pool, err := x509.SystemCertPool()
-	require.NoError(t, err)
+	var pool *x509.CertPool
+	if goruntime.GOOS == "windows" {
+		// Windows doesn't have the system cert pool.
+		pool = x509.NewCertPool()
+	} else {
+		pool, err = x509.SystemCertPool()
+		require.NoError(t, err)
+	}
 	startingCertCount := len(pool.Subjects())
 
 	var opts TLSClientOptions
