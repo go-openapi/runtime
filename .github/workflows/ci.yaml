@@ -26,3 +26,7 @@ jobs:
 
     - name: Test
       run: gotestsum --format short-verbose -- -race -timeout=20m -coverprofile=coverage_txt -covermode=atomic ./...
+
+    - uses: codecov/codecov-action@v2
+      with:
+        files: coverage_txt
