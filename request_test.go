@@ -153,6 +153,14 @@ func TestJSONRequest(t *testing.T) {
 	assert.Nil(t, req)
 }
 
+func TestHasBody(t *testing.T) {
+	req, _ := http.NewRequest("GET", "", nil)
+	assert.False(t, HasBody(req))
+
+	req.ContentLength = 123
+	assert.True(t, HasBody(req))
+}
+
 func TestMethod(t *testing.T) {
 	testcase := []struct {
 		method      string
