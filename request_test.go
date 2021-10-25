@@ -167,27 +167,13 @@ func TestJSONRequest(t *testing.T) {
 func TestReadSingle(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "the thing")
-	assert.Equal(t, "the thing", ReadSingleValue(tv(values), "something"))
-	assert.Empty(t, ReadSingleValue(tv(values), "notthere"))
+	assert.Equal(t, "the thing", ReadSingleValue(Values(values), "something"))
+	assert.Empty(t, ReadSingleValue(Values(values), "notthere"))
 }
 
 func TestReadCollection(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "value1,value2")
-	assert.Equal(t, []string{"value1", "value2"}, ReadCollectionValue(tv(values), "something", "csv"))
-	assert.Empty(t, ReadCollectionValue(tv(values), "notthere", ""))
-}
-
-type tv map[string][]string
-
-func (v tv) GetOK(key string) (value []string, hasKey bool, hasValue bool) {
-	value, hasKey = v[key]
-	if !hasKey {
-		return
-	}
-	if len(value) == 0 {
-		return
-	}
-	hasValue = true
-	return
+	assert.Equal(t, []string{"value1", "value2"}, ReadCollectionValue(Values(values), "something", "csv"))
+	assert.Empty(t, ReadCollectionValue(Values(values), "notthere", ""))
 }
