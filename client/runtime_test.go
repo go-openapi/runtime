@@ -86,6 +86,7 @@ func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
 	require.NotNil(t, certDer)
 
 	cert, err := x509.ParseCertificate(certDer.Bytes)
+	require.NoError(t, err)
 
 	var opts TLSClientOptions
 	opts.LoadedKey = key
@@ -117,6 +118,7 @@ func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
 	require.NotNil(t, certDer)
 
 	cert, err := x509.ParseCertificate(certDer.Bytes)
+	require.NoError(t, err)
 
 	var opts TLSClientOptions
 	opts.LoadedKey = key

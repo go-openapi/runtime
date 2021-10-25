@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newCountingReader(rdr io.Reader, readOnce bool) *countingReadCloser {
@@ -45,7 +46,8 @@ func TestDrainingReadCloser(t *testing.T) {
 
 	buf := make([]byte, 5)
 	ts := &drainingReadCloser{rdr: rdr}
-	ts.Read(buf)
+	_, err := ts.Read(buf)
+	require.NoError(t, err)
 	ts.Close()
 	assert.Equal(t, "There", string(buf))
 	assert.Equal(t, " are many things to do", disc.String())
@@ -62,8 +64,9 @@ func TestDrainingReadCloser_SeenEOF(t *testing.T) {
 
 	buf := make([]byte, 5)
 	ts := &drainingReadCloser{rdr: rdr}
-	ts.Read(buf)
-	_, err := ts.Read(nil)
+	_, err := ts.Read(buf)
+	assert.NoError(t, err)
+	_, err = ts.Read(nil)
 	assert.Equal(t, io.EOF, err)
 	ts.Close()
 	assert.Equal(t, string(buf), "There")
