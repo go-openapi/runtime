@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -152,17 +153,34 @@ func TestJSONRequest(t *testing.T) {
 	assert.Nil(t, req)
 }
 
-//func TestCanHaveBody(t *testing.T) {
-//assert.True(t, CanHaveBody("put"))
-//assert.True(t, CanHaveBody("post"))
-//assert.True(t, CanHaveBody("patch"))
-//assert.True(t, CanHaveBody("delete"))
-//assert.False(t, CanHaveBody(""))
-//assert.False(t, CanHaveBody("get"))
-//assert.False(t, CanHaveBody("options"))
-//assert.False(t, CanHaveBody("head"))
-//assert.False(t, CanHaveBody("invalid"))
-//}
+func TestMethod(t *testing.T) {
+	testcase := []struct {
+		method      string
+		canHaveBody bool
+		allowsBody  bool
+		isSafe      bool
+	}{
+		{"put", true, true, false},
+		{"post", true, true, false},
+		{"patch", true, true, false},
+		{"delete", true, true, false},
+		{"get", false, true, true},
+		{"options", false, true, false},
+		{"head", false, false, true},
+		{"invalid", false, true, false},
+		{"", false, true, false},
+	}
+
+	for _, tc := range testcase {
+		t.Run(tc.method, func(t *testing.T) {
+			assert.Equal(t, tc.canHaveBody, CanHaveBody(tc.method), "CanHaveBody")
+
+			req := http.Request{Method: tc.method}
+			assert.Equal(t, tc.allowsBody, AllowsBody(&req), "AllowsBody")
+			assert.Equal(t, tc.isSafe, IsSafe(&req), "IsSafe")
+		})
+	}
+}
 
 func TestReadSingle(t *testing.T) {
 	values := url.Values(make(map[string][]string))
