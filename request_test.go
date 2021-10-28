@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -152,42 +153,53 @@ func TestJSONRequest(t *testing.T) {
 	assert.Nil(t, req)
 }
 
-//func TestCanHaveBody(t *testing.T) {
-//assert.True(t, CanHaveBody("put"))
-//assert.True(t, CanHaveBody("post"))
-//assert.True(t, CanHaveBody("patch"))
-//assert.True(t, CanHaveBody("delete"))
-//assert.False(t, CanHaveBody(""))
-//assert.False(t, CanHaveBody("get"))
-//assert.False(t, CanHaveBody("options"))
-//assert.False(t, CanHaveBody("head"))
-//assert.False(t, CanHaveBody("invalid"))
-//}
+func TestHasBody(t *testing.T) {
+	req, _ := http.NewRequest("GET", "", nil)
+	assert.False(t, HasBody(req))
+
+	req.ContentLength = 123
+	assert.True(t, HasBody(req))
+}
+
+func TestMethod(t *testing.T) {
+	testcase := []struct {
+		method      string
+		canHaveBody bool
+		allowsBody  bool
+		isSafe      bool
+	}{
+		{"put", true, true, false},
+		{"post", true, true, false},
+		{"patch", true, true, false},
+		{"delete", true, true, false},
+		{"get", false, true, true},
+		{"options", false, true, false},
+		{"head", false, false, true},
+		{"invalid", false, true, false},
+		{"", false, true, false},
+	}
+
+	for _, tc := range testcase {
+		t.Run(tc.method, func(t *testing.T) {
+			assert.Equal(t, tc.canHaveBody, CanHaveBody(tc.method), "CanHaveBody")
+
+			req := http.Request{Method: tc.method}
+			assert.Equal(t, tc.allowsBody, AllowsBody(&req), "AllowsBody")
+			assert.Equal(t, tc.isSafe, IsSafe(&req), "IsSafe")
+		})
+	}
+}
 
 func TestReadSingle(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "the thing")
-	assert.Equal(t, "the thing", ReadSingleValue(tv(values), "something"))
-	assert.Empty(t, ReadSingleValue(tv(values), "notthere"))
+	assert.Equal(t, "the thing", ReadSingleValue(Values(values), "something"))
+	assert.Empty(t, ReadSingleValue(Values(values), "notthere"))
 }
 
 func TestReadCollection(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "value1,value2")
-	assert.Equal(t, []string{"value1", "value2"}, ReadCollectionValue(tv(values), "something", "csv"))
-	assert.Empty(t, ReadCollectionValue(tv(values), "notthere", ""))
-}
-
-type tv map[string][]string
-
-func (v tv) GetOK(key string) (value []string, hasKey bool, hasValue bool) {
-	value, hasKey = v[key]
-	if !hasKey {
-		return
-	}
-	if len(value) == 0 {
-		return
-	}
-	hasValue = true
-	return
+	assert.Equal(t, []string{"value1", "value2"}, ReadCollectionValue(Values(values), "something", "csv"))
+	assert.Empty(t, ReadCollectionValue(Values(values), "notthere", ""))
 }
