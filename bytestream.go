@@ -76,6 +76,13 @@ func ByteStreamConsumer(opts ...byteStreamOpt) Consumer {
 			return bu.UnmarshalBinary(b)
 		}
 
+		if data != nil {
+			if str, ok := data.(*string); ok {
+				*str = string(b)
+				return nil
+			}
+		}
+
 		if t := reflect.TypeOf(data); data != nil && t.Kind() == reflect.Ptr {
 			v := reflect.Indirect(reflect.ValueOf(data))
 			if t = v.Type(); t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
