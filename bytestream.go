@@ -76,7 +76,7 @@ func ByteStreamConsumer(opts ...byteStreamOpt) Consumer {
 			return bu.UnmarshalBinary(b)
 		}
 
-                if data != nil {
+		if data != nil {
 			if str, ok := data.(string); ok {
 				str = string (b)
 				return nil
