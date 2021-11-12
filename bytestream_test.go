@@ -21,6 +21,12 @@ func TestByteStreamConsumer(t *testing.T) {
 		assert.Equal(t, expected, b.String())
 	}
 
+	//can consume as a string
+	var s string
+	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &s)) {
+		assert.Equal(t, expected, s)
+	}	
+
 	// can consume as an UnmarshalBinary
 	var bu binaryUnmarshalDummy
 	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bu)) {
