@@ -208,8 +208,6 @@ func TestBytestreamConsumer_Close(t *testing.T) {
 		assert.Equal(t, expected, b.String())
 		assert.EqualValues(t, 0, r.calledClose)
 	}
-	
-
 }
 
 func TestBytestreamProducer_Close(t *testing.T) {
