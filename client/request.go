@@ -62,13 +62,15 @@ type request struct {
 	writer      runtime.ClientRequestWriter
 
 	pathParams map[string]string
-	header     http.Header
-	query      url.Values
-	formFields url.Values
-	fileFields map[string][]runtime.NamedReadCloser
-	payload    interface{}
-	timeout    time.Duration
-	buf        *bytes.Buffer
+	// pathParamEscaped indicate should value be escaped, default is true
+	pathParamEscaped map[string]bool
+	header           http.Header
+	query            url.Values
+	formFields       url.Values
+	fileFields       map[string][]runtime.NamedReadCloser
+	payload          interface{}
+	timeout          time.Duration
+	buf              *bytes.Buffer
 
 	getBody func(r *request) []byte
 }
@@ -305,7 +307,13 @@ DoneChoosingBodySource:
 
 	urlPath := path.Join(basePathURL.Path, pathPatternURL.Path)
 	for k, v := range r.pathParams {
-		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1)
+		vUsing := url.PathEscape(v)
+		if escape, ok := r.pathParamEscaped[k]; ok {
+			if escape == false {
+				vUsing = v
+			}
+		}
+		urlPath = strings.Replace(urlPath, "{"+k+"}", vUsing, -1)
 	}
 	if reinstateSlash {
 		urlPath = urlPath + "/"
@@ -419,6 +427,15 @@ func (r *request) SetPathParam(name string, value string) error {
 	}
 
 	r.pathParams[name] = value
+	return nil
+}
+
+func (r *request) SetPathParamEscaped(name string, escape bool) error {
+	if r.pathParamEscaped == nil {
+		r.pathParamEscaped = make(map[string]bool)
+	}
+
+	r.pathParamEscaped[name] = escape
 	return nil
 }
 

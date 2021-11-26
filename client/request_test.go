@@ -517,6 +517,27 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	}
 }
 
+func TestBuildRequest_BuildHTTP_EscapedPathWithUnescape(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		_ = req.SetBodyParam(nil)
+		_ = req.SetQueryParam("hello", "world")
+		_ = req.SetPathParam("id", "foo/bar")
+		_ = req.SetPathParamEscaped("id", false)
+		_ = req.SetHeaderParam("X-Rate-Limit", "200")
+		return nil
+	})
+	r, _ := newRequest("POST", "/flats/{id}/", reqWrtr)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+		assert.Equal(t, "world", req.URL.Query().Get("hello"))
+		assert.Equal(t, "/basepath/flats/foo/bar/", req.URL.Path)
+		assert.Equal(t, "", req.URL.RawPath)
+		assert.Equal(t, runtime.JSONMime, req.Header.Get(runtime.HeaderContentType))
+	}
+}
+
 func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetBodyParam(nil)

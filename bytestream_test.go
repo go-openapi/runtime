@@ -25,7 +25,7 @@ func TestByteStreamConsumer(t *testing.T) {
 	var s string
 	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &s)) {
 		assert.Equal(t, expected, s)
-	}	
+	}
 
 	// can consume as an UnmarshalBinary
 	var bu binaryUnmarshalDummy
