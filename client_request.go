@@ -50,7 +50,7 @@ type ClientRequest interface {
 
 	SetPathParam(string, string) error
 
-	SetPathParamEscaped(name string, escape bool) error
+	SetPathParamEscaped(string, bool) error
 
 	GetQueryParams() url.Values
 
@@ -123,7 +123,7 @@ func (t *TestClientRequest) SetFormParam(_ string, _ ...string) error { return n
 
 func (t *TestClientRequest) SetPathParam(_ string, _ string) error { return nil }
 
-func (t *TestClientRequest) SetPathParamEscaped(name string, escape bool) error {
+func (t *TestClientRequest) SetPathParamEscaped(_ string, _ bool) error {
 	return nil
 }
 
