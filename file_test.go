@@ -1,20 +1,28 @@
 package runtime
 
 import (
-	"io"
 	"testing"
 
+	"github.com/go-openapi/spec"
+	"github.com/go-openapi/validate"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFileImplementsIOReader(t *testing.T) {
-	var file interface{} = &File{}
-	expected := "that File implements io.Reader"
-	assert.Implements(t, new(io.Reader), file, expected)
-}
+func TestValidateFile(t *testing.T) {
+	fileParam := spec.FileParam("f")
+	validator := validate.NewParamValidator(fileParam, nil)
 
-func TestFileImplementsIOReadCloser(t *testing.T) {
-	var file interface{} = &File{}
-	expected := "that File implements io.ReadCloser"
-	assert.Implements(t, new(io.ReadCloser), file, expected)
+	result := validator.Validate("str")
+	assert.Equal(t, 1, len(result.Errors))
+	assert.Equal(
+		t,
+		`f in formData must be of type file: "string"`,
+		result.Errors[0].Error(),
+	)
+
+	result = validator.Validate(&File{})
+	assert.True(t, result.IsValid())
+
+	result = validator.Validate(File{})
+	assert.True(t, result.IsValid())
 }
