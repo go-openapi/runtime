@@ -144,7 +144,6 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
-		assert.Equal(t, runtime.JSONMime, req.Header.Get(runtime.HeaderContentType))
 	}
 }
 
@@ -492,7 +491,6 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 		assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
-		assert.Equal(t, runtime.JSONMime, req.Header.Get(runtime.HeaderContentType))
 	}
 }
 
@@ -513,7 +511,6 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 		assert.Equal(t, "/basepath/flats/1234/?*&^%/", req.URL.Path)
 		assert.Equal(t, "/basepath/flats/1234%2F%3F%2A&%5E%25/", req.URL.RawPath)
 		assert.Equal(t, req.URL.RawPath, req.URL.EscapedPath())
-		assert.Equal(t, runtime.JSONMime, req.Header.Get(runtime.HeaderContentType))
 	}
 }
 
