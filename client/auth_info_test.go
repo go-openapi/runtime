@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +31,7 @@ func TestBasicAuth(t *testing.T) {
 
 	req := new(http.Request)
 	req.Header = make(http.Header)
-	req.Header.Set("Authorization", r.header.Get("Authorization"))
+	req.Header.Set(runtime.HeaderAuthorization, r.header.Get(runtime.HeaderAuthorization))
 	usr, pw, ok := req.BasicAuth()
 	if assert.True(t, ok) {
 		assert.Equal(t, "someone", usr)
@@ -65,7 +66,7 @@ func TestBearerTokenAuth(t *testing.T) {
 	err := writer.AuthenticateRequest(r, nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "Bearer the-shared-token", r.header.Get("Authorization"))
+	assert.Equal(t, "Bearer the-shared-token", r.header.Get(runtime.HeaderAuthorization))
 }
 
 func TestCompose(t *testing.T) {
