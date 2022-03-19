@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestValidBearerAuth(t *testing.T) {
 	assert.Equal(t, OAuth2SchemeName(req1), "owners_auth")
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
-	req2.Header.Set("Authorization", "Bearer token123")
+	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token123")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	assert.True(t, ok)
@@ -76,7 +77,7 @@ func TestInvalidBearerAuth(t *testing.T) {
 	assert.Error(t, err)
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
-	req2.Header.Set("Authorization", "Bearer token124")
+	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token124")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	assert.True(t, ok)
@@ -117,7 +118,7 @@ func TestMissingBearerAuth(t *testing.T) {
 	assert.NoError(t, err)
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
-	req2.Header.Set("Authorization", "Beare token123")
+	req2.Header.Set(runtime.HeaderAuthorization, "Beare token123")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	assert.False(t, ok)
@@ -170,7 +171,7 @@ func TestValidBearerAuthCtx(t *testing.T) {
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	req2.Header.Set("Authorization", "Bearer token123")
+	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token123")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	assert.True(t, ok)
@@ -229,7 +230,7 @@ func TestInvalidBearerAuthCtx(t *testing.T) {
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	req2.Header.Set("Authorization", "Bearer token124")
+	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token124")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	assert.True(t, ok)
@@ -284,7 +285,7 @@ func TestMissingBearerAuthCtx(t *testing.T) {
 	assert.Nil(t, req1.Context().Value(extra))
 
 	req2, _ := http.NewRequest("GET", "/blah", nil)
-	req2.Header.Set("Authorization", "Beare token123")
+	req2.Header.Set(runtime.HeaderAuthorization, "Beare token123")
 
 	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))

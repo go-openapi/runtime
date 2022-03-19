@@ -717,8 +717,8 @@ func TestRuntime_AuthCanary(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Authorization") != "Bearer the-super-secret-token" {
-			rw.WriteHeader(400)
+		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
+			rw.WriteHeader(401)
 			return
 		}
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
@@ -818,7 +818,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Authorization") != "Bearer the-super-secret-token" {
+		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
 			rw.WriteHeader(400)
 			return
 		}
@@ -870,7 +870,7 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Authorization") != "Bearer the-super-secret-token" {
+		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
 			rw.WriteHeader(400)
 			return
 		}
@@ -1107,6 +1107,56 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.IsType(t, []byte{}, res)
 		actual := res.([]byte)
+		assert.EqualValues(t, result, actual)
+	}
+}
+
+func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
+	// test that it can make a simple request
+	// and get the response for it.
+	// defaults all the way down
+	result := []task{
+		{false, "task 1 content", 1},
+		{false, "task 2 content", 2},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
+			rw.WriteHeader(401)
+			return
+		}
+		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
+		rw.WriteHeader(http.StatusOK)
+		jsongen := json.NewEncoder(rw)
+		_ = jsongen.Encode(result)
+	}))
+	defer server.Close()
+
+	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetHeaderParam(runtime.HeaderAuthorization, "Bearer the-super-secret-token")
+	})
+
+	hu, _ := url.Parse(server.URL)
+
+	rt := New(hu.Host, "/", []string{"http"})
+	rt.DefaultAuthentication = BearerToken("not-the-super-secret-token")
+	res, err := rt.Submit(&runtime.ClientOperation{
+		ID:     "getTasks",
+		Params: rwrtr,
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+			if response.Code() == 200 {
+				var result []task
+				if err := consumer.Consume(response.Body(), &result); err != nil {
+					return nil, err
+				}
+				return result, nil
+			}
+			return nil, errors.New("Generic error")
+		}),
+	})
+
+	if assert.NoError(t, err) {
+		assert.IsType(t, []task{}, res)
+		actual := res.([]task)
 		assert.EqualValues(t, result, actual)
 	}
 }
