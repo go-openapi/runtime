@@ -16,8 +16,11 @@ package runtime
 
 import (
 	"bytes"
+	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,4 +63,28 @@ func TestResponseReaderFunc(t *testing.T) {
 	assert.Equal(t, "the message", actual.Message)
 	assert.Equal(t, "the header", actual.Header)
 	assert.Equal(t, 490, actual.Code)
+}
+
+func TestResponseReaderFuncError(t *testing.T) {
+	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (interface{}, error) {
+		_, _ = ioutil.ReadAll(r.Body())
+		return nil, NewAPIError("fake", errors.New("writer closed"), 490)
+	})
+	_, err := reader.ReadResponse(response{}, nil)
+	assert.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "writer closed"), err.Error())
+
+	reader = func(r ClientResponse, _ Consumer) (interface{}, error) {
+		_, _ = ioutil.ReadAll(r.Body())
+		err := &fs.PathError{
+			Op:   "write",
+			Path: "path/to/fake",
+			Err:  fs.ErrClosed,
+		}
+		return nil, NewAPIError("fake", err, 200)
+	}
+	_, err = reader.ReadResponse(response{}, nil)
+	assert.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "file already closed"), err.Error())
+
 }
