@@ -176,7 +176,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
 
 			// Using require.Len prints the (very large and incomprehensible)
 			// Subjects list on failure, so instead use require.Equal.
-			require.Equal(t, 1, len(cfg.RootCAs.Subjects()))
+			require.Equal(t, 1, len(cfg.RootCAs.Subjects())) // nolint:staticcheck
 		}
 	}
 }
@@ -199,7 +199,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
 		pool, err = x509.SystemCertPool()
 		require.NoError(t, err)
 	}
-	startingCertCount := len(pool.Subjects())
+	startingCertCount := len(pool.Subjects()) // nolint:staticcheck
 
 	var opts TLSClientOptions
 	opts.LoadedCAPool = pool
@@ -212,7 +212,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
 
 			// Using require.Len prints the (very large and incomprehensible)
 			// Subjects list on failure, so instead use require.Equal.
-			require.Equal(t, startingCertCount+1, len(cfg.RootCAs.Subjects()))
+			require.Equal(t, startingCertCount+1, len(cfg.RootCAs.Subjects())) // nolint:staticcheck
 		}
 	}
 }
