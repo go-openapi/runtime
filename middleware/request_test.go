@@ -406,7 +406,7 @@ type fileRequest struct {
 func paramsForFileUpload() *UntypedRequestBinder {
 	nameParam := spec.FormDataParam("name").Typed("string", "")
 
-	fileParam := spec.FileParam("file")
+	fileParam := spec.FileParam("file").AsRequired()
 
 	params := map[string]spec.Parameter{"Name": *nameParam, "File": *fileParam}
 	return NewUntypedRequestBinder(params, new(spec.Swagger), strfmt.Default)
@@ -469,4 +469,63 @@ func TestBindingFileUpload(t *testing.T) {
 
 	data = fileRequest{}
 	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+
+	writer = multipart.NewWriter(body)
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	req, _ = http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	data = fileRequest{}
+	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+}
+
+func paramsForOptionalFileUpload() *UntypedRequestBinder {
+	nameParam := spec.FormDataParam("name").Typed("string", "")
+	fileParam := spec.FileParam("file").AsOptional()
+
+	params := map[string]spec.Parameter{"Name": *nameParam, "File": *fileParam}
+	return NewUntypedRequestBinder(params, new(spec.Swagger), strfmt.Default)
+}
+
+func TestBindingOptionalFileUpload(t *testing.T) {
+	binder := paramsForOptionalFileUpload()
+
+	body := bytes.NewBuffer(nil)
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	urlStr := "http://localhost:8002/hello"
+	req, _ := http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	data := fileRequest{}
+	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.Equal(t, "the-name", data.Name)
+	assert.Nil(t, data.File.Data)
+	assert.Nil(t, data.File.Header)
+
+	writer = multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "plain-jane.txt")
+	assert.NoError(t, err)
+	_, _ = part.Write([]byte("the file contents"))
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	req, _ = http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	assert.NoError(t, writer.Close())
+
+	data = fileRequest{}
+	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.Equal(t, "the-name", data.Name)
+	assert.NotNil(t, data.File)
+	assert.NotNil(t, data.File.Header)
+	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
+
+	bb, err := ioutil.ReadAll(data.File.Data)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("the file contents"), bb)
 }
