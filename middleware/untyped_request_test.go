@@ -111,6 +111,54 @@ func TestUntypedFileUpload(t *testing.T) {
 
 	data = make(map[string]interface{})
 	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+
+	writer = multipart.NewWriter(body)
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	req, _ = http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	data = make(map[string]interface{})
+	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+}
+
+func TestUntypedOptionalFileUpload(t *testing.T) {
+	binder := paramsForOptionalFileUpload()
+
+	body := bytes.NewBuffer(nil)
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	urlStr := "http://localhost:8002/hello"
+	req, _ := http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	data := make(map[string]interface{})
+	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.Equal(t, "the-name", data["name"])
+
+	writer = multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "plain-jane.txt")
+	assert.NoError(t, err)
+	_, _ = part.Write([]byte("the file contents"))
+	_ = writer.WriteField("name", "the-name")
+	assert.NoError(t, writer.Close())
+
+	req, _ = http.NewRequest("POST", urlStr, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	assert.NoError(t, writer.Close())
+
+	data = make(map[string]interface{})
+	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.Equal(t, "the-name", data["name"])
+	assert.NotNil(t, data["file"])
+	assert.IsType(t, runtime.File{}, data["file"])
+	file := data["file"].(runtime.File)
+	assert.NotNil(t, file.Header)
+	assert.Equal(t, "plain-jane.txt", file.Header.Filename)
+
 }
 
 func TestUntypedBindingTypesForValid(t *testing.T) {
