@@ -31,13 +31,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/opentracing/opentracing-go"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/yamlpc"
+	"github.com/go-openapi/strfmt"
+	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
@@ -299,6 +299,14 @@ func NewWithClient(host, basePath string, schemes []string, client *http.Client)
 // The provided opts are applied to each spans - for example to add global tags.
 func (r *Runtime) WithOpenTracing(opts ...opentracing.StartSpanOption) runtime.ClientTransport {
 	return newOpenTracingTransport(r, r.Host, opts)
+}
+
+// WithOpenTelemetry adds opentelemetry support to the provided runtime.
+// A new client span is created for each request.
+// If the context of the client operation does not contain an active span, no span is created.
+// The provided opts are applied to each spans - for example to add global tags.
+func (r *Runtime) WithOpenTelemetry(opts ...trace.SpanStartOption) runtime.ClientTransport {
+	return newOpenTelemetryTransport(r, r.Host, opts)
 }
 
 func (r *Runtime) pickScheme(schemes []string) string {
