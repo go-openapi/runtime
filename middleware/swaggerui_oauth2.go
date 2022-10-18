@@ -118,5 +118,5 @@ const (
 </script>
 </body>
 </html>
-	`
+`
 )
