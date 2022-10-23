@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -63,7 +64,7 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 	return submit, err
 }
 
-func createOpenTelemetryClientSpan(op *runtime.ClientOperation, header http.Header, host string, opts []trace.SpanStartOption) trace.Span {
+func createOpenTelemetryClientSpan(op *runtime.ClientOperation, _ http.Header, _ string, opts []trace.SpanStartOption) trace.Span {
 	ctx := op.Context
 	span := trace.SpanFromContext(ctx)
 
@@ -73,6 +74,12 @@ func createOpenTelemetryClientSpan(op *runtime.ClientOperation, header http.Head
 
 		ctx, span = tracer.Start(ctx, operationName(op), opts...)
 		op.Context = ctx
+
+		span.SetAttributes(
+			attribute.String("http.path", op.PathPattern),
+			attribute.String("http.method", op.Method),
+			attribute.String("span.kind", trace.SpanKindClient.String()),
+		)
 
 		return span
 	}

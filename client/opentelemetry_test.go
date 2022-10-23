@@ -4,14 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/go-openapi/runtime"
 )
 
 func Test_OpenTelemetryRuntime_submit(t *testing.T) {
@@ -81,15 +82,15 @@ func testOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, e
 	if expectedSpanCount == 1 {
 		span := spans[0]
 		assert.Equal(t, "getCluster", span.Name)
-		// assert.Equal(t, map[string]interface{}{
-		// 	"component":        "go-openapi",
-		// 	"http.method":      "GET",
-		// 	"http.path":        "/kubernetes-clusters/{cluster_id}",
-		// 	"http.status_code": uint16(490),
-		// 	"peer.hostname":    "remote_host",
-		// 	"peer.service":     "service",
-		// 	"span.kind":        ext.SpanKindRPCClientEnum,
-		// 	"error":            true,
-		// }, span.Tags())
+		assert.Equal(t, []attribute.KeyValue{
+			// "component":        "go-openapi",
+			attribute.String("http.path", "/kubernetes-clusters/{cluster_id}"),
+			attribute.String("http.method", "GET"),
+			attribute.String("span.kind", trace.SpanKindClient.String()),
+			// // "http.status_code": uint16(490),
+			// "peer.hostname": "remote_host",
+			// "peer.service":  "service",
+			// "error":         true,
+		}, span.Attributes)
 	}
 }
