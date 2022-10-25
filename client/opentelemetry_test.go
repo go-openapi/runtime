@@ -10,6 +10,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -30,7 +31,7 @@ func Test_OpenTelemetryRuntime_submit(t *testing.T) {
 	tracer := tp.Tracer("go-runtime")
 	ctx, _ := tracer.Start(context.Background(), "op")
 
-	testOpenTelemetrySubmit(t, testOperation(ctx), exporter, 1)
+	assertOpenTelemetrySubmit(t, testOperation(ctx), exporter, 1)
 }
 
 // func Test_OpenTelemetryRuntime_submit_nilAuthInfo(t *testing.T) {
@@ -62,7 +63,7 @@ func Test_OpenTelemetryRuntime_submit(t *testing.T) {
 // 	assert.Len(t, header, 3)
 // }
 
-func testOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, exporter *tracetest.InMemoryExporter, expectedSpanCount int) {
+func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, exporter *tracetest.InMemoryExporter, expectedSpanCount int) {
 	header := map[string][]string{}
 	r := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
 		"remote_host",
@@ -82,12 +83,14 @@ func testOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, e
 	if expectedSpanCount == 1 {
 		span := spans[0]
 		assert.Equal(t, "getCluster", span.Name)
+		assert.Equal(t, span.Status.Code, codes.Error)
 		assert.Equal(t, []attribute.KeyValue{
 			// "component":        "go-openapi",
-			attribute.String("http.path", "/kubernetes-clusters/{cluster_id}"),
+			attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
 			attribute.String("http.method", "GET"),
 			attribute.String("span.kind", trace.SpanKindClient.String()),
-			// // "http.status_code": uint16(490),
+			attribute.String("http.scheme", "https"),
+			attribute.Int("http.status_code", 490),
 			// "peer.hostname": "remote_host",
 			// "peer.service":  "service",
 			// "error":         true,

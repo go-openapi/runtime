@@ -7,6 +7,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -16,8 +18,7 @@ type openTelemetryTransport struct {
 	opts      []trace.SpanStartOption
 }
 
-func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, opts []trace.SpanStartOption,
-) runtime.ClientTransport {
+func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, opts []trace.SpanStartOption) runtime.ClientTransport {
 	return &openTelemetryTransport{
 		transport: transport,
 		host:      host,
@@ -46,21 +47,21 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 	})
 
 	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-		// if span != nil {
-		// 	code := response.Code()
-		// 	ext.HTTPStatusCode.Set(span, uint16(code))
-		// 	if code >= http.StatusBadRequest {
-		// 		ext.Error.Set(span, true)
-		// 	}
-		// }
+		if span != nil {
+			statusCode := response.Code()
+			span.SetAttributes(attribute.Int(string(semconv.HTTPStatusCodeKey), statusCode))
+			span.SetStatus(semconv.SpanStatusFromHTTPStatusCodeAndSpanKind(statusCode, trace.SpanKindClient))
+		}
+
 		return reader.ReadResponse(response, consumer)
 	})
 
 	submit, err := t.transport.Submit(op)
-	// if err != nil && span != nil {
-	// 	ext.Error.Set(span, true)
-	// 	span.LogFields(log.Error(err))
-	// }
+	if err != nil && span != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "")
+	}
+
 	return submit, err
 }
 
@@ -76,9 +77,11 @@ func createOpenTelemetryClientSpan(op *runtime.ClientOperation, _ http.Header, _
 		op.Context = ctx
 
 		span.SetAttributes(
-			attribute.String("http.path", op.PathPattern),
-			attribute.String("http.method", op.Method),
+			attribute.String(string(semconv.HTTPRouteKey), op.PathPattern),
+			attribute.String(string(semconv.HTTPMethodKey), op.Method),
 			attribute.String("span.kind", trace.SpanKindClient.String()),
+			//TODO: Get scheme reliably from header
+			attribute.String("http.scheme", "https"),
 		)
 
 		return span
