@@ -86,12 +86,12 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 		assert.Equal(t, span.Status.Code, codes.Error)
 		assert.Equal(t, []attribute.KeyValue{
 			// "component":        "go-openapi",
+			attribute.String("net.peer.name", "remote_host"),
 			attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
 			attribute.String("http.method", "GET"),
 			attribute.String("span.kind", trace.SpanKindClient.String()),
 			attribute.String("http.scheme", "https"),
 			attribute.Int("http.status_code", 490),
-			// "peer.hostname": "remote_host",
 			// "peer.service":  "service",
 			// "error":         true,
 		}, span.Attributes)
