@@ -67,14 +67,18 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 
 func createOpenTelemetryClientSpan(op *runtime.ClientOperation, _ http.Header, host string, opts []trace.SpanStartOption) trace.Span {
 	ctx := op.Context
-	span := trace.SpanFromContext(ctx)
-
-	if span != nil {
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
 		// TODO: Can we get the version number for use with trace.WithInstrumentationVersion?
 		tracer := otel.GetTracerProvider().Tracer("")
 
 		ctx, span = tracer.Start(ctx, operationName(op), opts...)
 		op.Context = ctx
+
+		//TODO: There's got to be a better way to do this without the request, right?
+		var scheme string
+		if len(op.Schemes) == 1 {
+			scheme = op.Schemes[0]
+		}
 
 		span.SetAttributes(
 			attribute.String("net.peer.name", host),
@@ -82,8 +86,7 @@ func createOpenTelemetryClientSpan(op *runtime.ClientOperation, _ http.Header, h
 			attribute.String(string(semconv.HTTPRouteKey), op.PathPattern),
 			attribute.String(string(semconv.HTTPMethodKey), op.Method),
 			attribute.String("span.kind", trace.SpanKindClient.String()),
-			//TODO: Figure out the best way to get the scheme?
-			attribute.String("http.scheme", op.Schemes[0]),
+			attribute.String("http.scheme", scheme),
 		)
 
 		return span

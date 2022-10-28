@@ -31,13 +31,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/yamlpc"
 	"github.com/go-openapi/strfmt"
-	"github.com/opentracing/opentracing-go"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
