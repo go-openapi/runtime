@@ -34,23 +34,43 @@ func Test_OpenTelemetryRuntime_submit(t *testing.T) {
 	assertOpenTelemetrySubmit(t, testOperation(ctx), exporter, 1)
 }
 
-// func Test_OpenTelemetryRuntime_submit_nilAuthInfo(t *testing.T) {
-// 	t.Parallel()
-// 	tracer := mocktracer.New()
-// 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
-// 	operation := testOperation(ctx)
-// 	operation.AuthInfo = nil
-// 	testOpenTelemetrySubmit(t, operation, tracer, 1)
-// }
+func Test_OpenTelemetryRuntime_submit_nilAuthInfo(t *testing.T) {
+	t.Parallel()
 
-// func Test_OpenTelemetryRuntime_submit_nilContext(t *testing.T) {
-// 	t.Parallel()
-// 	tracer := mocktracer.New()
-// 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
-// 	operation := testOperation(ctx)
-// 	operation.Context = nil
-// 	testOpenTelemetrySubmit(t, operation, tracer, 0) // just don't panic
-// }
+	exporter := tracetest.NewInMemoryExporter()
+
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
+		tracesdk.WithSyncer(exporter),
+	)
+
+	otel.SetTracerProvider(tp)
+
+	tracer := tp.Tracer("go-runtime")
+	ctx, _ := tracer.Start(context.Background(), "op")
+
+	operation := testOperation(ctx)
+	operation.AuthInfo = nil
+	assertOpenTelemetrySubmit(t, operation, exporter, 1)
+}
+
+func Test_OpenTelemetryRuntime_submit_nilContext(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
+		tracesdk.WithSyncer(exporter),
+	)
+
+	otel.SetTracerProvider(tp)
+
+	tracer := tp.Tracer("go-runtime")
+	ctx, _ := tracer.Start(context.Background(), "op")
+	operation := testOperation(ctx)
+	operation.Context = nil
+
+	assertOpenTelemetrySubmit(t, operation, exporter, 0) // just don't panic
+}
 
 // func Test_injectOpenTelemetrySpanContext(t *testing.T) {
 // 	t.Parallel()
@@ -68,11 +88,6 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 	r := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
 		"remote_host",
 		[]trace.SpanStartOption{})
-
-	// // opentracing.Tag{
-	// 	Key:   string(ext.PeerService),
-	// 	Value: "service",
-	// }
 
 	_, err := r.Submit(operation)
 	require.NoError(t, err)
