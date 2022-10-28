@@ -59,7 +59,7 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 	submit, err := t.transport.Submit(op)
 	if err != nil && span != nil {
 		span.RecordError(err)
-		span.SetStatus(codes.Error, "")
+		span.SetStatus(codes.Error, err.Error())
 	}
 
 	return submit, err
