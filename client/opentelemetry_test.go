@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -71,22 +72,36 @@ func Test_OpenTelemetryRuntime_submit_nilContext(t *testing.T) {
 	assertOpenTelemetrySubmit(t, operation, exporter, 0) // just don't panic
 }
 
-// func Test_injectOpenTelemetrySpanContext(t *testing.T) {
-// 	t.Parallel()
-// 	tracer := mocktracer.New()
-// 	_, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "op")
-// 	header := map[string][]string{}
-// 	createOpenTelemetryClientSpan(testOperation(ctx), header, "", nil)
+func Test_injectOpenTelemetrySpanContext(t *testing.T) {
+	t.Parallel()
 
-// 	// values are random - just check that something was injected
-// 	assert.Len(t, header, 3)
-// }
+	exporter := tracetest.NewInMemoryExporter()
+
+	tp := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
+		tracesdk.WithSyncer(exporter),
+	)
+
+	otel.SetTracerProvider(tp)
+
+	tracer := tp.Tracer("go-runtime")
+	ctx, _ := tracer.Start(context.Background(), "op")
+	operation := testOperation(ctx)
+
+	header := map[string][]string{}
+	tr := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}}, "", nil)
+	tr.propagator = propagation.TraceContext{}
+	tr.Submit(operation)
+
+	// values are random - just check that something was injected
+	assert.Len(t, header, 1)
+}
 
 func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, exporter *tracetest.InMemoryExporter, expectedSpanCount int) {
 	header := map[string][]string{}
 	r := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
 		"remote_host",
-		[]trace.SpanStartOption{})
+		nil)
 
 	_, err := r.Submit(operation)
 	require.NoError(t, err)
