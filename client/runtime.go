@@ -305,7 +305,7 @@ func (r *Runtime) WithOpenTracing(opts ...opentracing.StartSpanOption) runtime.C
 // A new client span is created for each request.
 // If the context of the client operation does not contain an active span, no span is created.
 // The provided opts are applied to each spans - for example to add global tags.
-func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOption) runtime.ClientTransport {
+func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOpt) runtime.ClientTransport {
 	return newOpenTelemetryTransport(r, r.Host, opts)
 }
 

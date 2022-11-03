@@ -1,7 +1,9 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
@@ -17,11 +19,11 @@ type config struct {
 	Tracer            trace.Tracer
 	Propagators       propagation.TextMapPropagator
 	SpanStartOptions  []trace.SpanStartOption
-	SpanNameFormatter func(string, *http.Request) string
+	SpanNameFormatter func(*runtime.ClientOperation) string
 	TracerProvider    trace.TracerProvider
 }
 
-type OpenTelemetryOption interface {
+type OpenTelemetryOpt interface {
 	apply(*config)
 }
 
@@ -33,7 +35,7 @@ func (o optionFunc) apply(c *config) {
 
 // WithTracerProvider specifies a tracer provider to use for creating a tracer.
 // If none is specified, the global provider is used.
-func WithTracerProvider(provider trace.TracerProvider) OpenTelemetryOption {
+func WithTracerProvider(provider trace.TracerProvider) OpenTelemetryOpt {
 	return optionFunc(func(c *config) {
 		if provider != nil {
 			c.TracerProvider = provider
@@ -43,7 +45,7 @@ func WithTracerProvider(provider trace.TracerProvider) OpenTelemetryOption {
 
 // WithPropagators configures specific propagators. If this
 // option isn't specified, then the global TextMapPropagator is used.
-func WithPropagators(ps propagation.TextMapPropagator) OpenTelemetryOption {
+func WithPropagators(ps propagation.TextMapPropagator) OpenTelemetryOpt {
 	return optionFunc(func(c *config) {
 		if ps != nil {
 			c.Propagators = ps
@@ -53,10 +55,26 @@ func WithPropagators(ps propagation.TextMapPropagator) OpenTelemetryOption {
 
 // WithSpanOptions configures an additional set of
 // trace.SpanOptions, which are applied to each new span.
-func WithSpanOptions(opts ...trace.SpanStartOption) OpenTelemetryOption {
+func WithSpanOptions(opts ...trace.SpanStartOption) OpenTelemetryOpt {
 	return optionFunc(func(c *config) {
 		c.SpanStartOptions = append(c.SpanStartOptions, opts...)
 	})
+}
+
+// WithSpanNameFormatter takes a function that will be called on every
+// request and the returned string will become the Span Name.
+func WithSpanNameFormatter(f func(op *runtime.ClientOperation) string) OpenTelemetryOpt {
+	return optionFunc(func(c *config) {
+		c.SpanNameFormatter = f
+	})
+}
+
+func defaultTransportFormatter(op *runtime.ClientOperation) string {
+	if op.ID != "" {
+		return op.ID
+	}
+
+	return fmt.Sprintf("%s_%s", strings.ToLower(op.Method), op.PathPattern)
 }
 
 type openTelemetryTransport struct {
@@ -70,7 +88,7 @@ type openTelemetryTransport struct {
 }
 
 // newConfig creates a new config struct and applies opts to it.
-func newConfig(opts ...OpenTelemetryOption) *config {
+func newConfig(opts ...OpenTelemetryOpt) *config {
 	c := &config{
 		Propagators: otel.GetTextMapPropagator(),
 	}
@@ -87,7 +105,7 @@ func newConfig(opts ...OpenTelemetryOption) *config {
 	return c
 }
 
-func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, opts []OpenTelemetryOption) *openTelemetryTransport {
+func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, opts []OpenTelemetryOpt) *openTelemetryTransport {
 	t := &openTelemetryTransport{
 		transport:  transport,
 		host:       host,
@@ -95,7 +113,12 @@ func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, o
 		propagator: otel.GetTextMapPropagator(),
 	}
 
-	c := newConfig(opts...)
+	defaultOpts := []OpenTelemetryOpt{
+		WithSpanOptions(trace.WithSpanKind(trace.SpanKindClient)),
+		WithSpanNameFormatter(defaultTransportFormatter),
+	}
+
+	c := newConfig(append(defaultOpts, opts...)...)
 	t.config = c
 
 	return t
@@ -152,7 +175,7 @@ func (t *openTelemetryTransport) newOpenTelemetrySpan(op *runtime.ClientOperatio
 		}
 	}
 
-	ctx, span := tracer.Start(ctx, operationName(op), t.spanStartOptions...)
+	ctx, span := tracer.Start(ctx, t.config.SpanNameFormatter(op), t.spanStartOptions...)
 
 	// TODO: Can we get the underlying request so we can wire these bits up easily?
 	// span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest()...)
