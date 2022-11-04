@@ -90,20 +90,17 @@ func Test_injectOpenTelemetrySpanContext(t *testing.T) {
 
 	header := map[string][]string{}
 	tr := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}}, "", nil)
-	tr.propagator = propagation.TraceContext{}
+	tr.config.Propagator = propagation.TraceContext{}
 	tr.Submit(operation)
 
-	// values are random - just check that something was injected
 	assert.Len(t, header, 1)
 }
 
 func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation, exporter *tracetest.InMemoryExporter, expectedSpanCount int) {
 	header := map[string][]string{}
-	r := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}},
-		"remote_host",
-		nil)
+	tr := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}}, "remote_host", nil)
 
-	_, err := r.Submit(operation)
+	_, err := tr.Submit(operation)
 	require.NoError(t, err)
 
 	spans := exporter.GetSpans()
@@ -112,17 +109,15 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 	if expectedSpanCount == 1 {
 		span := spans[0]
 		assert.Equal(t, "getCluster", span.Name)
+		assert.Equal(t, "go-openapi", span.InstrumentationLibrary.Name)
 		assert.Equal(t, span.Status.Code, codes.Error)
 		assert.Equal(t, []attribute.KeyValue{
-			// "component":        "go-openapi",
 			attribute.String("net.peer.name", "remote_host"),
 			attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
 			attribute.String("http.method", "GET"),
 			attribute.String("span.kind", trace.SpanKindClient.String()),
 			attribute.String("http.scheme", "https"),
 			attribute.Int("http.status_code", 490),
-			// "peer.service":  "service",
-			// "error":         true,
 		}, span.Attributes)
 	}
 }

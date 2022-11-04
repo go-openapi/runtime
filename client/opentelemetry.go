@@ -15,9 +15,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	instrumentationVersion = "1.0.0"
+	tracerName             = "go-openapi"
+)
+
 type config struct {
 	Tracer            trace.Tracer
-	Propagators       propagation.TextMapPropagator
+	Propagator        propagation.TextMapPropagator
 	SpanStartOptions  []trace.SpanStartOption
 	SpanNameFormatter func(*runtime.ClientOperation) string
 	TracerProvider    trace.TracerProvider
@@ -48,7 +53,7 @@ func WithTracerProvider(provider trace.TracerProvider) OpenTelemetryOpt {
 func WithPropagators(ps propagation.TextMapPropagator) OpenTelemetryOpt {
 	return optionFunc(func(c *config) {
 		if ps != nil {
-			c.Propagators = ps
+			c.Propagator = ps
 		}
 	})
 }
@@ -78,50 +83,29 @@ func defaultTransportFormatter(op *runtime.ClientOperation) string {
 }
 
 type openTelemetryTransport struct {
-	transport        runtime.ClientTransport
-	host             string
-	spanStartOptions []trace.SpanStartOption
-	propagator       propagation.TextMapPropagator
-	provider         trace.TracerProvider
-	tracer           trace.Tracer
-	config           *config
-}
-
-// newConfig creates a new config struct and applies opts to it.
-func newConfig(opts ...OpenTelemetryOpt) *config {
-	c := &config{
-		Propagators: otel.GetTextMapPropagator(),
-	}
-
-	for _, opt := range opts {
-		opt.apply(c)
-	}
-
-	// Tracer is only initialized if manually specified. Otherwise, can be passed with the tracing context.
-	if c.TracerProvider != nil {
-		c.Tracer = newTracer(c.TracerProvider)
-	}
-
-	return c
+	transport runtime.ClientTransport
+	host      string
+	tracer    trace.Tracer
+	config    *config
 }
 
 func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, opts []OpenTelemetryOpt) *openTelemetryTransport {
-	t := &openTelemetryTransport{
-		transport:  transport,
-		host:       host,
-		provider:   otel.GetTracerProvider(),
-		propagator: otel.GetTextMapPropagator(),
+	tr := &openTelemetryTransport{
+		transport: transport,
+		host:      host,
 	}
 
 	defaultOpts := []OpenTelemetryOpt{
 		WithSpanOptions(trace.WithSpanKind(trace.SpanKindClient)),
 		WithSpanNameFormatter(defaultTransportFormatter),
+		WithPropagators(otel.GetTextMapPropagator()),
+		WithTracerProvider(otel.GetTracerProvider()),
 	}
 
 	c := newConfig(append(defaultOpts, opts...)...)
-	t.config = c
+	tr.config = c
 
-	return t
+	return tr
 }
 
 func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{}, error) {
@@ -175,18 +159,15 @@ func (t *openTelemetryTransport) newOpenTelemetrySpan(op *runtime.ClientOperatio
 		}
 	}
 
-	ctx, span := tracer.Start(ctx, t.config.SpanNameFormatter(op), t.spanStartOptions...)
+	ctx, span := tracer.Start(ctx, t.config.SpanNameFormatter(op), t.config.SpanStartOptions...)
 
-	// TODO: Can we get the underlying request so we can wire these bits up easily?
-	// span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest()...)
 	var scheme string
-	if len(op.Schemes) == 1 {
+	if len(op.Schemes) > 0 {
 		scheme = op.Schemes[0]
 	}
 
 	span.SetAttributes(
 		attribute.String("net.peer.name", t.host),
-		// attribute.String("net.peer.port", ""),
 		attribute.String(string(semconv.HTTPRouteKey), op.PathPattern),
 		attribute.String(string(semconv.HTTPMethodKey), op.Method),
 		attribute.String("span.kind", trace.SpanKindClient.String()),
@@ -194,11 +175,38 @@ func (t *openTelemetryTransport) newOpenTelemetrySpan(op *runtime.ClientOperatio
 	)
 
 	carrier := propagation.HeaderCarrier(header)
-	t.propagator.Inject(ctx, carrier)
+	t.config.Propagator.Inject(ctx, carrier)
 
 	return span
 }
 
 func newTracer(tp trace.TracerProvider) trace.Tracer {
-	return tp.Tracer("go-runtime", trace.WithInstrumentationVersion("1.0.0"))
+	return tp.Tracer(tracerName, trace.WithInstrumentationVersion(version()))
+}
+
+func newConfig(opts ...OpenTelemetryOpt) *config {
+	c := &config{
+		Propagator: otel.GetTextMapPropagator(),
+	}
+
+	for _, opt := range opts {
+		opt.apply(c)
+	}
+
+	// Tracer is only initialized if manually specified. Otherwise, can be passed with the tracing context.
+	if c.TracerProvider != nil {
+		c.Tracer = newTracer(c.TracerProvider)
+	}
+
+	return c
+}
+
+// Version is the current release version of the go-runtime instrumentation.
+func version() string {
+	return instrumentationVersion
+}
+
+// SemVersion is the semantic version to be supplied to tracer/meter creation.
+func semVersion() string {
+	return "semver:" + version()
 }
