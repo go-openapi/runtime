@@ -205,8 +205,3 @@ func newConfig(opts ...OpenTelemetryOpt) *config {
 func version() string {
 	return instrumentationVersion
 }
-
-// SemVersion is the semantic version to be supplied to tracer/meter creation.
-func semVersion() string {
-	return "semver:" + version()
-}

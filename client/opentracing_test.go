@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/go-openapi/strfmt"
@@ -33,7 +32,7 @@ func (r tres) GetHeaders(_ string) []string {
 	return []string{"the headers", "the headers2"}
 }
 func (r tres) Body() io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewBufferString("the content"))
+	return io.NopCloser(bytes.NewBufferString("the content"))
 }
 
 type mockRuntime struct {

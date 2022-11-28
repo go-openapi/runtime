@@ -2,7 +2,7 @@ package denco_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,7 +59,7 @@ func TestMux(t *testing.T) {
 			continue
 		}
 		defer res.Body.Close()
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -94,7 +94,7 @@ func TestNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

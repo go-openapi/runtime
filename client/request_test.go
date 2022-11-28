@@ -20,7 +20,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -165,7 +164,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expectedBody, _ := json.Marshal(bd)
-		actualBody, _ := ioutil.ReadAll(req.Body)
+		actualBody, _ := io.ReadAll(req.Body)
 		assert.Equal(t, append(expectedBody, '\n'), actualBody)
 	}
 }
@@ -197,7 +196,7 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expectedBody, _ := json.Marshal(bd)
-		actualBody, _ := ioutil.ReadAll(req.Body)
+		actualBody, _ := io.ReadAll(req.Body)
 		assert.Equal(t, append(expectedBody, '\n'), actualBody)
 	}
 }
@@ -224,7 +223,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expectedBody, _ := xml.Marshal(bd)
-		actualBody, _ := ioutil.ReadAll(req.Body)
+		actualBody, _ := io.ReadAll(req.Body)
 		assert.Equal(t, expectedBody, actualBody)
 	}
 }
@@ -247,7 +246,7 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expectedBody := []byte(bd)
-		actualBody, _ := ioutil.ReadAll(req.Body)
+		actualBody, _ := io.ReadAll(req.Body)
 		assert.Equal(t, expectedBody, actualBody)
 	}
 }
@@ -269,7 +268,7 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expected := []byte("something=some+value")
-		actual, _ := ioutil.ReadAll(req.Body)
+		actual, _ := io.ReadAll(req.Body)
 		assert.Equal(t, expected, actual)
 	}
 }
@@ -292,7 +291,7 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 		assert.Equal(t, "world", req.URL.Query().Get("hello"))
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expected := []byte("something=some+value")
-		actual, _ := ioutil.ReadAll(req.Body)
+		actual, _ := io.ReadAll(req.Body)
 		assert.Equal(t, expected, actual)
 	}
 }
@@ -316,7 +315,7 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 		assert.Condition(t, func() bool { return req.ContentLength > 0 },
 			"ContentLength must great than 0. got %d", req.ContentLength)
 		expected := []byte("something=some+value")
-		actual, _ := ioutil.ReadAll(req.Body)
+		actual, _ := io.ReadAll(req.Body)
 		assert.Equal(t, expected, actual)
 	}
 }
@@ -339,7 +338,7 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 		assert.Equal(t, "/flats/1234/", req.URL.Path)
 		expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
 		expected2 := []byte("some value")
-		actual, _ := ioutil.ReadAll(req.Body)
+		actual, _ := io.ReadAll(req.Body)
 		actuallines := bytes.Split(actual, []byte("\r\n"))
 		assert.Equal(t, 6, len(actuallines))
 		boundary := string(actuallines[0])
@@ -371,7 +370,7 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 		expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
 		expected2 := []byte("some value")
 		expected3 := []byte("another value")
-		actual, _ := ioutil.ReadAll(req.Body)
+		actual, _ := io.ReadAll(req.Body)
 		actuallines := bytes.Split(actual, []byte("\r\n"))
 		assert.Equal(t, 10, len(actuallines))
 		boundary := string(actuallines[0])
@@ -388,8 +387,8 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
-	cont, _ := ioutil.ReadFile("./runtime.go")
-	cont2, _ := ioutil.ReadFile("./request.go")
+	cont, _ := os.ReadFile("./runtime.go")
+	cont2, _ := os.ReadFile("./request.go")
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
@@ -420,7 +419,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 					mpf, _ := mpff.Open()
 					defer mpf.Close()
 					assert.Equal(t, filename, mpff.Filename)
-					actual, _ := ioutil.ReadAll(mpf)
+					actual, _ := io.ReadAll(mpf)
 					assert.Equal(t, content, actual)
 				}
 				fileverifier("file", 0, "runtime.go", cont)
@@ -432,8 +431,8 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	}
 }
 func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
-	cont, _ := ioutil.ReadFile("./runtime.go")
-	cont2, _ := ioutil.ReadFile("./request.go")
+	cont, _ := os.ReadFile("./runtime.go")
+	cont2, _ := os.ReadFile("./request.go")
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
@@ -464,7 +463,7 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 					mpf, _ := mpff.Open()
 					defer mpf.Close()
 					assert.Equal(t, filename, mpff.Filename)
-					actual, _ := ioutil.ReadAll(mpf)
+					actual, _ := io.ReadAll(mpf)
 					assert.Equal(t, content, actual)
 				}
 				fileverifier("file", 0, "runtime.go", cont)
@@ -611,7 +610,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			// Read the body once before sending the request
 			body, err := req.GetBody()
 			require.NoError(t, err)
-			bodyContent, err := ioutil.ReadAll(io.Reader(body))
+			bodyContent, err := io.ReadAll(io.Reader(body))
 			require.EqualValues(t, req.ContentLength, len(bodyContent))
 			require.NoError(t, err)
 			require.EqualValues(t, "\"test body\"\n", string(bodyContent))
@@ -619,7 +618,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			// Read the body a second time before sending the request
 			body, err = req.GetBody()
 			require.NoError(t, err)
-			bodyContent, err = ioutil.ReadAll(io.Reader(body))
+			bodyContent, err = io.ReadAll(io.Reader(body))
 			require.NoError(t, err)
 			require.EqualValues(t, req.ContentLength, len(bodyContent))
 			require.EqualValues(t, "\"test body\"\n", string(bodyContent))

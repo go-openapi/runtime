@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -70,7 +70,7 @@ func TestRuntime_TLSAuthConfig(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
-	keyPem, err := ioutil.ReadFile("../fixtures/certs/myclient.key")
+	keyPem, err := os.ReadFile("../fixtures/certs/myclient.key")
 	require.NoError(t, err)
 
 	keyDer, _ := pem.Decode(keyPem)
@@ -79,7 +79,7 @@ func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
 	key, err := x509.ParsePKCS1PrivateKey(keyDer.Bytes)
 	require.NoError(t, err)
 
-	certPem, err := ioutil.ReadFile("../fixtures/certs/myclient.crt")
+	certPem, err := os.ReadFile("../fixtures/certs/myclient.crt")
 	require.NoError(t, err)
 
 	certDer, _ := pem.Decode(certPem)
@@ -101,7 +101,7 @@ func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
-	keyPem, err := ioutil.ReadFile("../fixtures/certs/myclient-ecc.key")
+	keyPem, err := os.ReadFile("../fixtures/certs/myclient-ecc.key")
 	require.NoError(t, err)
 
 	_, remainder := pem.Decode(keyPem)
@@ -111,7 +111,7 @@ func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
 	key, err := x509.ParseECPrivateKey(keyDer.Bytes)
 	require.NoError(t, err)
 
-	certPem, err := ioutil.ReadFile("../fixtures/certs/myclient-ecc.crt")
+	certPem, err := os.ReadFile("../fixtures/certs/myclient-ecc.crt")
 	require.NoError(t, err)
 
 	certDer, _ := pem.Decode(certPem)
@@ -133,7 +133,7 @@ func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
-	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
+	certPem, err := os.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 
 	block, _ := pem.Decode(certPem)
@@ -154,7 +154,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
-	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
+	certPem, err := os.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 
 	block, _ := pem.Decode(certPem)
@@ -182,7 +182,7 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
-	certPem, err := ioutil.ReadFile("../fixtures/certs/myCA.crt")
+	certPem, err := os.ReadFile("../fixtures/certs/myCA.crt")
 	require.NoError(t, err)
 
 	block, _ := pem.Decode(certPem)
@@ -251,7 +251,7 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 
 	// root cert
 	rootCertFile := "../fixtures/certs/myCA.crt"
-	rootCertPem, err := ioutil.ReadFile(rootCertFile)
+	rootCertPem, err := os.ReadFile(rootCertFile)
 	require.NoError(t, err)
 	rootCertRaw, _ := pem.Decode(rootCertPem)
 	require.NotNil(t, rootCertRaw)
@@ -623,7 +623,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		enc := json.NewEncoder(buf)
 		_ = enc.Encode(result)
-		resp.Body = ioutil.NopCloser(buf)
+		resp.Body = io.NopCloser(buf)
 		return &resp, nil
 	})
 
@@ -969,7 +969,7 @@ func (o *overrideRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 	o.overriden = true
 	res := new(http.Response)
 	res.StatusCode = 200
-	res.Body = ioutil.NopCloser(bytes.NewBufferString("OK"))
+	res.Body = io.NopCloser(bytes.NewBufferString("OK"))
 	return res, nil
 }
 

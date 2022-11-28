@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -42,7 +41,7 @@ func (r response) GetHeaders(_ string) []string {
 	return []string{"the headers", "the headers2"}
 }
 func (r response) Body() io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewBufferString("the content"))
+	return io.NopCloser(bytes.NewBufferString("the content"))
 }
 
 func TestResponseReaderFunc(t *testing.T) {
@@ -51,7 +50,7 @@ func TestResponseReaderFunc(t *testing.T) {
 		Code                  int
 	}
 	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (interface{}, error) {
-		b, _ := ioutil.ReadAll(r.Body())
+		b, _ := io.ReadAll(r.Body())
 		actual.Body = string(b)
 		actual.Code = r.Code()
 		actual.Message = r.Message()
@@ -67,7 +66,7 @@ func TestResponseReaderFunc(t *testing.T) {
 
 func TestResponseReaderFuncError(t *testing.T) {
 	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (interface{}, error) {
-		_, _ = ioutil.ReadAll(r.Body())
+		_, _ = io.ReadAll(r.Body())
 		return nil, NewAPIError("fake", errors.New("writer closed"), 490)
 	})
 	_, err := reader.ReadResponse(response{}, nil)
@@ -75,7 +74,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "writer closed"), err.Error())
 
 	reader = func(r ClientResponse, _ Consumer) (interface{}, error) {
-		_, _ = ioutil.ReadAll(r.Body())
+		_, _ = io.ReadAll(r.Body())
 		err := &fs.PathError{
 			Op:   "write",
 			Path: "path/to/fake",

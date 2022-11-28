@@ -91,7 +91,8 @@ func Test_injectOpenTelemetrySpanContext(t *testing.T) {
 	header := map[string][]string{}
 	tr := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}}, "", nil)
 	tr.config.Propagator = propagation.TraceContext{}
-	tr.Submit(operation)
+	_, err := tr.Submit(operation)
+	assert.NoError(t, err)
 
 	assert.Len(t, header, 1)
 }

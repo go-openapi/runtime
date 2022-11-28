@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -89,7 +88,7 @@ func TestPeekingReader(t *testing.T) {
 	// just passes to original reader when nothing called
 	exp1 := []byte("original")
 	pr1 := newPeekingReader(closeReader(bytes.NewReader(exp1)))
-	b1, err := ioutil.ReadAll(pr1)
+	b1, err := io.ReadAll(pr1)
 	if assert.NoError(t, err) {
 		assert.Equal(t, exp1, b1)
 	}
@@ -100,7 +99,7 @@ func TestPeekingReader(t *testing.T) {
 	peeked, err := pr2.underlying.Peek(1)
 	require.NoError(t, err)
 	require.Equal(t, "a", string(peeked))
-	b2, err := ioutil.ReadAll(pr2)
+	b2, err := io.ReadAll(pr2)
 	if assert.NoError(t, err) {
 		assert.Equal(t, string(exp2), string(b2))
 	}
@@ -132,7 +131,7 @@ func TestPeekingReader(t *testing.T) {
 	require.Equal(t, 1, cbr.peeks)
 	require.Equal(t, 0, cbr.reads)
 
-	b, err := ioutil.ReadAll(pr)
+	b, err := io.ReadAll(pr)
 	require.NoError(t, err)
 	require.Equal(t, "hello", string(b))
 	require.Equal(t, 2, cbr.buffereds)

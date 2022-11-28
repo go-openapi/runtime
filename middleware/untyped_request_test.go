@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -77,7 +77,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	assert.NotNil(t, file.Header)
 	assert.Equal(t, "plain-jane.txt", file.Header.Filename)
 
-	bb, err := ioutil.ReadAll(file.Data)
+	bb, err := io.ReadAll(file.Data)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 

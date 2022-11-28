@@ -23,10 +23,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -164,7 +164,7 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 		cfg.RootCAs = caCertPool
 	} else if opts.CA != "" {
 		// load ca cert
-		caCert, err := ioutil.ReadFile(opts.CA)
+		caCert, err := os.ReadFile(opts.CA)
 		if err != nil {
 			return nil, fmt.Errorf("tls client ca: %v", err)
 		}
@@ -180,8 +180,6 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 		cfg.InsecureSkipVerify = false
 		cfg.ServerName = opts.ServerName
 	}
-
-	cfg.BuildNameToCertificate()
 
 	return cfg, nil
 }

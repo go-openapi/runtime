@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,10 +38,10 @@ func (c *countingReadCloser) Close() error {
 
 func TestDrainingReadCloser(t *testing.T) {
 	rdr := newCountingReader(bytes.NewBufferString("There are many things to do"), false)
-	prevDisc := ioutil.Discard
+	prevDisc := io.Discard
 	disc := bytes.NewBuffer(nil)
-	ioutil.Discard = disc
-	defer func() { ioutil.Discard = prevDisc }()
+	io.Discard = disc
+	defer func() { io.Discard = prevDisc }()
 
 	buf := make([]byte, 5)
 	ts := &drainingReadCloser{rdr: rdr}
@@ -57,10 +56,10 @@ func TestDrainingReadCloser(t *testing.T) {
 
 func TestDrainingReadCloser_SeenEOF(t *testing.T) {
 	rdr := newCountingReader(bytes.NewBufferString("There are many things to do"), true)
-	prevDisc := ioutil.Discard
+	prevDisc := io.Discard
 	disc := bytes.NewBuffer(nil)
-	ioutil.Discard = disc
-	defer func() { ioutil.Discard = prevDisc }()
+	io.Discard = disc
+	defer func() { io.Discard = prevDisc }()
 
 	buf := make([]byte, 5)
 	ts := &drainingReadCloser{rdr: rdr}

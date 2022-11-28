@@ -16,7 +16,7 @@ package client
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -31,7 +31,7 @@ func TestResponse(t *testing.T) {
 	under.StatusCode = 392
 	under.Header = make(http.Header)
 	under.Header.Set("Blah", "blah blah")
-	under.Body = ioutil.NopCloser(bytes.NewBufferString("some content"))
+	under.Body = io.NopCloser(bytes.NewBufferString("some content"))
 
 	var resp runtime.ClientResponse = response{under}
 	assert.EqualValues(t, under.StatusCode, resp.Code())

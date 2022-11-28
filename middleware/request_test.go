@@ -17,7 +17,6 @@ package middleware
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -435,7 +434,7 @@ func TestBindingFileUpload(t *testing.T) {
 	assert.NotNil(t, data.File.Header)
 	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
 
-	bb, err := ioutil.ReadAll(data.File.Data)
+	bb, err := io.ReadAll(data.File.Data)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 
@@ -525,7 +524,7 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 	assert.NotNil(t, data.File.Header)
 	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
 
-	bb, err := ioutil.ReadAll(data.File.Data)
+	bb, err := io.ReadAll(data.File.Data)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 }
