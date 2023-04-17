@@ -430,6 +430,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 		}
 	}
 }
+
 func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	cont, _ := os.ReadFile("./runtime.go")
 	cont2, _ := os.ReadFile("./request.go")
@@ -470,6 +471,57 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 
 				fileverifier("otherfiles", 0, "runtime.go", cont)
 				fileverifier("otherfiles", 1, "request.go", cont2)
+			}
+		}
+	}
+}
+
+type contentTypeProvider struct {
+	runtime.NamedReadCloser
+	contentType string
+}
+
+func (p contentTypeProvider) ContentType() string {
+	return p.contentType
+}
+
+func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
+	cont, _ := os.ReadFile("./runtime.go")
+	cont2, _ := os.ReadFile("./request.go")
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		_ = req.SetPathParam("id", "1234")
+		_ = req.SetFileParam("file1", contentTypeProvider{
+			NamedReadCloser: mustGetFile("./runtime.go"),
+			contentType:     "application/octet-stream",
+		})
+		_ = req.SetFileParam("file2", mustGetFile("./request.go"))
+
+		return nil
+	})
+	r, _ := newRequest("GET", "/flats/{id}/", reqWrtr)
+	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	if assert.NoError(t, err) && assert.NotNil(t, req) {
+		assert.Equal(t, "/flats/1234/", req.URL.Path)
+		mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
+		if assert.NoError(t, err) {
+			assert.Equal(t, runtime.MultipartFormMime, mediaType)
+			boundary := params["boundary"]
+			mr := multipart.NewReader(req.Body, boundary)
+			defer req.Body.Close()
+			frm, err := mr.ReadForm(1 << 20)
+			if assert.NoError(t, err) {
+				fileverifier := func(name string, index int, filename string, content []byte, contentType string) {
+					mpff := frm.File[name][index]
+					mpf, _ := mpff.Open()
+					defer mpf.Close()
+					assert.Equal(t, filename, mpff.Filename)
+					actual, _ := io.ReadAll(mpf)
+					assert.Equal(t, content, actual)
+					assert.Equal(t, mpff.Header.Get("Content-Type"), contentType)
+				}
+				fileverifier("file1", 0, "runtime.go", cont, "application/octet-stream")
+				fileverifier("file2", 0, "request.go", cont2, "text/plain; charset=utf-8")
 			}
 		}
 	}
