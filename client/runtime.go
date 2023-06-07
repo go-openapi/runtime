@@ -33,11 +33,12 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/go-openapi/strfmt"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/yamlpc"
-	"github.com/go-openapi/strfmt"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
@@ -205,7 +206,7 @@ func TLSTransport(opts TLSClientOptions) (http.RoundTripper, error) {
 func TLSClient(opts TLSClientOptions) (*http.Client, error) {
 	transport, err := TLSTransport(opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating TLS Transport: %w", err)
 	}
 	return &http.Client{Transport: transport}, nil
 }
@@ -373,13 +374,13 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 
 	request, err := newRequest(operation.Method, operation.PathPattern, params)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("creating new request: %w", err)
 	}
 
 	var accept []string
 	accept = append(accept, operation.ProducesMediaTypes...)
 	if err = request.SetHeaderParam(runtime.HeaderAccept, accept...); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("setting 'Accept' header: %w", err)
 	}
 
 	if auth == nil && r.DefaultAuthentication != nil {
@@ -392,9 +393,9 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 	}
 	// if auth != nil {
 	//	if err := auth.AuthenticateRequest(request, r.Formats); err != nil {
-	//		return nil, err
+	//		return nil, fmt.Errorf("authenticating request: %w", err)
 	//	}
-	//}
+	// }
 
 	// TODO: pick appropriate media type
 	cmt := r.DefaultMediaType
@@ -412,7 +413,7 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 
 	req, err := request.buildHTTP(cmt, r.BasePath, r.Producers, r.Formats, auth)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("building HTTP: %w", err)
 	}
 	req.URL.Scheme = r.pickScheme(operation.Schemes)
 	req.URL.Host = r.Host
@@ -432,7 +433,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 
 	request, req, err := r.createHttpRequest(operation)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating http request: %w", err)
 	}
 
 	r.clientOnce.Do(func() {
@@ -445,7 +446,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	if r.Debug {
 		b, err2 := httputil.DumpRequestOut(req, true)
 		if err2 != nil {
-			return nil, err2
+			return nil, fmt.Errorf("dumping request out: %w", err2)
 		}
 		r.logger.Debugf("%s\n", string(b))
 	}
@@ -476,7 +477,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	req = req.WithContext(ctx)
 	res, err := client.Do(req) // make requests, by default follows 10 redirects before failing
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("making request: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -492,14 +493,14 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 		}
 		b, err2 := httputil.DumpResponse(res, printBody)
 		if err2 != nil {
-			return nil, err2
+			return nil, fmt.Errorf("dumping response: %w", err2)
 		}
 		r.logger.Debugf("%s\n", string(b))
 	}
 
 	mt, _, err := mime.ParseMediaType(ct)
 	if err != nil {
-		return nil, fmt.Errorf("parse content type: %s", err)
+		return nil, fmt.Errorf("parsing content type: %s", err)
 	}
 
 	cons, ok := r.Consumers[mt]
@@ -509,7 +510,11 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 			return nil, fmt.Errorf("no consumer: %q", ct)
 		}
 	}
-	return readResponse.ReadResponse(r.response(res), cons)
+	response, err := readResponse.ReadResponse(r.response(res), cons)
+	if err != nil {
+		return response, fmt.Errorf("reading response: %w", err)
+	}
+	return response, nil
 }
 
 // SetDebug changes the debug flag.

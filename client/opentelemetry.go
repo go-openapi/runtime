@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -13,6 +12,8 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/go-openapi/runtime"
 )
 
 const (
@@ -110,7 +111,11 @@ func newOpenTelemetryTransport(transport runtime.ClientTransport, host string, o
 
 func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{}, error) {
 	if op.Context == nil {
-		return t.transport.Submit(op)
+		res, err := t.transport.Submit(op)
+		if err != nil {
+			return res, fmt.Errorf("submitting: %w", err)
+		}
+		return res, nil
 	}
 
 	params := op.Params
@@ -125,7 +130,11 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 
 	op.Params = runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		span = t.newOpenTelemetrySpan(op, req.GetHeaderParams())
-		return params.WriteToRequest(req, reg)
+		err := params.WriteToRequest(req, reg)
+		if err != nil {
+			return fmt.Errorf("writing to request: %w", err)
+		}
+		return nil
 	})
 
 	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
@@ -135,7 +144,11 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 			span.SetStatus(semconv.SpanStatusFromHTTPStatusCodeAndSpanKind(statusCode, trace.SpanKindClient))
 		}
 
-		return reader.ReadResponse(response, consumer)
+		res, err := reader.ReadResponse(response, consumer)
+		if err != nil {
+			return res, fmt.Errorf("reading response: %w", err)
+		}
+		return res, nil
 	})
 
 	submit, err := t.transport.Submit(op)
@@ -143,8 +156,10 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (interface{
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
-
-	return submit, err
+	if err != nil {
+		return submit, fmt.Errorf("submitting with opentelemetry: %w", err)
+	}
+	return submit, nil
 }
 
 func (t *openTelemetryTransport) newOpenTelemetrySpan(op *runtime.ClientOperation, header http.Header) trace.Span {

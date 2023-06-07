@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"github.com/go-openapi/strfmt"
 
@@ -33,7 +34,11 @@ func init() {
 func BasicAuth(username, password string) runtime.ClientAuthInfoWriter {
 	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
 		encoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
-		return r.SetHeaderParam(runtime.HeaderAuthorization, "Basic "+encoded)
+		err := r.SetHeaderParam(runtime.HeaderAuthorization, "Basic "+encoded)
+		if err != nil {
+			return fmt.Errorf("setting 'Authorization' header: %w", err)
+		}
+		return err
 	})
 }
 
@@ -41,13 +46,21 @@ func BasicAuth(username, password string) runtime.ClientAuthInfoWriter {
 func APIKeyAuth(name, in, value string) runtime.ClientAuthInfoWriter {
 	if in == "query" {
 		return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-			return r.SetQueryParam(name, value)
+			err := r.SetQueryParam(name, value)
+			if err != nil {
+				return fmt.Errorf("setting '%s' query parameter: %w", name, err)
+			}
+			return err
 		})
 	}
 
 	if in == "header" {
 		return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-			return r.SetHeaderParam(name, value)
+			err := r.SetHeaderParam(name, value)
+			if err != nil {
+				return fmt.Errorf("setting '%s' header: %w", name, err)
+			}
+			return err
 		})
 	}
 	return nil
@@ -56,7 +69,11 @@ func APIKeyAuth(name, in, value string) runtime.ClientAuthInfoWriter {
 // BearerToken provides a header based oauth2 bearer access token auth info writer
 func BearerToken(token string) runtime.ClientAuthInfoWriter {
 	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-		return r.SetHeaderParam(runtime.HeaderAuthorization, "Bearer "+token)
+		err := r.SetHeaderParam(runtime.HeaderAuthorization, "Bearer "+token)
+		if err != nil {
+			return fmt.Errorf("setting 'Authorization' header: %w", err)
+		}
+		return err
 	})
 }
 
@@ -69,7 +86,7 @@ func Compose(auths ...runtime.ClientAuthInfoWriter) runtime.ClientAuthInfoWriter
 				continue
 			}
 			if err := auth.AuthenticateRequest(r, nil); err != nil {
-				return err
+				return fmt.Errorf("authenticating request: %w", err)
 			}
 		}
 		return nil

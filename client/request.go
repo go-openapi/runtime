@@ -105,7 +105,7 @@ func logClose(err error, pw *io.PipeWriter) {
 func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	// build the data
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("writing to request: %w", err)
 	}
 
 	// Our body must be an io.Reader.
@@ -218,7 +218,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 
 		producer := producers[mediaType]
 		if err := producer.Produce(r.buf, r.payload); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("writing the payload: %w", err)
 		}
 	}
 
@@ -282,7 +282,7 @@ DoneChoosingBodySource:
 		}
 
 		if authErr != nil {
-			return nil, authErr
+			return nil, fmt.Errorf("authenticating request: %w", authErr)
 		}
 	}
 
@@ -292,13 +292,13 @@ DoneChoosingBodySource:
 	// the ones set by the client, then the path pattern, and lastly the base path.
 	basePathURL, err := url.Parse(basePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing url: %w", err)
 	}
 	staticQueryParams := basePathURL.Query()
 
 	pathPatternURL, err := url.Parse(r.pathPattern)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing url: %w", err)
 	}
 	for name, values := range pathPatternURL.Query() {
 		if _, present := staticQueryParams[name]; present {
@@ -325,7 +325,7 @@ DoneChoosingBodySource:
 
 	req, err := http.NewRequest(r.method, urlPath, body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating new request: %w", err)
 	}
 
 	originalParams := r.GetQueryParams()
@@ -336,7 +336,7 @@ DoneChoosingBodySource:
 		_, present := originalParams[k]
 		if !present {
 			if err = r.SetQueryParam(k, v...); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("merging query parameters: %w", err)
 			}
 		}
 	}

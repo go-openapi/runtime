@@ -29,7 +29,11 @@ func newOpenTracingTransport(transport runtime.ClientTransport, host string, opt
 
 func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, error) {
 	if op.Context == nil {
-		return t.transport.Submit(op)
+		res, err := t.transport.Submit(op)
+		if err != nil {
+			return res, fmt.Errorf("submitting: %w", err)
+		}
+		return res, nil
 	}
 
 	params := op.Params
@@ -44,7 +48,11 @@ func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, err
 
 	op.Params = runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		span = createClientSpan(op, req.GetHeaderParams(), t.host, t.opts)
-		return params.WriteToRequest(req, reg)
+		err := params.WriteToRequest(req, reg)
+		if err != nil {
+			return fmt.Errorf("writing to request: %w", err)
+		}
+		return nil
 	})
 
 	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
@@ -55,7 +63,11 @@ func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, err
 				ext.Error.Set(span, true)
 			}
 		}
-		return reader.ReadResponse(response, consumer)
+		res, err := reader.ReadResponse(response, consumer)
+		if err != nil {
+			return res, fmt.Errorf("reading response: %w", err)
+		}
+		return res, nil
 	})
 
 	submit, err := t.transport.Submit(op)
@@ -63,7 +75,10 @@ func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, err
 		ext.Error.Set(span, true)
 		span.LogFields(log.Error(err))
 	}
-	return submit, err
+	if err != nil {
+		return submit, fmt.Errorf("submitting with opentracing: %w", err)
+	}
+	return submit, nil
 }
 
 func createClientSpan(op *runtime.ClientOperation, header http.Header, host string,

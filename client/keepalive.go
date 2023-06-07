@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"sync/atomic"
@@ -23,7 +24,7 @@ type keepAliveTransport struct {
 func (k *keepAliveTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := k.wrapped.RoundTrip(r)
 	if err != nil {
-		return resp, err
+		return resp, fmt.Errorf("making round trip: %w", err)
 	}
 	resp.Body = &drainingReadCloser{rdr: resp.Body}
 	return resp, nil
@@ -51,5 +52,9 @@ func (d *drainingReadCloser) Close() error {
 		//nolint:errcheck
 		io.Copy(io.Discard, d.rdr)
 	}
-	return d.rdr.Close()
+	err := d.rdr.Close()
+	if err != nil {
+		return fmt.Errorf("closing: %w", err)
+	}
+	return nil
 }
