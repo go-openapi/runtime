@@ -171,7 +171,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 						// Need to read the data so that we can detect the content type
 						buf := make([]byte, 512)
 						size, err := fi.Read(buf)
-						if err != nil {
+						if err != nil && err != io.EOF {
 							logClose(err, pw)
 							return
 						}

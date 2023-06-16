@@ -426,11 +426,14 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	require.NoError(t, err)
 	cont2, err := os.ReadFile("./request.go")
 	require.NoError(t, err)
+	emptyFile, err := os.CreateTemp("", "empty")
+	require.NoError(t, err)
 
-	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
 		_ = req.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
+		_ = req.SetFileParam("empty", emptyFile)
 		_ = req.SetQueryParam("hello", "world")
 		_ = req.SetPathParam("id", "1234")
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
@@ -472,6 +475,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 
 	fileverifier("otherfiles", 0, "runtime.go", cont)
 	fileverifier("otherfiles", 1, "request.go", cont2)
+	fileverifier("empty", 0, filepath.Base(emptyFile.Name()), []byte{})
 }
 
 //nolint:dupl
