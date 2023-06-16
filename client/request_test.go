@@ -389,10 +389,12 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	cont, _ := os.ReadFile("./runtime.go")
 	cont2, _ := os.ReadFile("./request.go")
+	emptyFile, _ := os.CreateTemp("", "empty")
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
 		_ = req.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
+		_ = req.SetFileParam("empty", emptyFile)
 		_ = req.SetQueryParam("hello", "world")
 		_ = req.SetPathParam("id", "1234")
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
@@ -426,6 +428,8 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 
 				fileverifier("otherfiles", 0, "runtime.go", cont)
 				fileverifier("otherfiles", 1, "request.go", cont2)
+
+				fileverifier("empty", 0, filepath.Base(emptyFile.Name()), []byte{})
 			}
 		}
 	}
