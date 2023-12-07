@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var consProdYAML = "name: Somebody\nid: 1\n"
@@ -31,8 +32,8 @@ func TestYAMLConsumer(t *testing.T) {
 		Name string
 		ID   int
 	}
-	err := cons.Consume(bytes.NewBuffer([]byte(consProdYAML)), &data)
-	assert.NoError(t, err)
+	err := cons.Consume(bytes.NewBufferString(consProdYAML), &data)
+	require.NoError(t, err)
 	assert.Equal(t, "Somebody", data.Name)
 	assert.Equal(t, 1, data.ID)
 }
@@ -46,27 +47,27 @@ func TestYAMLProducer(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, consProdYAML, rw.Body.String())
 }
 
 type failReaderWriter struct {
 }
 
-func (f *failReaderWriter) Read(p []byte) (n int, err error) {
+func (f *failReaderWriter) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("expected")
 }
 
-func (f *failReaderWriter) Write(p []byte) (n int, err error) {
+func (f *failReaderWriter) Write(_ []byte) (n int, err error) {
 	return 0, errors.New("expected")
 }
 
 func TestFailYAMLWriter(t *testing.T) {
 	prod := YAMLProducer()
-	assert.Error(t, prod.Produce(&failReaderWriter{}, nil))
+	require.Error(t, prod.Produce(&failReaderWriter{}, nil))
 }
 
 func TestFailYAMLReader(t *testing.T) {
 	cons := YAMLConsumer()
-	assert.Error(t, cons.Consume(&failReaderWriter{}, nil))
+	require.Error(t, cons.Consume(&failReaderWriter{}, nil))
 }

@@ -109,7 +109,7 @@ func (p *peekingReader) Close() error {
 
 // JSONRequest creates a new http request with json headers set
 func JSONRequest(method, urlStr string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, urlStr, body)
+	req, err := http.NewRequest(method, urlStr, body) //nolint:noctx
 	if err != nil {
 		return nil, err
 	}

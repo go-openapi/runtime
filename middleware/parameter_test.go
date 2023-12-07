@@ -25,13 +25,10 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-openapi/runtime"
 )
-
-// type email struct {
-// 	Address string
-// }
 
 type paramFactory func(string) *spec.Parameter
 
@@ -56,12 +53,13 @@ func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
 	binder := &untypedParamBinder{
 		parameter: param,
 	}
-	_, _, _, err := binder.readValue(runtime.Values(nil), reflect.ValueOf(nil))
+	// ICI
+	_, _, _, err := binder.readValue(runtime.Values(nil), reflect.ValueOf(nil)) //nolint:dogsled
 	if valid {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	} else {
-		assert.Error(t, err)
-		assert.Equal(t, errors.InvalidCollectionFormat(param.Name, param.In, param.CollectionFormat), err)
+		require.Error(t, err)
+		require.EqualError(t, err, errors.InvalidCollectionFormat(param.Name, param.In, param.CollectionFormat).Error())
 	}
 }
 
@@ -71,39 +69,43 @@ func requiredError(param *spec.Parameter, data interface{}) *errors.Validation {
 
 func validateRequiredTest(t *testing.T, param *spec.Parameter, value reflect.Value) {
 	binder := np(param)
+
 	err := binder.bindValue([]string{}, true, value)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.NotNil(t, param)
-	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
+	require.EqualError(t, requiredError(param, value.Interface()), err.Error())
+
 	err = binder.bindValue([]string{""}, true, value)
-	if assert.Error(t, err) {
-		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
-	}
+	require.Error(t, err)
+	require.EqualError(t, requiredError(param, value.Interface()), err.Error())
 
 	// should be impossible data, but let's go with it
 	err = binder.bindValue([]string{"a"}, false, value)
-	assert.Error(t, err)
-	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
+	require.Error(t, err)
+	require.EqualError(t, err, requiredError(param, value.Interface()).Error())
+
 	err = binder.bindValue([]string{""}, false, value)
-	assert.Error(t, err)
-	assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
+	require.Error(t, err)
+	require.EqualError(t, requiredError(param, value.Interface()), err.Error())
 }
 
 func validateRequiredAllowEmptyTest(t *testing.T, param *spec.Parameter, value reflect.Value) {
 	param.AllowEmptyValue = true
 	binder := np(param)
 	err := binder.bindValue([]string{}, true, value)
-	assert.NoError(t, err)
-	if assert.NotNil(t, param) {
-		err = binder.bindValue([]string{""}, true, value)
-		assert.NoError(t, err)
-		err = binder.bindValue([]string{"1"}, false, value)
-		assert.Error(t, err)
-		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
-		err = binder.bindValue([]string{""}, false, value)
-		assert.Error(t, err)
-		assert.EqualError(t, requiredError(param, value.Interface()), err.Error())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, param)
+
+	err = binder.bindValue([]string{""}, true, value)
+	require.NoError(t, err)
+
+	err = binder.bindValue([]string{"1"}, false, value)
+	require.Error(t, err)
+	require.EqualError(t, requiredError(param, value.Interface()), err.Error())
+
+	err = binder.bindValue([]string{""}, false, value)
+	require.Error(t, err)
+	require.EqualError(t, requiredError(param, value.Interface()), err.Error())
 }
 
 func TestRequiredValidation(t *testing.T) {
@@ -165,82 +167,89 @@ func TestTypeValidation(t *testing.T) {
 		binder := np(intParam)
 		err := binder.bindValue([]string{"yada"}, true, value)
 		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(intParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(intParam, "yada").Error())
+
 		// fails for overflow
 		val := int64(math.MaxInt32)
 		str := strconv.FormatInt(val, 10) + "0"
 		v := int32(0)
 		value = reflect.ValueOf(&v).Elem()
+
 		binder = np(intParam)
 		err = binder.bindValue([]string{str}, true, value)
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(intParam, str), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(intParam, str).Error())
 
+		// fails for invalid string
 		longParam := newParam("badLong").Typed("integer", "int64")
 		value = reflect.ValueOf(int64(0))
+
 		binder = np(longParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(longParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(longParam, "yada").Error())
+
 		// fails for overflow
 		str2 := strconv.FormatInt(math.MaxInt64, 10) + "0"
 		v2 := int64(0)
 		vv2 := reflect.ValueOf(&v2).Elem()
 		binder = np(longParam)
 		err = binder.bindValue([]string{str2}, true, vv2)
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(longParam, str2), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(longParam, str2).Error())
 
+		// fails for invalid string
 		floatParam := newParam("badFloat").Typed("number", "float")
 		value = reflect.ValueOf(float64(0))
 		binder = np(floatParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(floatParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(floatParam, "yada").Error())
+
 		// fails for overflow
 		str3 := strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
 		v3 := reflect.TypeOf(float32(0))
 		value = reflect.New(v3).Elem()
 		binder = np(floatParam)
 		err = binder.bindValue([]string{str3}, true, value)
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(floatParam, str3), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(floatParam, str3).Error())
 
+		// fails for invalid string
 		doubleParam := newParam("badDouble").Typed("number", "double")
 		value = reflect.ValueOf(float64(0))
 		binder = np(doubleParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(doubleParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(doubleParam, "yada").Error())
+
 		// fails for overflow
 		str4 := "9" + strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
 		v4 := reflect.TypeOf(float64(0))
 		value = reflect.New(v4).Elem()
 		binder = np(doubleParam)
 		err = binder.bindValue([]string{str4}, true, value)
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(doubleParam, str4), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(doubleParam, str4).Error())
 
+		// fails for invalid string
 		dateParam := newParam("badDate").Typed("string", "date")
 		value = reflect.ValueOf(strfmt.Date{})
 		binder = np(dateParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(dateParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(dateParam, "yada").Error())
 
+		// fails for invalid string
 		dateTimeParam := newParam("badDateTime").Typed("string", "date-time")
 		value = reflect.ValueOf(strfmt.DateTime{})
 		binder = np(dateTimeParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(dateTimeParam, "yada"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(dateTimeParam, "yada").Error())
 
+		// fails for invalid string
 		byteParam := newParam("badByte").Typed("string", "byte")
 		values := url.Values(map[string][]string{})
 		values.Add("badByte", "yaüda")
@@ -248,9 +257,8 @@ func TestTypeValidation(t *testing.T) {
 		value = reflect.ValueOf(&v5).Elem()
 		binder = np(byteParam)
 		err = binder.bindValue([]string{"yaüda"}, true, value)
-		// fails for invalid string
-		assert.Error(t, err)
-		assert.Equal(t, invalidTypeError(byteParam, "yaüda"), err)
+		require.Error(t, err)
+		require.EqualError(t, err, invalidTypeError(byteParam, "yaüda").Error())
 	}
 }
 

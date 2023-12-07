@@ -15,15 +15,16 @@
 package middleware
 
 import (
+	stdcontext "context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-openapi/errors"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOperationExecutor(t *testing.T) {
@@ -39,16 +40,17 @@ func TestOperationExecutor(t *testing.T) {
 	mw := NewOperationExecutor(context)
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/api/pets", nil)
+	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
+	require.NoError(t, err)
 	request.Header.Add("Accept", "application/json")
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, `[{"id":1,"name":"a dog"}]`+"\n", recorder.Body.String())
 
 	spec, api = petstore.NewAPI(t)
 	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
-		return nil, errors.New(422, "expected")
+		return nil, errors.New(http.StatusUnprocessableEntity, "expected")
 	}))
 
 	context = NewContext(spec, api, nil)
@@ -56,10 +58,11 @@ func TestOperationExecutor(t *testing.T) {
 	mw = NewOperationExecutor(context)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/api/pets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
+	require.NoError(t, err)
 	request.Header.Add("Accept", "application/json")
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 422, recorder.Code)
+	assert.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
 	assert.Equal(t, `{"code":422,"message":"expected"}`, recorder.Body.String())
 }

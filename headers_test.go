@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-openapi/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseContentType(t *testing.T) {
@@ -48,9 +49,9 @@ func TestParseContentType(t *testing.T) {
 		}
 		ct, cs, err := ContentType(headers)
 		if v.err == nil {
-			assert.NoError(t, err, "input: %q, err: %v", v.hdr, err)
+			require.NoError(t, err, "input: %q, err: %v", v.hdr, err)
 		} else {
-			assert.Error(t, err, "input: %q", v.hdr)
+			require.Error(t, err, "input: %q", v.hdr)
 			assert.IsType(t, &errors.ParseError{}, err, "input: %q", v.hdr)
 			assert.Equal(t, v.err.Error(), err.Error(), "input: %q", v.hdr)
 		}

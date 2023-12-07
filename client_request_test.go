@@ -22,14 +22,14 @@ import (
 )
 
 func TestRequestWriterFunc(t *testing.T) {
-	hand := ClientRequestWriterFunc(func(r ClientRequest, reg strfmt.Registry) error {
-		_ = r.SetHeaderParam("blah", "blah blah")
+	hand := ClientRequestWriterFunc(func(r ClientRequest, _ strfmt.Registry) error {
+		_ = r.SetHeaderParam("blah", "blahblah")
 		_ = r.SetBodyParam(struct{ Name string }{"Adriana"})
 		return nil
 	})
 
 	tr := new(TestClientRequest)
 	_ = hand.WriteToRequest(tr, nil)
-	assert.Equal(t, "blah blah", tr.Headers.Get("blah"))
+	assert.Equal(t, "blahblah", tr.Headers.Get("blah"))
 	assert.Equal(t, "Adriana", tr.Body.(struct{ Name string }).Name)
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-openapi/runtime/middleware/denco"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func routes() []denco.Record {
@@ -267,17 +269,16 @@ func TestRouter_Lookup_withManyRoutes(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	records := make([]denco.Record, n)
 	for i := 0; i < n; i++ {
-		records[i] = denco.Record{Key: "/" + randomString(rand.Intn(50)+10), Value: fmt.Sprintf("route%d", i)}
+		records[i] = denco.Record{Key: "/" + randomString(rand.Intn(50)+10), Value: fmt.Sprintf("route%d", i)} //#nosec
 	}
 	router := denco.New()
-	if err := router.Build(records); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, router.Build(records))
+
 	for _, r := range records {
 		data, params, found := router.Lookup(r.Key)
-		if !reflect.DeepEqual(data, r.Value) || len(params) != 0 || !reflect.DeepEqual(found, true) {
-			t.Errorf("Router.Lookup(%q) => (%#v, %#v, %#v), want (%#v, %#v, %#v)", r.Key, data, len(params), found, r.Value, 0, true)
-		}
+		assert.Equal(t, r.Value, data)
+		assert.Empty(t, params)
+		assert.True(t, found)
 	}
 }
 
@@ -433,12 +434,13 @@ func TestRouter_Build(t *testing.T) {
 	// test for duplicate name of path parameters.
 	func() {
 		r := denco.New()
-		if err := r.Build([]denco.Record{
-			{"/:user/:id/:id", "testroute0"},
-			{"/:user/:user/:id", "testroute0"},
-		}); err == nil {
-			t.Errorf("no error returned by duplicate name of path parameters")
-		}
+		require.Errorf(t,
+			r.Build([]denco.Record{
+				{"/:user/:id/:id", "testroute0"},
+				{"/:user/:user/:id", "testroute0"},
+			}),
+			"no error returned by duplicate name of path parameters",
+		)
 	}()
 }
 
@@ -459,22 +461,17 @@ func TestRouter_Build_withoutSizeHint(t *testing.T) {
 	} {
 		r := denco.New()
 		actual := r.SizeHint
-		expect := -1
-		if !reflect.DeepEqual(actual, expect) {
-			t.Errorf(`before Build; Router.SizeHint => (%[1]T=%#[1]v); want (%[2]T=%#[2]v)`, actual, expect)
-		}
+		expected := -1
+
+		assert.Equalf(t, expected, actual, `before Build; Router.SizeHint => (%[1]T=%#[1]v); want (%[2]T=%#[2]v)`, actual, expected)
 		records := make([]denco.Record, len(v.keys))
 		for i, k := range v.keys {
 			records[i] = denco.Record{Key: k, Value: "value"}
 		}
-		if err := r.Build(records); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, r.Build(records))
 		actual = r.SizeHint
-		expect = v.sizeHint
-		if !reflect.DeepEqual(actual, expect) {
-			t.Errorf(`Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expect)
-		}
+		expected = v.sizeHint
+		assert.Equalf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
 	}
 }
 
@@ -497,14 +494,10 @@ func TestRouter_Build_withSizeHint(t *testing.T) {
 		records := []denco.Record{
 			{v.key, "value"},
 		}
-		if err := r.Build(records); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, r.Build(records))
 		actual := r.SizeHint
-		expect := v.expect
-		if !reflect.DeepEqual(actual, expect) {
-			t.Errorf(`Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expect)
-		}
+		expected := v.expect
+		assert.Equalf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
 	}
 }
 
@@ -523,8 +516,6 @@ func TestParams_Get(t *testing.T) {
 	} {
 		actual := params.Get(v.value)
 		expected := v.expected
-		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("Params.Get(%q) => %#v, want %#v", v.value, actual, expected)
-		}
+		assert.Equal(t, expected, actual, "Params.Get(%q) => %#v, want %#v", v.value, actual, expected)
 	}
 }

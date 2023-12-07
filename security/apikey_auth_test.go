@@ -21,18 +21,24 @@ import (
 
 	"github.com/go-openapi/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	apiToken          = "token123"
+	apiTokenPrincipal = "admin"
 )
 
 var tokenAuth = TokenAuthentication(func(token string) (interface{}, error) {
-	if token == "token123" {
-		return "admin", nil
+	if token == apiToken {
+		return apiTokenPrincipal, nil
 	}
 	return nil, errors.Unauthenticated("token")
 })
 
 var tokenAuthCtx = TokenAuthenticationCtx(func(ctx context.Context, token string) (context.Context, interface{}, error) {
-	if token == "token123" {
-		return context.WithValue(ctx, extra, extraWisdom), "admin", nil
+	if token == apiToken {
+		return context.WithValue(ctx, extra, extraWisdom), apiTokenPrincipal, nil
 	}
 	return context.WithValue(ctx, reason, expReason), nil, errors.Unauthenticated("token")
 })
@@ -45,60 +51,66 @@ func TestValidApiKeyAuth(t *testing.T) {
 	ta := APIKeyAuth("api_key", "query", tokenAuth)
 	ta2 := APIKeyAuth("X-API-KEY", "header", tokenAuth)
 
-	req1, _ := http.NewRequest("GET", "/blah?api_key=token123", nil)
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token123", nil)
+	require.NoError(t, err)
 
 	ok, usr, err := ta.Authenticate(req1)
 	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	assert.NoError(t, err)
+	assert.Equal(t, apiTokenPrincipal, usr)
+	require.NoError(t, err)
 
-	req2, _ := http.NewRequest("GET", "/blah", nil)
-	req2.Header.Set("X-API-KEY", "token123")
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
+	req2.Header.Set("X-API-KEY", apiToken)
 
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	assert.NoError(t, err)
+	assert.Equal(t, apiTokenPrincipal, usr)
+	require.NoError(t, err)
 }
 
 func TestInvalidApiKeyAuth(t *testing.T) {
 	ta := APIKeyAuth("api_key", "query", tokenAuth)
 	ta2 := APIKeyAuth("X-API-KEY", "header", tokenAuth)
 
-	req1, _ := http.NewRequest("GET", "/blah?api_key=token124", nil)
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token124", nil)
+	require.NoError(t, err)
 
 	ok, usr, err := ta.Authenticate(req1)
 	assert.True(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.Error(t, err)
+	require.Error(t, err)
 
-	req2, _ := http.NewRequest("GET", "/blah", nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
 	req2.Header.Set("X-API-KEY", "token124")
 
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.True(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestMissingApiKeyAuth(t *testing.T) {
 	ta := APIKeyAuth("api_key", "query", tokenAuth)
 	ta2 := APIKeyAuth("X-API-KEY", "header", tokenAuth)
 
-	req1, _ := http.NewRequest("GET", "/blah", nil)
-	req1.Header.Set("X-API-KEY", "token123")
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
+	req1.Header.Set("X-API-KEY", apiToken)
 
 	ok, usr, err := ta.Authenticate(req1)
 	assert.False(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	req2, _ := http.NewRequest("GET", "/blah?api_key=token123", nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token123", nil)
+	require.NoError(t, err)
 
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.False(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvalidApiKeyAuthInitializationCtx(t *testing.T) {
@@ -109,24 +121,26 @@ func TestValidApiKeyAuthCtx(t *testing.T) {
 	ta := APIKeyAuthCtx("api_key", "query", tokenAuthCtx)
 	ta2 := APIKeyAuthCtx("X-API-KEY", "header", tokenAuthCtx)
 
-	req1, _ := http.NewRequest("GET", "/blah?api_key=token123", nil)
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token123", nil)
+	require.NoError(t, err)
 	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
 	ok, usr, err := ta.Authenticate(req1)
 	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	assert.NoError(t, err)
+	assert.Equal(t, apiTokenPrincipal, usr)
+	require.NoError(t, err)
 	assert.Equal(t, wisdom, req1.Context().Value(original))
 	assert.Equal(t, extraWisdom, req1.Context().Value(extra))
 	assert.Nil(t, req1.Context().Value(reason))
 
-	req2, _ := http.NewRequest("GET", "/blah", nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	req2.Header.Set("X-API-KEY", "token123")
+	req2.Header.Set("X-API-KEY", apiToken)
 
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	assert.NoError(t, err)
+	assert.Equal(t, apiTokenPrincipal, usr)
+	require.NoError(t, err)
 	assert.Equal(t, wisdom, req2.Context().Value(original))
 	assert.Equal(t, extraWisdom, req2.Context().Value(extra))
 	assert.Nil(t, req2.Context().Value(reason))
@@ -136,24 +150,26 @@ func TestInvalidApiKeyAuthCtx(t *testing.T) {
 	ta := APIKeyAuthCtx("api_key", "query", tokenAuthCtx)
 	ta2 := APIKeyAuthCtx("X-API-KEY", "header", tokenAuthCtx)
 
-	req1, _ := http.NewRequest("GET", "/blah?api_key=token124", nil)
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token124", nil)
+	require.NoError(t, err)
 	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
 	ok, usr, err := ta.Authenticate(req1)
 	assert.True(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, wisdom, req1.Context().Value(original))
 	assert.Equal(t, expReason, req1.Context().Value(reason))
 	assert.Nil(t, req1.Context().Value(extra))
 
-	req2, _ := http.NewRequest("GET", "/blah", nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
 	req2.Header.Set("X-API-KEY", "token124")
 
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.True(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, wisdom, req2.Context().Value(original))
 	assert.Equal(t, expReason, req2.Context().Value(reason))
 	assert.Nil(t, req2.Context().Value(extra))
@@ -163,24 +179,26 @@ func TestMissingApiKeyAuthCtx(t *testing.T) {
 	ta := APIKeyAuthCtx("api_key", "query", tokenAuthCtx)
 	ta2 := APIKeyAuthCtx("X-API-KEY", "header", tokenAuthCtx)
 
-	req1, _ := http.NewRequest("GET", "/blah", nil)
+	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
+	require.NoError(t, err)
 	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
-	req1.Header.Set("X-API-KEY", "token123")
+	req1.Header.Set("X-API-KEY", apiToken)
 
 	ok, usr, err := ta.Authenticate(req1)
 	assert.False(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, wisdom, req1.Context().Value(original))
 	assert.Nil(t, req1.Context().Value(reason))
 	assert.Nil(t, req1.Context().Value(extra))
 
-	req2, _ := http.NewRequest("GET", "/blah?api_key=token123", nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?api_key=token123", nil)
+	require.NoError(t, err)
 	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
 	ok, usr, err = ta2.Authenticate(req2)
 	assert.False(t, ok)
 	assert.Equal(t, nil, usr)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, wisdom, req2.Context().Value(original))
 	assert.Nil(t, req2.Context().Value(reason))
 	assert.Nil(t, req2.Context().Value(extra))

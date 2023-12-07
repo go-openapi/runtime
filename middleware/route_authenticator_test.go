@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -17,7 +18,7 @@ type countAuthenticator struct {
 	err       error
 }
 
-func (c *countAuthenticator) Authenticate(params interface{}) (bool, interface{}, error) {
+func (c *countAuthenticator) Authenticate(_ interface{}) (bool, interface{}, error) {
 	c.count++
 	return c.applies, c.principal, c.err
 }
@@ -50,7 +51,7 @@ func TestAuthenticateSingle(t *testing.T) {
 
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route := &MatchedRoute{}
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
@@ -77,10 +78,9 @@ func TestAuthenticateLogicalOr(t *testing.T) {
 	}
 	// right side matches
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2})
-
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route := &MatchedRoute{}
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
@@ -91,16 +91,15 @@ func TestAuthenticateLogicalOr(t *testing.T) {
 
 	// left side matches
 	ras = RouteAuthenticators([]RouteAuthenticator{ra2, ra1})
-
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ = http.NewRequest("GET", "/", nil)
+	req, _ = http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route = &MatchedRoute{}
 	ok, prin, err = ras.Authenticate(req, route)
 	require.NoError(t, err)
+
 	require.True(t, ok)
 	require.Equal(t, "the user", prin)
-
 	require.Equal(t, ra2, *route.Authenticator)
 }
 
@@ -112,20 +111,20 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 		Schemes: []string{"auth1"},
 		Scopes:  map[string][]string{"auth1": nil},
 	}
-	auther := newCountAuthenticator(true, "the user", nil)
+	authorizer := newCountAuthenticator(true, "the user", nil)
 	ra2 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": auther,
-			"auth3": auther,
+			"auth2": authorizer,
+			"auth3": authorizer,
 		},
 		Schemes: []string{"auth2", "auth3"},
 		Scopes:  map[string][]string{"auth2": nil},
 	}
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2})
-
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	require.NoError(t, err)
 	route := &MatchedRoute{}
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
@@ -133,7 +132,7 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 	require.Equal(t, "the user", prin)
 
 	require.Equal(t, ra2, *route.Authenticator)
-	require.Equal(t, 2, auther.count)
+	require.Equal(t, 2, authorizer.count)
 
 	var count int
 	successA := runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
@@ -158,7 +157,7 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ = http.NewRequest("GET", "/", nil)
+	req, _ = http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route = &MatchedRoute{}
 	ok, prin, err = ras.Authenticate(req, route)
 	require.Error(t, err)
@@ -181,7 +180,7 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 
 	require.False(t, ras.AllowsAnonymous())
 
-	req, _ = http.NewRequest("GET", "/", nil)
+	req, _ = http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route = &MatchedRoute{}
 	ok, prin, err = ras.Authenticate(req, route)
 	require.Error(t, err)
@@ -217,7 +216,7 @@ func TestAuthenticateOptional(t *testing.T) {
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2, ra3})
 	require.True(t, ras.AllowsAnonymous())
 
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route := &MatchedRoute{}
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
@@ -248,7 +247,7 @@ func TestAuthenticateOptional(t *testing.T) {
 	ras = RouteAuthenticators([]RouteAuthenticator{ra4, ra5, ra6})
 	require.True(t, ras.AllowsAnonymous())
 
-	req, _ = http.NewRequest("GET", "/", nil)
+	req, _ = http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	route = &MatchedRoute{}
 	ok, prin, err = ras.Authenticate(req, route)
 	require.Error(t, err)

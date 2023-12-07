@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type response struct {
@@ -70,7 +71,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 		return nil, NewAPIError("fake", errors.New("writer closed"), 490)
 	})
 	_, err := reader.ReadResponse(response{}, nil)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "writer closed"), err.Error())
 
 	reader = func(r ClientResponse, _ Consumer) (interface{}, error) {
@@ -83,7 +84,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 		return nil, NewAPIError("fake", err, 200)
 	}
 	_, err = reader.ReadResponse(response{}, nil)
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "file already closed"), err.Error())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file already closed")
 
 }

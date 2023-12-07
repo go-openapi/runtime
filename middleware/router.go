@@ -449,7 +449,7 @@ func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Oper
 
 func (d *defaultRouteBuilder) buildAuthenticators(operation *spec.Operation) RouteAuthenticators {
 	requirements := d.analyzer.SecurityRequirementsFor(operation)
-	var auths []RouteAuthenticator
+	var auths []RouteAuthenticator //nolint:prealloc
 	for _, reqs := range requirements {
 		var schemes []string
 		scopes := make(map[string][]string, len(reqs))

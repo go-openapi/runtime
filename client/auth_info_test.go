@@ -20,61 +20,66 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasicAuth(t *testing.T) {
-	r, _ := newRequest("GET", "/", nil)
+	r, err := newRequest(http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
 	writer := BasicAuth("someone", "with a password")
-	err := writer.AuthenticateRequest(r, nil)
-	assert.NoError(t, err)
+	err = writer.AuthenticateRequest(r, nil)
+	require.NoError(t, err)
 
 	req := new(http.Request)
 	req.Header = make(http.Header)
 	req.Header.Set(runtime.HeaderAuthorization, r.header.Get(runtime.HeaderAuthorization))
 	usr, pw, ok := req.BasicAuth()
-	if assert.True(t, ok) {
-		assert.Equal(t, "someone", usr)
-		assert.Equal(t, "with a password", pw)
-	}
+	require.True(t, ok)
+	assert.Equal(t, "someone", usr)
+	assert.Equal(t, "with a password", pw)
 }
 
 func TestAPIKeyAuth_Query(t *testing.T) {
-	r, _ := newRequest("GET", "/", nil)
+	r, err := newRequest(http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
 	writer := APIKeyAuth("api_key", "query", "the-shared-key")
-	err := writer.AuthenticateRequest(r, nil)
-	assert.NoError(t, err)
+	err = writer.AuthenticateRequest(r, nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "the-shared-key", r.query.Get("api_key"))
 }
 
 func TestAPIKeyAuth_Header(t *testing.T) {
-	r, _ := newRequest("GET", "/", nil)
+	r, err := newRequest(http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
 	writer := APIKeyAuth("x-api-token", "header", "the-shared-key")
-	err := writer.AuthenticateRequest(r, nil)
-	assert.NoError(t, err)
+	err = writer.AuthenticateRequest(r, nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "the-shared-key", r.header.Get("x-api-token"))
 }
 
 func TestBearerTokenAuth(t *testing.T) {
-	r, _ := newRequest("GET", "/", nil)
+	r, err := newRequest(http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
 	writer := BearerToken("the-shared-token")
-	err := writer.AuthenticateRequest(r, nil)
-	assert.NoError(t, err)
+	err = writer.AuthenticateRequest(r, nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "Bearer the-shared-token", r.header.Get(runtime.HeaderAuthorization))
 }
 
 func TestCompose(t *testing.T) {
-	r, _ := newRequest("GET", "/", nil)
+	r, err := newRequest(http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
 	writer := Compose(APIKeyAuth("x-api-key", "header", "the-api-key"), APIKeyAuth("x-secret-key", "header", "the-secret-key"))
-	err := writer.AuthenticateRequest(r, nil)
-	assert.NoError(t, err)
+	err = writer.AuthenticateRequest(r, nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "the-api-key", r.header.Get("x-api-key"))
 	assert.Equal(t, "the-secret-key", r.header.Get("x-secret-key"))
