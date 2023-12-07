@@ -137,6 +137,39 @@ func TestPeekingReader(t *testing.T) {
 	require.Equal(t, 1, cbr.peeks)
 	require.Equal(t, 2, cbr.reads)
 	require.Equal(t, 0, cbr.br.Buffered())
+
+	t.Run("closing a closed peekingReader", func(t *testing.T) {
+		const content = "content"
+		r := newPeekingReader(io.NopCloser(strings.NewReader(content)))
+		require.NoError(t, r.Close())
+
+		require.NotPanics(t, func() {
+			err := r.Close()
+			require.Error(t, err)
+		})
+	})
+
+	t.Run("reading from a closed peekingReader", func(t *testing.T) {
+		const content = "content"
+		r := newPeekingReader(io.NopCloser(strings.NewReader(content)))
+		require.NoError(t, r.Close())
+
+		require.NotPanics(t, func() {
+			_, err := io.ReadAll(r)
+			require.Error(t, err)
+			require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+		})
+	})
+
+	t.Run("reading from a nil peekingReader", func(t *testing.T) {
+		var r *peekingReader
+		require.NotPanics(t, func() {
+			buf := make([]byte, 10)
+			_, err := r.Read(buf)
+			require.Error(t, err)
+			require.ErrorIs(t, err, io.EOF)
+		})
+	})
 }
 
 func TestJSONRequest(t *testing.T) {

@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -96,10 +97,16 @@ func (p *peekingReader) Read(d []byte) (int, error) {
 	if p == nil {
 		return 0, io.EOF
 	}
+	if p.underlying == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	return p.underlying.Read(d)
 }
 
 func (p *peekingReader) Close() error {
+	if p.underlying == nil {
+		return errors.New("reader already closed")
+	}
 	p.underlying = nil
 	if p.orig != nil {
 		return p.orig.Close()
