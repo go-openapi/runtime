@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:goconst
 package middleware
 
 import (
@@ -517,7 +516,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 			prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 			pr, ok := prods[c.api.DefaultProduces()]
 			if !ok {
-				panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
+				panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
 			}
 			prod = pr
 		}
@@ -550,7 +549,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		producers := c.api.ProducersFor(normalizeOffers(offers))
 		prod, ok := producers[format]
 		if !ok {
-			panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
+			panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
 		}
 		if err := prod.Produce(rw, data); err != nil {
 			panic(err) // let the recovery middleware deal with this
@@ -571,7 +570,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 				prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 				pr, ok := prods[c.api.DefaultProduces()]
 				if !ok {
-					panic(errors.New(http.StatusInternalServerError, "can't find a producer for "+format))
+					panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
 				}
 				prod = pr
 			}
@@ -633,4 +632,8 @@ func (c *Context) RoutesHandler(builder Builder) http.Handler {
 		b = PassthroughBuilder
 	}
 	return NewRouter(c, b(NewOperationExecutor(c)))
+}
+
+func cantFindProducer(format string) string {
+	return "can't find a producer for " + format
 }

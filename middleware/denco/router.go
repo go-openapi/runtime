@@ -51,7 +51,7 @@ func New() *Router {
 // params is a slice of the Param that arranged in the order in which parameters appeared.
 // e.g. when built routing path is "/path/to/:id/:name" and given path is "/path/to/1/alice". params order is [{"id": "1"}, {"name": "alice"}], not [{"name": "alice"}, {"id": "1"}].
 func (rt *Router) Lookup(path string) (data interface{}, params Params, found bool) {
-	if data, found := rt.static[path]; found { //nolint:govet
+	if data, found = rt.static[path]; found {
 		return data, nil, true
 	}
 	if len(rt.param.node) == 1 {

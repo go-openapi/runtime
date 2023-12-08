@@ -49,7 +49,7 @@ func (s *stubOperationHandler) ParameterModel() interface{} {
 }
 
 func (s *stubOperationHandler) Handle(_ interface{}) (interface{}, error) {
-	return nil, nil //nolint:nilnil
+	return map[string]interface{}{}, nil
 }
 
 func init() {

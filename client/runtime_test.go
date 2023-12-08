@@ -299,7 +299,7 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 	require.NoError(t, err)
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
-	rt := NewWithClient(hu.Host, "/", []string{"https"}, client)
+	rt := NewWithClient(hu.Host, "/", []string{schemeHTTPS}, client)
 
 	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
@@ -351,7 +351,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	resCC := make(chan interface{})
 	errCC := make(chan error)
 	var res interface{}
@@ -426,7 +426,7 @@ func TestRuntime_Canary(t *testing.T) {
 
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
@@ -478,7 +478,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
@@ -520,7 +520,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
@@ -565,7 +565,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
@@ -604,9 +604,9 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 
-	rt := New("localhost:3245", "/", []string{"ws", "wss", "https"})
+	rt := New("localhost:3245", "/", []string{"ws", "wss", schemeHTTPS})
 	rt.Transport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.Scheme != "https" {
+		if req.URL.Scheme != schemeHTTPS {
 			return nil, errors.New("this was not a https request")
 		}
 		assert.Equal(t, "localhost:3245", req.Host)
@@ -627,7 +627,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		ID:          "getTasks",
 		Method:      http.MethodGet,
 		PathPattern: "/",
-		Schemes:     []string{"ws", "wss", "https"},
+		Schemes:     []string{"ws", "wss", schemeHTTPS},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 			if response.Code() == http.StatusOK {
@@ -680,7 +680,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	rt.Jar, err = cookiejar.New(nil)
 	require.NoError(t, err)
 
@@ -693,7 +693,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 			AuthInfo:    authInfo,
 			Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
 				if response.Code() == http.StatusOK {
-					return nil, nil //nolint:nilnil
+					return map[string]interface{}{}, nil
 				}
 				return nil, errors.New("generic error")
 			}),
@@ -735,7 +735,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:     "getTasks",
 		Params: rwrtr,
@@ -783,12 +783,12 @@ func TestRuntime_PickConsumer(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:                 "getTasks",
 		Method:             "POST",
 		PathPattern:        "/",
-		Schemes:            []string{"http"},
+		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
@@ -837,12 +837,12 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
 		PathPattern: "/",
-		Schemes:     []string{"http"},
+		Schemes:     []string{schemeHTTP},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 			if response.Code() == http.StatusOK {
@@ -892,12 +892,12 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
 		Method:      http.MethodGet,
 		PathPattern: "/",
-		Schemes:     []string{"http"},
+		Schemes:     []string{schemeHTTP},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 			if response.Code() == http.StatusOK {
@@ -922,7 +922,7 @@ func TestRuntime_DebugValue(t *testing.T) {
 	t.Run("empty DEBUG means Debug is False", func(t *testing.T) {
 		t.Setenv("DEBUG", "")
 
-		runtime := New("", "/", []string{"https"})
+		runtime := New("", "/", []string{schemeHTTPS})
 		assert.False(t, runtime.Debug)
 	})
 
@@ -930,42 +930,42 @@ func TestRuntime_DebugValue(t *testing.T) {
 		t.Run("with numerical value", func(t *testing.T) {
 			t.Setenv("DEBUG", "1")
 
-			runtime := New("", "/", []string{"https"})
+			runtime := New("", "/", []string{schemeHTTPS})
 			assert.True(t, runtime.Debug)
 		})
 
 		t.Run("with boolean value true", func(t *testing.T) {
 			t.Setenv("DEBUG", "true")
 
-			runtime := New("", "/", []string{"https"})
+			runtime := New("", "/", []string{schemeHTTPS})
 			assert.True(t, runtime.Debug)
 		})
 
 		t.Run("with boolean value false", func(t *testing.T) {
 			t.Setenv("DEBUG", "false")
 
-			runtime := New("", "/", []string{"https"})
+			runtime := New("", "/", []string{schemeHTTPS})
 			assert.False(t, runtime.Debug)
 		})
 
 		t.Run("with string value ", func(t *testing.T) {
 			t.Setenv("DEBUG", "foo")
 
-			runtime := New("", "/", []string{"https"})
+			runtime := New("", "/", []string{schemeHTTPS})
 			assert.True(t, runtime.Debug)
 		})
 	})
 }
 
 func TestRuntime_OverrideScheme(t *testing.T) {
-	runtime := New("", "/", []string{"https"})
-	sch := runtime.pickScheme([]string{"http"})
-	assert.Equal(t, "https", sch)
+	runtime := New("", "/", []string{schemeHTTPS})
+	sch := runtime.pickScheme([]string{schemeHTTP})
+	assert.Equal(t, schemeHTTPS, sch)
 }
 
 func TestRuntime_OverrideClient(t *testing.T) {
 	client := &http.Client{}
-	runtime := NewWithClient("", "/", []string{"https"}, client)
+	runtime := NewWithClient("", "/", []string{schemeHTTPS}, client)
 	var i int
 	runtime.clientOnce.Do(func() { i++ })
 	assert.Equal(t, client, runtime.client)
@@ -986,7 +986,7 @@ func (o *overrideRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error
 
 func TestRuntime_OverrideClientOperation(t *testing.T) {
 	client := &http.Client{}
-	rt := NewWithClient("", "/", []string{"https"}, client)
+	rt := NewWithClient("", "/", []string{schemeHTTPS}, client)
 	var i int
 	rt.clientOnce.Do(func() { i++ })
 	assert.Equal(t, client, rt.client)
@@ -1003,7 +1003,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 			return nil
 		}),
 		Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
-			return nil, nil //nolint:nilnil
+			return map[string]interface{}{}, nil
 		}),
 	})
 	require.NoError(t, err)
@@ -1029,7 +1029,7 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
@@ -1044,7 +1044,7 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 				return nil, errors.New("expected Submit to preserve trailing slashes - this caused a redirect")
 			}
 			if response.Code() == http.StatusOK {
-				return nil, nil //nolint:nilnil
+				return map[string]interface{}{}, nil
 			}
 			return nil, errors.New("generic error")
 		}),
@@ -1067,14 +1067,14 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 
 	// without the fallback consumer
 	_, err = rt.Submit(&runtime.ClientOperation{
 		ID:                 "getTasks",
 		Method:             "POST",
 		PathPattern:        "/",
-		Schemes:            []string{"http"},
+		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
@@ -1097,7 +1097,7 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		ID:                 "getTasks",
 		Method:             "POST",
 		PathPattern:        "/",
-		Schemes:            []string{"http"},
+		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
@@ -1145,7 +1145,7 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
-	rt := New(hu.Host, "/", []string{"http"})
+	rt := New(hu.Host, "/", []string{schemeHTTP})
 	rt.DefaultAuthentication = BearerToken("not-the-super-secret-token")
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:     "getTasks",

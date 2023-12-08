@@ -769,7 +769,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 		}),
 	}
 
-	openAPIClient := New(hu.Host, "/", []string{"http"})
+	openAPIClient := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := openAPIClient.Submit(operation)
 	require.NoError(t, err)
 

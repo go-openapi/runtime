@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,16 +13,18 @@ import (
 )
 
 func TestSwaggerUIMiddleware(t *testing.T) {
-	redoc := SwaggerUI(SwaggerUIOpts{}, nil)
+	var o SwaggerUIOpts
+	o.EnsureDefaults()
+	swui := SwaggerUI(o, nil)
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/docs", nil)
 	require.NoError(t, err)
 	recorder := httptest.NewRecorder()
-	redoc.ServeHTTP(recorder, req)
+	swui.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, "text/html; charset=utf-8", recorder.Header().Get("Content-Type"))
-	assert.Contains(t, recorder.Body.String(), "<title>API documentation</title>")
-	assert.Contains(t, recorder.Body.String(), "url: '\\/swagger.json',")
+	assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
+	assert.Contains(t, recorder.Body.String(), fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(o.SpecURL, `/`, `\/`)))
 	assert.Contains(t, recorder.Body.String(), swaggerLatest)
 	assert.Contains(t, recorder.Body.String(), swaggerPresetLatest)
 	assert.Contains(t, recorder.Body.String(), swaggerStylesLatest)

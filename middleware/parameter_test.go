@@ -46,15 +46,14 @@ func np(param *spec.Parameter) *untypedParamBinder {
 var stringItems = new(spec.Items)
 
 func init() {
-	stringItems.Type = "string"
+	stringItems.Type = typeString
 }
 
 func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
 	binder := &untypedParamBinder{
 		parameter: param,
 	}
-	// ICI
-	_, _, _, err := binder.readValue(runtime.Values(nil), reflect.ValueOf(nil)) //nolint:dogsled
+	_, _, _, err := binder.readValue(runtime.Values(nil), reflect.ValueOf(nil)) //nolint:dogsled // we just want to test the error
 	if valid {
 		require.NoError(t, err)
 	} else {
@@ -109,7 +108,7 @@ func validateRequiredAllowEmptyTest(t *testing.T, param *spec.Parameter, value r
 }
 
 func TestRequiredValidation(t *testing.T) {
-	strParam := spec.QueryParam("name").Typed("string", "").AsRequired()
+	strParam := spec.QueryParam("name").Typed(typeString, "").AsRequired()
 	validateRequiredTest(t, strParam, reflect.ValueOf(""))
 	validateRequiredAllowEmptyTest(t, strParam, reflect.ValueOf(""))
 
@@ -127,11 +126,11 @@ func TestRequiredValidation(t *testing.T) {
 	validateRequiredTest(t, doubleParam, reflect.ValueOf(float64(0)))
 	validateRequiredAllowEmptyTest(t, doubleParam, reflect.ValueOf(float64(0)))
 
-	dateTimeParam := spec.QueryParam("registered").Typed("string", "date-time").AsRequired()
+	dateTimeParam := spec.QueryParam("registered").Typed(typeString, "date-time").AsRequired()
 	validateRequiredTest(t, dateTimeParam, reflect.ValueOf(strfmt.DateTime{}))
 	// validateRequiredAllowEmptyTest(t, dateTimeParam, reflect.ValueOf(strfmt.DateTime{}))
 
-	dateParam := spec.QueryParam("registered").Typed("string", "date").AsRequired()
+	dateParam := spec.QueryParam("registered").Typed(typeString, "date").AsRequired()
 	validateRequiredTest(t, dateParam, reflect.ValueOf(strfmt.Date{}))
 	// validateRequiredAllowEmptyTest(t, dateParam, reflect.ValueOf(strfmt.DateTime{}))
 
@@ -234,7 +233,7 @@ func TestTypeValidation(t *testing.T) {
 		require.EqualError(t, err, invalidTypeError(doubleParam, str4).Error())
 
 		// fails for invalid string
-		dateParam := newParam("badDate").Typed("string", "date")
+		dateParam := newParam("badDate").Typed(typeString, "date")
 		value = reflect.ValueOf(strfmt.Date{})
 		binder = np(dateParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
@@ -242,7 +241,7 @@ func TestTypeValidation(t *testing.T) {
 		require.EqualError(t, err, invalidTypeError(dateParam, "yada").Error())
 
 		// fails for invalid string
-		dateTimeParam := newParam("badDateTime").Typed("string", "date-time")
+		dateTimeParam := newParam("badDateTime").Typed(typeString, "date-time")
 		value = reflect.ValueOf(strfmt.DateTime{})
 		binder = np(dateTimeParam)
 		err = binder.bindValue([]string{"yada"}, true, value)
@@ -250,7 +249,7 @@ func TestTypeValidation(t *testing.T) {
 		require.EqualError(t, err, invalidTypeError(dateTimeParam, "yada").Error())
 
 		// fails for invalid string
-		byteParam := newParam("badByte").Typed("string", "byte")
+		byteParam := newParam("badByte").Typed(typeString, "byte")
 		values := url.Values(map[string][]string{})
 		values.Add("badByte", "yaüda")
 		v5 := []byte{}
@@ -271,7 +270,7 @@ func TestTypeDetectionInvalidItems(t *testing.T) {
 	assert.Nil(t, binder.Type())
 
 	items := new(spec.Items)
-	items.Type = "array"
+	items.Type = typeArray
 	withInvalidItems := spec.QueryParam("invalidItems").CollectionOf(items, "")
 	binder = &untypedParamBinder{
 		Name:      "invalidItems",
@@ -331,7 +330,7 @@ func TestTypeDetectionInvalidItems(t *testing.T) {
 // 	}
 //
 // 	params := parametersForAllTypes("")
-// 	emailParam := spec.QueryParam("email").Typed("string", "email")
+// 	emailParam := spec.QueryParam("email").Typed(typeString, "email")
 // 	params["email"] = *emailParam
 //
 // 	fileParam := spec.FileParam("file")

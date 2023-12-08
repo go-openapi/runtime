@@ -77,7 +77,7 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed("string", "")
+	nameParam := spec.QueryParam("name").Typed(typeString, "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
 	ageParam := spec.QueryParam("age").Typed("integer", "int32")
 	scoreParam := spec.QueryParam("score").Typed("number", "float")
@@ -91,13 +91,13 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
-	items.Type = "string"
+	items.Type = typeString
 	tagsParam := spec.QueryParam("tags").CollectionOf(items, fmt)
 
 	confirmedParam := spec.QueryParam("confirmed").Typed("boolean", "")
-	plannedParam := spec.QueryParam("planned").Typed("string", "date")
-	deliveredParam := spec.QueryParam("delivered").Typed("string", "date-time")
-	pictureParam := spec.QueryParam("picture").Typed("string", "byte") // base64 encoded during transport
+	plannedParam := spec.QueryParam("planned").Typed(typeString, "date")
+	deliveredParam := spec.QueryParam("delivered").Typed(typeString, "date-time")
+	pictureParam := spec.QueryParam("picture").Typed(typeString, "byte") // base64 encoded during transport
 
 	return map[string]spec.Parameter{
 		"ID":        *idParam,
@@ -119,7 +119,7 @@ func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed("string", "")
+	nameParam := spec.QueryParam("name").Typed(typeString, "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
 
 	friendSchema := new(spec.Schema).Typed("object", "")
@@ -130,7 +130,7 @@ func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
-	items.Type = "string"
+	items.Type = typeString
 	tagsParam := spec.QueryParam("tags").CollectionOf(items, fmt)
 
 	return map[string]spec.Parameter{
@@ -145,7 +145,7 @@ func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed("string", "")
+	nameParam := spec.QueryParam("name").Typed(typeString, "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
 
 	friendSchema := new(spec.Schema).Typed("object", "")
@@ -156,7 +156,7 @@ func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
-	items.Type = "string"
+	items.Type = typeString
 	tagsParam := spec.QueryParam("tags").CollectionOf(items, fmt)
 
 	return map[string]spec.Parameter{
@@ -276,7 +276,7 @@ func TestRequestBindingForInvalid(t *testing.T) {
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 
-	invalidInParam := spec.HeaderParam("tags").Typed("string", "")
+	invalidInParam := spec.HeaderParam("tags").Typed(typeString, "")
 	invalidInParam.In = "invalid"
 	op5 := map[string]spec.Parameter{"Tags": *invalidInParam}
 	binder = NewUntypedRequestBinder(op5, new(spec.Swagger), strfmt.Default)
@@ -383,7 +383,7 @@ type formRequest struct {
 }
 
 func parametersForFormUpload() map[string]spec.Parameter {
-	nameParam := spec.FormDataParam("name").Typed("string", "")
+	nameParam := spec.FormDataParam("name").Typed(typeString, "")
 
 	ageParam := spec.FormDataParam("age").Typed("integer", "int32")
 
@@ -419,7 +419,7 @@ type fileRequest struct {
 }
 
 func paramsForFileUpload() *UntypedRequestBinder {
-	nameParam := spec.FormDataParam("name").Typed("string", "")
+	nameParam := spec.FormDataParam("name").Typed(typeString, "")
 
 	fileParam := spec.FileParam("file").AsRequired()
 
@@ -506,7 +506,7 @@ func TestBindingFileUpload(t *testing.T) {
 }
 
 func paramsForOptionalFileUpload() *UntypedRequestBinder {
-	nameParam := spec.FormDataParam("name").Typed("string", "")
+	nameParam := spec.FormDataParam("name").Typed(typeString, "")
 	fileParam := spec.FileParam("file").AsOptional()
 
 	params := map[string]spec.Parameter{"Name": *nameParam, "File": *fileParam}
