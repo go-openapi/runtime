@@ -42,7 +42,7 @@ type mockRuntime struct {
 func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (interface{}, error) {
 	_ = operation.Params.WriteToRequest(&m.req, nil)
 	_, _ = operation.Reader.ReadResponse(&tres{}, nil)
-	return nil, nil
+	return nil, nil //nolint:nilnil
 }
 
 func testOperation(ctx context.Context) *runtime.ClientOperation {

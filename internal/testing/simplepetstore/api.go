@@ -59,7 +59,7 @@ var createPet = runtime.OperationHandlerFunc(func(data interface{}) (interface{}
 var deletePet = runtime.OperationHandlerFunc(func(data interface{}) (interface{}, error) {
 	id := data.(map[string]interface{})["id"].(int64)
 	removePet(id)
-	return nil, nil
+	return nil, nil //nolint:nilnil
 })
 
 var getPetByID = runtime.OperationHandlerFunc(func(data interface{}) (interface{}, error) {

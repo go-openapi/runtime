@@ -1,6 +1,7 @@
 package denco_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-openapi/runtime/middleware/denco"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testHandlerFunc(w http.ResponseWriter, r *http.Request, params denco.Params) {
@@ -22,13 +25,12 @@ func TestMux(t *testing.T) {
 		mux.POST("/user/:name", testHandlerFunc),
 		mux.HEAD("/user/:name", testHandlerFunc),
 		mux.PUT("/user/:name", testHandlerFunc),
-		mux.Handler("GET", "/user/handler", testHandlerFunc),
-		mux.Handler("POST", "/user/handler", testHandlerFunc),
-		mux.Handler("PUT", "/user/inference", testHandlerFunc),
+		mux.Handler(http.MethodGet, "/user/handler", testHandlerFunc),
+		mux.Handler(http.MethodPost, "/user/handler", testHandlerFunc),
+		mux.Handler(http.MethodPut, "/user/inference", testHandlerFunc),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -36,48 +38,41 @@ func TestMux(t *testing.T) {
 		status                 int
 		method, path, expected string
 	}{
-		{200, "GET", "/", "method: GET, path: /, params: []"},
-		{200, "GET", "/user/alice", "method: GET, path: /user/alice, params: [{name alice}]"},
-		{200, "POST", "/user/bob", "method: POST, path: /user/bob, params: [{name bob}]"},
-		{200, "HEAD", "/user/alice", ""},
-		{200, "PUT", "/user/bob", "method: PUT, path: /user/bob, params: [{name bob}]"},
-		{404, "POST", "/", "404 page not found\n"},
-		{404, "GET", "/unknown", "404 page not found\n"},
-		{404, "POST", "/user/alice/1", "404 page not found\n"},
-		{200, "GET", "/user/handler", "method: GET, path: /user/handler, params: []"},
-		{200, "POST", "/user/handler", "method: POST, path: /user/handler, params: []"},
-		{200, "PUT", "/user/inference", "method: PUT, path: /user/inference, params: []"},
+		{http.StatusOK, http.MethodGet, "/", "method: GET, path: /, params: []"},
+		{http.StatusOK, http.MethodGet, "/user/alice", "method: GET, path: /user/alice, params: [{name alice}]"},
+		{http.StatusOK, http.MethodPost, "/user/bob", "method: POST, path: /user/bob, params: [{name bob}]"},
+		{http.StatusOK, http.MethodHead, "/user/alice", ""},
+		{http.StatusOK, http.MethodPut, "/user/bob", "method: PUT, path: /user/bob, params: [{name bob}]"},
+		{http.StatusNotFound, http.MethodPost, "/", "404 page not found\n"},
+		{http.StatusNotFound, http.MethodGet, "/unknown", "404 page not found\n"},
+		{http.StatusNotFound, http.MethodPost, "/user/alice/1", "404 page not found\n"},
+		{http.StatusOK, http.MethodGet, "/user/handler", "method: GET, path: /user/handler, params: []"},
+		{http.StatusOK, http.MethodPost, "/user/handler", "method: POST, path: /user/handler, params: []"},
+		{http.StatusOK, http.MethodPut, "/user/inference", "method: PUT, path: /user/inference, params: []"},
 	} {
-		req, err := http.NewRequest(v.method, server.URL+v.path, nil)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
+		req, err := http.NewRequestWithContext(context.Background(), v.method, server.URL+v.path, nil)
+		require.NoError(t, err)
+
 		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
+		require.NoError(t, err)
+
 		defer res.Body.Close()
 		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
+		require.NoError(t, err)
+
 		actual := string(body)
 		expected := v.expected
-		if res.StatusCode != v.status || actual != expected {
-			t.Errorf(`%s "%s" => %#v %#v, want %#v %#v`, v.method, v.path, res.StatusCode, actual, v.status, expected)
-		}
+
+		assert.Equalf(t, v.status, res.StatusCode, "for method %s in path %s", v.method, v.path)
+		assert.Equalf(t, expected, actual, "for method %s in path %s", v.method, v.path)
 	}
 }
 
 func TestNotFound(t *testing.T) {
 	mux := denco.NewMux()
 	handler, err := mux.Build([]denco.Handler{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -89,18 +84,16 @@ func TestNotFound(t *testing.T) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params)
 	}
-	res, err := http.Get(server.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	res, err := http.Get(server.URL) //nolint:noctx
+	require.NoError(t, err)
+
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	actual := string(body)
 	expected := "method: GET, path: /, params: []"
-	if res.StatusCode != http.StatusServiceUnavailable || actual != expected {
-		t.Errorf(`GET "/" => %#v %#v, want %#v %#v`, res.StatusCode, actual, http.StatusServiceUnavailable, expected)
-	}
+
+	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+	assert.Equal(t, expected, actual)
 }

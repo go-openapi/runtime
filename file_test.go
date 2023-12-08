@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/validate"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateFile(t *testing.T) {
@@ -13,7 +14,7 @@ func TestValidateFile(t *testing.T) {
 	validator := validate.NewParamValidator(fileParam, nil)
 
 	result := validator.Validate("str")
-	assert.Equal(t, 1, len(result.Errors))
+	require.Len(t, result.Errors, 1)
 	assert.Equal(
 		t,
 		`f in formData must be of type file: "string"`,

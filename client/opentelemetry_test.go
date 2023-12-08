@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/go-openapi/runtime"
@@ -92,7 +93,7 @@ func Test_injectOpenTelemetrySpanContext(t *testing.T) {
 	tr := newOpenTelemetryTransport(&mockRuntime{runtime.TestClientRequest{Headers: header}}, "", nil)
 	tr.config.Propagator = propagation.TraceContext{}
 	_, err := tr.Submit(operation)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, header, 1)
 }
@@ -107,18 +108,20 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 	spans := exporter.GetSpans()
 	assert.Len(t, spans, expectedSpanCount)
 
-	if expectedSpanCount == 1 {
-		span := spans[0]
-		assert.Equal(t, "getCluster", span.Name)
-		assert.Equal(t, "go-openapi", span.InstrumentationLibrary.Name)
-		assert.Equal(t, span.Status.Code, codes.Error)
-		assert.Equal(t, []attribute.KeyValue{
-			attribute.String("net.peer.name", "remote_host"),
-			attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
-			attribute.String("http.method", "GET"),
-			attribute.String("span.kind", trace.SpanKindClient.String()),
-			attribute.String("http.scheme", "https"),
-			attribute.Int("http.status_code", 490),
-		}, span.Attributes)
+	if expectedSpanCount != 1 {
+		return
 	}
+
+	span := spans[0]
+	assert.Equal(t, "getCluster", span.Name)
+	assert.Equal(t, "go-openapi", span.InstrumentationLibrary.Name)
+	assert.Equal(t, codes.Error, span.Status.Code)
+	assert.Equal(t, []attribute.KeyValue{
+		attribute.String("net.peer.name", "remote_host"),
+		attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
+		attribute.String("http.method", http.MethodGet),
+		attribute.String("span.kind", trace.SpanKindClient.String()),
+		attribute.String("http.scheme", "https"),
+		attribute.Int("http.status_code", 490),
+	}, span.Attributes)
 }

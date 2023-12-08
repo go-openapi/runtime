@@ -52,10 +52,10 @@ func ByteStreamConsumer(opts ...byteStreamOpt) Consumer {
 			return errors.New("ByteStreamConsumer requires a reader") // early exit
 		}
 
-		close := defaultCloser
+		close := defaultCloser //nolint:revive,predeclared
 		if vals.Close {
 			if cl, ok := reader.(io.Closer); ok {
-				close = cl.Close
+				close = cl.Close //nolint:revive
 			}
 		}
 		//nolint:errcheck // closing a reader wouldn't fail.
@@ -109,10 +109,10 @@ func ByteStreamProducer(opts ...byteStreamOpt) Producer {
 		if writer == nil {
 			return errors.New("ByteStreamProducer requires a writer") // early exit
 		}
-		close := defaultCloser
+		close := defaultCloser //nolint:revive,predeclared
 		if vals.Close {
 			if cl, ok := writer.(io.Closer); ok {
-				close = cl.Close
+				close = cl.Close //nolint:revive
 			}
 		}
 		//nolint:errcheck // TODO: closing a writer would fail.

@@ -15,6 +15,7 @@
 package middleware
 
 import (
+	stdcontext "context"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -23,13 +24,13 @@ import (
 
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/loads"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/go-openapi/runtime/middleware/untyped"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func terminator(rw http.ResponseWriter, r *http.Request) {
+func terminator(rw http.ResponseWriter, _ *http.Request) {
 	rw.WriteHeader(http.StatusOK)
 }
 
@@ -39,13 +40,15 @@ func TestRouterMiddleware(t *testing.T) {
 	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/api/pets", nil)
+	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("DELETE", "/api/pets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodDelete, "/api/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
@@ -55,13 +58,15 @@ func TestRouterMiddleware(t *testing.T) {
 	assert.Equal(t, "GET,POST", strings.Join(methods, ","))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/nopets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/nopets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/pets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
@@ -71,13 +76,15 @@ func TestRouterMiddleware(t *testing.T) {
 	mw = NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/pets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("DELETE", "/pets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodDelete, "/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
@@ -87,7 +94,8 @@ func TestRouterMiddleware(t *testing.T) {
 	assert.Equal(t, "GET,POST", strings.Join(methods, ","))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/nopets", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/nopets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
@@ -103,21 +111,21 @@ func TestRouterBuilder(t *testing.T) {
 
 	// context := NewContext(spec, api)
 	builder := petAPIRouterBuilder(spec, api, analyzed)
-	getRecords := builder.records["GET"]
-	postRecords := builder.records["POST"]
-	deleteRecords := builder.records["DELETE"]
+	getRecords := builder.records[http.MethodGet]
+	postRecords := builder.records[http.MethodPost]
+	deleteRecords := builder.records[http.MethodDelete]
 
 	assert.Len(t, getRecords, 2)
 	assert.Len(t, postRecords, 1)
 	assert.Len(t, deleteRecords, 1)
 
-	assert.Empty(t, builder.records["PATCH"])
-	assert.Empty(t, builder.records["OPTIONS"])
-	assert.Empty(t, builder.records["HEAD"])
-	assert.Empty(t, builder.records["PUT"])
+	assert.Empty(t, builder.records[http.MethodPatch])
+	assert.Empty(t, builder.records[http.MethodOptions])
+	assert.Empty(t, builder.records[http.MethodHead])
+	assert.Empty(t, builder.records[http.MethodPut])
 
 	rec := postRecords[0]
-	assert.Equal(t, rec.Key, "/pets")
+	assert.Equal(t, "/pets", rec.Key)
 	val := rec.Value.(*routeEntry)
 	assert.Len(t, val.Consumers, 2)
 	assert.Len(t, val.Producers, 2)
@@ -132,7 +140,7 @@ func TestRouterBuilder(t *testing.T) {
 	assert.Len(t, val.Parameters, 1)
 
 	recG := getRecords[0]
-	assert.Equal(t, recG.Key, "/pets")
+	assert.Equal(t, "/pets", recG.Key)
 	valG := recG.Value.(*routeEntry)
 	assert.Len(t, valG.Consumers, 2)
 	assert.Len(t, valG.Producers, 4)
@@ -149,10 +157,11 @@ func TestRouterCanonicalBasePath(t *testing.T) {
 	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/api/pets", nil)
+	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 }
 
 func TestRouter_EscapedPath(t *testing.T) {
@@ -162,22 +171,22 @@ func TestRouter_EscapedPath(t *testing.T) {
 	mw := NewRouter(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/api/pets/123", nil)
+	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets/123", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("GET", "/api/pets/abc%2Fdef", nil)
+	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets/abc%2Fdef", nil)
+	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
 	ri, _, _ := context.RouteInfo(request)
-	if assert.NotNil(t, ri) {
-		if assert.NotNil(t, ri.Params) {
-			assert.Equal(t, "abc/def", ri.Params.Get("id"))
-		}
-	}
+	require.NotNil(t, ri)
+	require.NotNil(t, ri.Params)
+	assert.Equal(t, "abc/def", ri.Params.Get("id"))
 }
 
 func TestRouterStruct(t *testing.T) {
@@ -189,7 +198,7 @@ func TestRouterStruct(t *testing.T) {
 
 	entry, ok := router.Lookup("delete", "/api/pets/{id}")
 	assert.True(t, ok)
-	assert.NotNil(t, entry)
+	require.NotNil(t, entry)
 	assert.Len(t, entry.Params, 1)
 	assert.Equal(t, "id", entry.Params[0].Name)
 
@@ -202,10 +211,10 @@ func TestRouterStruct(t *testing.T) {
 
 func petAPIRouterBuilder(spec *loads.Document, api *untyped.API, analyzed *analysis.Spec) *defaultRouteBuilder {
 	builder := newDefaultRouteBuilder(spec, newRoutableUntypedAPI(spec, api, new(Context)))
-	builder.AddRoute("GET", "/pets", analyzed.AllPaths()["/pets"].Get)
-	builder.AddRoute("POST", "/pets", analyzed.AllPaths()["/pets"].Post)
-	builder.AddRoute("DELETE", "/pets/{id}", analyzed.AllPaths()["/pets/{id}"].Delete)
-	builder.AddRoute("GET", "/pets/{id}", analyzed.AllPaths()["/pets/{id}"].Get)
+	builder.AddRoute(http.MethodGet, "/pets", analyzed.AllPaths()["/pets"].Get)
+	builder.AddRoute(http.MethodPost, "/pets", analyzed.AllPaths()["/pets"].Post)
+	builder.AddRoute(http.MethodDelete, "/pets/{id}", analyzed.AllPaths()["/pets/{id}"].Delete)
+	builder.AddRoute(http.MethodGet, "/pets/{id}", analyzed.AllPaths()["/pets/{id}"].Get)
 
 	return builder
 }
@@ -223,7 +232,7 @@ func TestPathConverter(t *testing.T) {
 		{"/{pet_id}", "/:pet_id"},
 		{"/{petId}", "/:petId"},
 		{"/{pet-id}", "/:pet-id"},
-		// composit parameters tests
+		// compost parameters tests
 		{"/p_{pet_id}", "/p_:pet_id"},
 		{"/p_{petId}.{petSubId}", "/p_:petId"},
 	}
@@ -235,7 +244,7 @@ func TestPathConverter(t *testing.T) {
 }
 
 func TestExtractCompositParameters(t *testing.T) {
-	// name is the composite parameter's name, value is the value of this composit parameter, pattern is the pattern to be matched
+	// name is the composite parameter's name, value is the value of this compost parameter, pattern is the pattern to be matched
 	cases := []struct {
 		name    string
 		value   string

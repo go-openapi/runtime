@@ -102,7 +102,7 @@ func logClose(err error, pw *io.PipeWriter) {
 	}
 }
 
-func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) { //nolint:gocyclo,maintidx
 	// build the data
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
@@ -317,13 +317,13 @@ DoneChoosingBodySource:
 
 	urlPath := path.Join(basePathURL.Path, pathPatternURL.Path)
 	for k, v := range r.pathParams {
-		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1)
+		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1) //nolint:gocritic
 	}
 	if reinstateSlash {
-		urlPath = urlPath + "/"
+		urlPath = urlPath + "/" //nolint:gocritic
 	}
 
-	req, err := http.NewRequest(r.method, urlPath, body)
+	req, err := http.NewRequest(r.method, urlPath, body) //nolint:noctx
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +361,7 @@ func (r *request) GetMethod() string {
 func (r *request) GetPath() string {
 	path := r.pathPattern
 	for k, v := range r.pathParams {
-		path = strings.Replace(path, "{"+k+"}", v, -1)
+		path = strings.Replace(path, "{"+k+"}", v, -1) //nolint:gocritic
 	}
 	return path
 }

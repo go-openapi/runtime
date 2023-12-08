@@ -16,67 +16,90 @@ package simplepetstore
 
 import (
 	"bytes"
+	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSimplePetstoreSpec(t *testing.T) {
-	handler, _ := NewPetstore()
+	handler, err := NewPetstore()
+	require.NoError(t, err)
+
 	// Serves swagger spec document
-	r, _ := runtime.JSONRequest("GET", "/swagger.json", nil)
+	r, err := runtime.JSONRequest(http.MethodGet, "/swagger.json", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 200, rw.Code)
+	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, swaggerJSON, rw.Body.String())
 }
 
 func TestSimplePetstoreAllPets(t *testing.T) {
-	handler, _ := NewPetstore()
+	handler, err := NewPetstore()
+	require.NoError(t, err)
+
 	// Serves swagger spec document
-	r, _ := runtime.JSONRequest("GET", "/api/pets", nil)
+	r, err := runtime.JSONRequest(http.MethodGet, "/api/pets", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 200, rw.Code)
+	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "[{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"},{\"id\":2,\"name\":\"Cat\",\"status\":\"pending\"}]\n", rw.Body.String())
 }
 
 func TestSimplePetstorePetByID(t *testing.T) {
-	handler, _ := NewPetstore()
+	handler, err := NewPetstore()
+	require.NoError(t, err)
 
 	// Serves swagger spec document
-	r, _ := runtime.JSONRequest("GET", "/api/pets/1", nil)
+	r, err := runtime.JSONRequest(http.MethodGet, "/api/pets/1", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 200, rw.Code)
+	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreAddPet(t *testing.T) {
-	handler, _ := NewPetstore()
+	handler, err := NewPetstore()
+	require.NoError(t, err)
+
 	// Serves swagger spec document
-	r, _ := runtime.JSONRequest("POST", "/api/pets", bytes.NewBuffer([]byte(`{"name": "Fish","status": "available"}`)))
+	r, err := runtime.JSONRequest(http.MethodPost, "/api/pets", bytes.NewBufferString(`{"name": "Fish","status": "available"}`))
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 200, rw.Code)
+	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "{\"id\":3,\"name\":\"Fish\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreDeletePet(t *testing.T) {
-	handler, _ := NewPetstore()
+	handler, err := NewPetstore()
+	require.NoError(t, err)
+
 	// Serves swagger spec document
-	r, _ := runtime.JSONRequest("DELETE", "/api/pets/1", nil)
+	r, err := runtime.JSONRequest(http.MethodDelete, "/api/pets/1", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 204, rw.Code)
+	assert.Equal(t, http.StatusNoContent, rw.Code)
 	assert.Equal(t, "", rw.Body.String())
 
-	r, _ = runtime.JSONRequest("GET", "/api/pets/1", nil)
+	r, err = runtime.JSONRequest(http.MethodGet, "/api/pets/1", nil)
+	require.NoError(t, err)
+	r = r.WithContext(context.Background())
 	rw = httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, 404, rw.Code)
+	assert.Equal(t, http.StatusNotFound, rw.Code)
 	assert.Equal(t, "{\"code\":404,\"message\":\"not found: pet 1\"}", rw.Body.String())
 }

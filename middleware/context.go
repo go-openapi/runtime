@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:goconst
 package middleware
 
 import (
@@ -37,7 +38,7 @@ import (
 var Debug = logger.DebugEnabled()
 var Logger logger.Logger = logger.StandardLogger{}
 
-func debugLog(format string, args ...interface{}) {
+func debugLog(format string, args ...interface{}) { //nolint:goprintffuncname
 	if Debug {
 		Logger.Printf(format, args...)
 	}
@@ -162,7 +163,7 @@ func (r *routableUntypedAPI) HandlerFor(method, path string) (http.Handler, bool
 	r.hlock.Unlock()
 	return handler, ok
 }
-func (r *routableUntypedAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
+func (r *routableUntypedAPI) ServeErrorFor(_ string) func(http.ResponseWriter, *http.Request, error) {
 	return r.api.ServeError
 }
 func (r *routableUntypedAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
@@ -542,8 +543,8 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 	}
 
 	if route == nil || route.Operation == nil {
-		rw.WriteHeader(200)
-		if r.Method == "HEAD" {
+		rw.WriteHeader(http.StatusOK)
+		if r.Method == http.MethodHead {
 			return
 		}
 		producers := c.api.ProducersFor(normalizeOffers(offers))
@@ -559,7 +560,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 
 	if _, code, ok := route.Operation.SuccessResponse(); ok {
 		rw.WriteHeader(code)
-		if code == 204 || r.Method == "HEAD" {
+		if code == http.StatusNoContent || r.Method == http.MethodHead {
 			return
 		}
 

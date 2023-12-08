@@ -23,19 +23,24 @@ import (
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime"
 	testingutil "github.com/go-openapi/runtime/internal/testing"
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/runtime/yamlpc"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	apiPrincipal = "admin"
+	apiUser      = "topuser"
+	otherUser    = "anyother"
 )
 
 // NewAPI registers a stub api for the pet store
 func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	spec, err := loads.Analyzed(testingutil.PetStoreJSONMessage, "")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	api := untyped.NewAPI(spec)
 
 	api.RegisterConsumer("application/json", runtime.JSONConsumer())
@@ -48,28 +53,30 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterProducer("application/x-yaml", yamlpc.YAMLProducer())
 
 	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (interface{}, error) {
-		if username == "admin" && password == "admin" {
-			return "admin", nil
-		} else if username == "topuser" && password == "topuser" {
-			return "topuser", nil
-		} else if username == "anyother" && password == "anyother" {
-			return "anyother", nil
+		switch {
+		case username == apiPrincipal && password == apiPrincipal:
+			return apiPrincipal, nil
+		case username == apiUser && password == apiUser:
+			return apiUser, nil
+		case username == otherUser && password == otherUser:
+			return otherUser, nil
+		default:
+			return nil, errors.Unauthenticated("basic")
 		}
-		return nil, errors.Unauthenticated("basic")
 	}))
 	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (interface{}, error) {
 		if token == "token123" {
-			return "admin", nil
+			return apiPrincipal, nil
 		}
 		return nil, errors.Unauthenticated("token")
 	}))
 	api.RegisterAuthorizer(runtime.AuthorizerFunc(func(r *http.Request, user interface{}) error {
-		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && user.(string) != "admin" {
-			if user.(string) == "topuser" {
+		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && user.(string) != apiPrincipal {
+			if user.(string) == apiUser {
 				return errors.CompositeValidationError(errors.New(errors.InvalidTypeCode, "unauthorized"))
-			} else {
-				return goerrors.New("unauthorized")
 			}
+
+			return goerrors.New("unauthorized")
 		}
 		return nil
 	}))
@@ -88,7 +95,7 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 // NewRootAPI registers a stub api for the pet store
 func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	spec, err := loads.Analyzed(testingutil.RootPetStoreJSONMessage, "")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	api := untyped.NewAPI(spec)
 
 	api.RegisterConsumer("application/json", runtime.JSONConsumer())
@@ -101,14 +108,14 @@ func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterProducer("application/x-yaml", yamlpc.YAMLProducer())
 
 	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (interface{}, error) {
-		if username == "admin" && password == "admin" {
-			return "admin", nil
+		if username == apiPrincipal && password == apiPrincipal {
+			return apiPrincipal, nil
 		}
 		return nil, errors.Unauthenticated("basic")
 	}))
 	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (interface{}, error) {
 		if token == "token123" {
-			return "admin", nil
+			return apiPrincipal, nil
 		}
 		return nil, errors.Unauthenticated("token")
 	}))
@@ -161,6 +168,6 @@ func (s *stubOperationHandler) ParameterModel() interface{} {
 	return nil
 }
 
-func (s *stubOperationHandler) Handle(params interface{}) (interface{}, error) {
-	return nil, nil
+func (s *stubOperationHandler) Handle(_ interface{}) (interface{}, error) {
+	return nil, nil //nolint:nilnil
 }

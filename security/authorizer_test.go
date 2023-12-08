@@ -17,12 +17,12 @@ package security
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthorized(t *testing.T) {
 	authorizer := Authorized()
 
 	err := authorizer.Authorize(nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

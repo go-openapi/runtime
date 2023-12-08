@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var consProdXML = `<person><name>Somebody</name><id>1</id></person>`
@@ -32,8 +33,8 @@ func TestXMLConsumer(t *testing.T) {
 		Name    string   `xml:"name"`
 		ID      int      `xml:"id"`
 	}
-	err := cons.Consume(bytes.NewBuffer([]byte(consProdXML)), &data)
-	assert.NoError(t, err)
+	err := cons.Consume(bytes.NewBufferString(consProdXML), &data)
+	require.NoError(t, err)
 	assert.Equal(t, "Somebody", data.Name)
 	assert.Equal(t, 1, data.ID)
 }
@@ -48,6 +49,6 @@ func TestXMLProducer(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, consProdXML, rw.Body.String())
 }

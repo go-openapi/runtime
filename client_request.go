@@ -38,6 +38,8 @@ type ClientRequestWriter interface {
 
 // ClientRequest is an interface for things that know how to
 // add information to a swagger client request
+//
+//nolint:interfacebloat
 type ClientRequest interface {
 	SetHeaderParam(string, ...string) error
 

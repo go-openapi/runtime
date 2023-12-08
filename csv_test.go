@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const consProdCSV = `name,country,age
@@ -30,29 +31,29 @@ Mike,US,20
 
 type csvEmptyReader struct{}
 
-func (r *csvEmptyReader) Read(d []byte) (int, error) {
+func (r *csvEmptyReader) Read(_ []byte) (int, error) {
 	return 0, io.EOF
 }
 
 func TestCSVConsumer(t *testing.T) {
 	cons := CSVConsumer()
-	reader := bytes.NewBuffer([]byte(consProdCSV))
+	reader := bytes.NewBufferString(consProdCSV)
 
 	outBuf := new(bytes.Buffer)
 	err := cons.Consume(reader, outBuf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, consProdCSV, outBuf.String())
 
 	outBuf2 := new(bytes.Buffer)
 	err = cons.Consume(nil, outBuf2)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	err = cons.Consume(reader, struct{}{})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	emptyOutBuf := new(bytes.Buffer)
 	err = cons.Consume(&csvEmptyReader{}, emptyOutBuf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "", emptyOutBuf.String())
 }
 
@@ -62,13 +63,13 @@ func TestCSVProducer(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, consProdCSV, rw.Body.String())
 
 	rw2 := httptest.NewRecorder()
 	err = prod.Produce(rw2, struct{}{})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	err = prod.Produce(nil, data)
-	assert.Error(t, err)
+	require.Error(t, err)
 }

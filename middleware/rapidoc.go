@@ -1,3 +1,4 @@
+//nolint:dupl,goconst
 package middleware
 
 import (
@@ -43,7 +44,6 @@ func (r *RapiDocOpts) EnsureDefaults() {
 
 // RapiDoc creates a middleware to serve a documentation site for a swagger spec.
 // This allows for altering the spec before starting the http listener.
-//
 func RapiDoc(opts RapiDocOpts, next http.Handler) http.Handler {
 	opts.EnsureDefaults()
 
@@ -79,7 +79,7 @@ const (
 <html>
 <head>
   <title>{{ .Title }}</title>
-  <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 charecters -->
+  <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 characters -->
   <script type="module" src="{{ .RapiDocURL }}"></script>
 </head>
 <body>

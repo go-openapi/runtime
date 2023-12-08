@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:goconst
 package middleware
 
 import (
@@ -208,7 +209,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 			if ffErr != nil {
 				if p.parameter.Required {
 					return errors.NewParseError(p.Name, p.parameter.In, "", ffErr)
-				} else {
+				} else { //nolint:revive
 					return nil
 				}
 			}
@@ -273,7 +274,7 @@ func (p *untypedParamBinder) bindValue(data []string, hasKey bool, target reflec
 	return p.setFieldValue(target, p.parameter.Default, d, hasKey)
 }
 
-func (p *untypedParamBinder) setFieldValue(target reflect.Value, defaultValue interface{}, data string, hasKey bool) error {
+func (p *untypedParamBinder) setFieldValue(target reflect.Value, defaultValue interface{}, data string, hasKey bool) error { //nolint:gocyclo
 	tpe := p.parameter.Type
 	if p.parameter.Format != "" {
 		tpe = p.parameter.Format
@@ -317,7 +318,7 @@ func (p *untypedParamBinder) setFieldValue(target reflect.Value, defaultValue in
 		return nil
 	}
 
-	switch target.Kind() {
+	switch target.Kind() { //nolint:exhaustive
 	case reflect.Bool:
 		if data == "" {
 			if target.CanSet() {

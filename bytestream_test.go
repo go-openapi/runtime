@@ -8,55 +8,52 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestByteStreamConsumer(t *testing.T) {
 	cons := ByteStreamConsumer()
 
-	expected := "the data for the stream to be sent over the wire"
+	const expected = "the data for the stream to be sent over the wire"
 
 	// can consume as a Writer
 	var b bytes.Buffer
-	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &b)) {
-		assert.Equal(t, expected, b.String())
-	}
+	require.NoError(t, cons.Consume(bytes.NewBufferString(expected), &b))
+	assert.Equal(t, expected, b.String())
 
-	//can consume as a string
+	// can consume as a string
 	var s string
-	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &s)) {
-		assert.Equal(t, expected, s)
-	}	
+	require.NoError(t, cons.Consume(bytes.NewBufferString(expected), &s))
+	assert.Equal(t, expected, s)
 
 	// can consume as an UnmarshalBinary
 	var bu binaryUnmarshalDummy
-	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bu)) {
-		assert.Equal(t, expected, bu.str)
-	}
+	require.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bu))
+	assert.Equal(t, expected, bu.str)
 
 	// can consume as a binary slice
 	var bs []byte
-	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bs)) {
-		assert.Equal(t, expected, string(bs))
-	}
+	require.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bs))
+	assert.Equal(t, expected, string(bs))
+
 	type binarySlice []byte
 	var bs2 binarySlice
-	if assert.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bs2)) {
-		assert.Equal(t, expected, string(bs2))
-	}
+	require.NoError(t, cons.Consume(bytes.NewBufferString(expected), &bs2))
+	assert.Equal(t, expected, string(bs2))
 
 	// passing in a nilslice wil result in an error
 	var ns *[]byte
-	assert.Error(t, cons.Consume(bytes.NewBufferString(expected), &ns))
+	require.Error(t, cons.Consume(bytes.NewBufferString(expected), &ns))
 
 	// passing in nil wil result in an error as well
-	assert.Error(t, cons.Consume(bytes.NewBufferString(expected), nil))
+	require.Error(t, cons.Consume(bytes.NewBufferString(expected), nil))
 
 	// a reader who results in an error, will make it fail
-	assert.Error(t, cons.Consume(new(nopReader), &bu))
-	assert.Error(t, cons.Consume(new(nopReader), &bs))
+	require.Error(t, cons.Consume(new(nopReader), &bu))
+	require.Error(t, cons.Consume(new(nopReader), &bs))
 
 	// the readers can also not be nil
-	assert.Error(t, cons.Consume(nil, &bs))
+	require.Error(t, cons.Consume(nil, &bs))
 }
 
 type binaryUnmarshalDummy struct {
@@ -74,70 +71,61 @@ func (b *binaryUnmarshalDummy) UnmarshalBinary(bytes []byte) error {
 
 func TestByteStreamProducer(t *testing.T) {
 	cons := ByteStreamProducer()
-	expected := "the data for the stream to be sent over the wire"
+	const expected = "the data for the stream to be sent over the wire"
 
 	var rdr bytes.Buffer
 
 	// can produce using a reader
-	if assert.NoError(t, cons.Produce(&rdr, bytes.NewBufferString(expected))) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, bytes.NewBufferString(expected)))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// can produce using a binary marshaller
-	if assert.NoError(t, cons.Produce(&rdr, &binaryMarshalDummy{expected})) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, &binaryMarshalDummy{expected}))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// string can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, expected)) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, expected))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// binary slices can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, []byte(expected))) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, []byte(expected)))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// errors can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, errors.New(expected))) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, errors.New(expected)))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// structs can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, Error{Message: expected})) {
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, Error{Message: expected}))
+	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+	rdr.Reset()
 
 	// struct pointers can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, &Error{Message: expected})) {
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, &Error{Message: expected}))
+	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+	rdr.Reset()
 
 	// slices can also be used to produce
-	if assert.NoError(t, cons.Produce(&rdr, []string{expected})) {
-		assert.Equal(t, fmt.Sprintf(`[%q]`, expected), rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, []string{expected}))
+	assert.Equal(t, fmt.Sprintf(`[%q]`, expected), rdr.String())
+	rdr.Reset()
 
 	type binarySlice []byte
-	if assert.NoError(t, cons.Produce(&rdr, binarySlice(expected))) {
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
-	}
+	require.NoError(t, cons.Produce(&rdr, binarySlice(expected)))
+	assert.Equal(t, expected, rdr.String())
+	rdr.Reset()
 
 	// when binaryMarshal data is used, its potential error gets propagated
-	assert.Error(t, cons.Produce(&rdr, new(binaryMarshalDummy)))
+	require.Error(t, cons.Produce(&rdr, new(binaryMarshalDummy)))
 	// nil data should never be accepted either
-	assert.Error(t, cons.Produce(&rdr, nil))
+	require.Error(t, cons.Produce(&rdr, nil))
 	// nil readers should also never be acccepted
-	assert.Error(t, cons.Produce(nil, bytes.NewBufferString(expected)))
+	require.Error(t, cons.Produce(nil, bytes.NewBufferString(expected)))
 }
 
 type binaryMarshalDummy struct {
@@ -195,19 +183,17 @@ func TestBytestreamConsumer_Close(t *testing.T) {
 	// can consume as a Writer
 	var b bytes.Buffer
 	r := &closingReader{b: bytes.NewBufferString(expected)}
-	if assert.NoError(t, cons.Consume(r, &b)) {
-		assert.Equal(t, expected, b.String())
-		assert.EqualValues(t, 1, r.calledClose)
-	}
+	require.NoError(t, cons.Consume(r, &b))
+	assert.Equal(t, expected, b.String())
+	assert.EqualValues(t, 1, r.calledClose)
 
 	// can consume as a Writer
 	cons = ByteStreamConsumer()
 	b.Reset()
 	r = &closingReader{b: bytes.NewBufferString(expected)}
-	if assert.NoError(t, cons.Consume(r, &b)) {
-		assert.Equal(t, expected, b.String())
-		assert.EqualValues(t, 0, r.calledClose)
-	}
+	require.NoError(t, cons.Consume(r, &b))
+	assert.Equal(t, expected, b.String())
+	assert.EqualValues(t, 0, r.calledClose)
 }
 
 func TestBytestreamProducer_Close(t *testing.T) {
@@ -217,26 +203,23 @@ func TestBytestreamProducer_Close(t *testing.T) {
 	// can consume as a Writer
 	r := &closingWriter{}
 	// can produce using a reader
-	if assert.NoError(t, cons.Produce(r, bytes.NewBufferString(expected))) {
-		assert.Equal(t, expected, r.String())
-		assert.EqualValues(t, 1, r.calledClose)
-	}
+	require.NoError(t, cons.Produce(r, bytes.NewBufferString(expected)))
+	assert.Equal(t, expected, r.String())
+	assert.EqualValues(t, 1, r.calledClose)
 
 	cons = ByteStreamProducer()
 	r = &closingWriter{}
 	// can produce using a reader
-	if assert.NoError(t, cons.Produce(r, bytes.NewBufferString(expected))) {
-		assert.Equal(t, expected, r.String())
-		assert.EqualValues(t, 0, r.calledClose)
-	}
+	require.NoError(t, cons.Produce(r, bytes.NewBufferString(expected)))
+	assert.Equal(t, expected, r.String())
+	assert.EqualValues(t, 0, r.calledClose)
 
 	cons = ByteStreamProducer()
 	r = &closingWriter{}
 	data := &closingReader{b: bytes.NewBufferString(expected)}
 	// can produce using a readcloser
-	if assert.NoError(t, cons.Produce(r, data)) {
-		assert.Equal(t, expected, r.String())
-		assert.EqualValues(t, 0, r.calledClose)
-		assert.EqualValues(t, 1, data.calledClose)
-	}
+	require.NoError(t, cons.Produce(r, data))
+	assert.Equal(t, expected, r.String())
+	assert.EqualValues(t, 0, r.calledClose)
+	assert.EqualValues(t, 1, data.calledClose)
 }

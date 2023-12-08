@@ -23,10 +23,10 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
 	swaggerspec "github.com/go-openapi/spec"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/go-openapi/runtime"
+	"github.com/stretchr/testify/require"
 )
 
 func stubAutenticator() runtime.Authenticator {
@@ -58,8 +58,8 @@ func (s *stubOperationHandler) ParameterModel() interface{} {
 	return nil
 }
 
-func (s *stubOperationHandler) Handle(params interface{}) (interface{}, error) {
-	return nil, nil
+func (s *stubOperationHandler) Handle(_ interface{}) (interface{}, error) {
+	return nil, nil //nolint:nilnil
 }
 
 func TestUntypedAPIRegistrations(t *testing.T) {
@@ -184,11 +184,11 @@ func TestUntypedAppValidation(t *testing.T) {
 	  }
 	}`
 	validSpec, err := loads.Analyzed([]byte(specStr), "")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, validSpec)
 
 	spec, err := loads.Analyzed([]byte(invalidSpecStr), "")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, spec)
 
 	analyzed := analysis.New(spec.Spec())
@@ -200,24 +200,28 @@ func TestUntypedAppValidation(t *testing.T) {
 
 	api1 := NewAPI(spec)
 	err = api1.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [application/x-yaml] consumes registrations", err.Error())
+
 	api1.RegisterConsumer("application/x-yaml", new(stubConsumer))
 	err = api1.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [application/x-yaml] produces registrations", err.Error())
+
 	api1.RegisterProducer("application/x-yaml", new(stubProducer))
 	err = api1.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [GET /] operation registrations", err.Error())
+
 	api1.RegisterOperation("get", "/", new(stubOperationHandler))
 	err = api1.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [apiKey, basic] auth scheme registrations", err.Error())
+
 	api1.RegisterAuth("basic", stubAutenticator())
 	api1.RegisterAuth("apiKey", stubAutenticator())
 	err = api1.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [apiKey, basic] security definitions registrations", err.Error())
 
 	api3 := NewAPI(validSpec)
@@ -227,22 +231,22 @@ func TestUntypedAppValidation(t *testing.T) {
 	api3.RegisterAuth("basic", stubAutenticator())
 	api3.RegisterAuth("apiKey", stubAutenticator())
 	err = api3.validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	api3.RegisterConsumer("application/something", new(stubConsumer))
 	err = api3.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing from spec file [application/something] consumes", err.Error())
 
 	api2 := NewAPI(spec)
 	api2.RegisterConsumer("application/something", new(stubConsumer))
 	err = api2.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [application/x-yaml] consumes registrations\nmissing from spec file [application/something] consumes", err.Error())
 	api2.RegisterConsumer("application/x-yaml", new(stubConsumer))
 	delete(api2.consumers, "application/something")
 	api2.RegisterProducer("application/something", new(stubProducer))
 	err = api2.validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "missing [application/x-yaml] produces registrations\nmissing from spec file [application/something] produces", err.Error())
 	delete(api2.producers, "application/something")
 	api2.RegisterProducer("application/x-yaml", new(stubProducer))
@@ -271,7 +275,7 @@ func TestUntypedAppValidation(t *testing.T) {
 		return data, nil
 	})
 	d, err := opHandler.Handle(1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, d)
 
 	authenticator := runtime.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
@@ -282,6 +286,6 @@ func TestUntypedAppValidation(t *testing.T) {
 	})
 	ok, p, err := authenticator.Authenticate("hello")
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "hello", p)
 }

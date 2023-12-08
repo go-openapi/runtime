@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:goconst
 package client
 
 import (
@@ -31,13 +32,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/yamlpc"
 	"github.com/go-openapi/strfmt"
+	"github.com/opentracing/opentracing-go"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
@@ -70,7 +70,7 @@ type TLSClientOptions struct {
 	LoadedCA *x509.Certificate
 
 	// LoadedCAPool specifies a pool of RootCAs to use when validating the server's TLS certificate.
-	// If set, it will be combined with the the other loaded certificates (see LoadedCA and CA).
+	// If set, it will be combined with the other loaded certificates (see LoadedCA and CA).
 	// If neither LoadedCA or CA is set, the provided pool with override the system
 	// certificate pool.
 	// The caller must not use the supplied pool after calling TLSClientAuth.
@@ -112,7 +112,7 @@ type TLSClientOptions struct {
 // TLSClientAuth creates a tls.Config for mutual auth
 func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	// create client tls config
-	cfg := &tls.Config{}
+	cfg := &tls.Config{} //nolint:gosec
 
 	// load client cert if specified
 	if opts.Certificate != "" {
@@ -158,7 +158,7 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	// When no CA certificate is provided, default to the system cert pool
 	// that way when a request is made to a server known by the system trust store,
 	// the name is still verified
-	if opts.LoadedCA != nil {
+	if opts.LoadedCA != nil { //nolint:gocritic
 		caCertPool := basePool(opts.LoadedCAPool)
 		caCertPool.AddCert(opts.LoadedCA)
 		cfg.RootCAs = caCertPool
@@ -227,7 +227,7 @@ type Runtime struct {
 	Host     string
 	BasePath string
 	Formats  strfmt.Registry
-	Context  context.Context
+	Context  context.Context //nolint:containedctx
 
 	Debug  bool
 	logger logger.Logger
@@ -368,7 +368,7 @@ func (r *Runtime) EnableConnectionReuse() {
 }
 
 // takes a client operation and creates equivalent http.Request
-func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request, *http.Request, error) {
+func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request, *http.Request, error) { //nolint:revive,stylecheck
 	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
 
 	request, err := newRequest(operation.Method, operation.PathPattern, params)
@@ -420,7 +420,7 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 	return request, req, nil
 }
 
-func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) {
+func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive,stylecheck
 	_, req, err = r.createHttpRequest(operation)
 	return
 }
@@ -481,7 +481,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	defer res.Body.Close()
 
 	ct := res.Header.Get(runtime.HeaderContentType)
-	if ct == "" { // this should really really never occur
+	if ct == "" { // this should really never occur
 		ct = r.DefaultMediaType
 	}
 
@@ -526,7 +526,7 @@ func (r *Runtime) SetLogger(logger logger.Logger) {
 	middleware.Logger = logger
 }
 
-type ClientResponseFunc = func(*http.Response) runtime.ClientResponse
+type ClientResponseFunc = func(*http.Response) runtime.ClientResponse //nolint:revive
 
 // SetResponseReader changes the response reader implementation.
 func (r *Runtime) SetResponseReader(f ClientResponseFunc) {

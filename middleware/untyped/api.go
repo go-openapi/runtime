@@ -197,17 +197,17 @@ func (d *API) Validate() error {
 
 // validateWith validates the registrations in this API against the provided spec analyzer
 func (d *API) validate() error {
-	var consumes []string
+	var consumes []string //nolint:prealloc
 	for k := range d.consumers {
 		consumes = append(consumes, k)
 	}
 
-	var produces []string
+	var produces []string //nolint:prealloc
 	for k := range d.producers {
 		produces = append(produces, k)
 	}
 
-	var authenticators []string
+	var authenticators []string //nolint:prealloc
 	for k := range d.authenticators {
 		authenticators = append(authenticators, k)
 	}
@@ -219,7 +219,7 @@ func (d *API) validate() error {
 		}
 	}
 
-	var definedAuths []string
+	var definedAuths []string //nolint:prealloc
 	for k := range d.spec.Spec().SecurityDefinitions {
 		definedAuths = append(definedAuths, k)
 	}
@@ -267,7 +267,7 @@ func (d *API) verify(name string, registrations []string, expectations []string)
 		delete(expected, k)
 	}
 
-	var unregistered []string
+	var unregistered []string //nolint:prealloc
 	for k := range expected {
 		unregistered = append(unregistered, k)
 	}

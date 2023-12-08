@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var consProdJSON = `{"name":"Somebody","id":1}`
@@ -28,7 +29,7 @@ var consProdJSON = `{"name":"Somebody","id":1}`
 type eofRdr struct {
 }
 
-func (r *eofRdr) Read(d []byte) (int, error) {
+func (r *eofRdr) Read(_ []byte) (int, error) {
 	return 0, io.EOF
 }
 
@@ -38,14 +39,13 @@ func TestJSONConsumer(t *testing.T) {
 		Name string
 		ID   int
 	}
-	err := cons.Consume(bytes.NewBuffer([]byte(consProdJSON)), &data)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "Somebody", data.Name)
-		assert.Equal(t, 1, data.ID)
+	err := cons.Consume(bytes.NewBufferString(consProdJSON), &data)
+	require.NoError(t, err)
+	assert.Equal(t, "Somebody", data.Name)
+	assert.Equal(t, 1, data.ID)
 
-		err = cons.Consume(new(eofRdr), &data)
-		assert.Error(t, err)
-	}
+	err = cons.Consume(new(eofRdr), &data)
+	require.Error(t, err)
 }
 
 func TestJSONProducer(t *testing.T) {
@@ -57,6 +57,6 @@ func TestJSONProducer(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, consProdJSON+"\n", rw.Body.String())
 }

@@ -15,11 +15,13 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
@@ -28,29 +30,38 @@ import (
 func TestServeSpecMiddleware(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	ctx := NewContext(spec, api, nil)
-
 	handler := Spec("", ctx.spec.Raw(), nil)
-	// serves spec
-	request, _ := http.NewRequest("GET", "/swagger.json", nil)
-	request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
 
-	// returns 404 when no next handler
-	request, _ = http.NewRequest("GET", "/api/pets", nil)
-	request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, 404, recorder.Code)
+	t.Run("serves spec", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
+		require.NoError(t, err)
+		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+		recorder := httptest.NewRecorder()
 
-	// forwards to next handler for other url
-	handler = Spec("", ctx.spec.Raw(), http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(http.StatusOK)
-	}))
-	request, _ = http.NewRequest("GET", "/api/pets", nil)
-	request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code)
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("returns 404 when no next handler", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
+		require.NoError(t, err)
+		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
+
+	t.Run("forwards to next handler for other url", func(t *testing.T) {
+		handler = Spec("", ctx.spec.Raw(), http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		}))
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
+		require.NoError(t, err)
+		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
 }

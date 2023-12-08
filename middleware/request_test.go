@@ -16,6 +16,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -24,13 +25,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
-	"github.com/go-openapi/runtime"
+const (
+	csvFormat = "csv"
+	testURL   = "http://localhost:8002/hello"
 )
 
 type stubConsumer struct {
@@ -71,7 +75,7 @@ type jsonRequestSlice struct {
 
 func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
-		fmt = "csv"
+		fmt = csvFormat
 	}
 	nameParam := spec.QueryParam("name").Typed("string", "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
@@ -113,7 +117,7 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 
 func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
-		fmt = "csv"
+		fmt = csvFormat
 	}
 	nameParam := spec.QueryParam("name").Typed("string", "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
@@ -139,7 +143,7 @@ func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 }
 func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
-		fmt = "csv"
+		fmt = csvFormat
 	}
 	nameParam := spec.QueryParam("name").Typed("string", "")
 	idParam := spec.PathParam("id").Typed("integer", "int64")
@@ -175,7 +179,8 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	planned := strfmt.Date(dt1)
 	dt2 := time.Date(2014, 10, 12, 8, 5, 5, 0, time.UTC)
 	delivered := strfmt.DateTime(dt2)
-	uri, _ := url.Parse("http://localhost:8002/hello")
+	uri, err := url.Parse(testURL)
+	require.NoError(t, err)
 	defaults := map[string]interface{}{
 		"id":           id,
 		"age":          age,
@@ -197,13 +202,14 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 		op3[k] = p
 	}
 
-	req, _ := http.NewRequest("POST", uri.String(), bytes.NewBuffer(nil))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, uri.String(), bytes.NewBuffer(nil))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	binder := NewUntypedRequestBinder(op3, new(spec.Swagger), strfmt.Default)
 
 	data := make(map[string]interface{})
-	err := binder.Bind(req, RouteParams(nil), runtime.JSONConsumer(), &data)
-	assert.NoError(t, err)
+	err = binder.Bind(req, RouteParams(nil), runtime.JSONConsumer(), &data)
+	require.NoError(t, err)
 	assert.Equal(t, defaults["id"], data["id"])
 	assert.Equal(t, name, data["name"])
 	assert.Equal(t, friend, data["friend"])
@@ -224,61 +230,67 @@ func TestRequestBindingForInvalid(t *testing.T) {
 	op1 := map[string]spec.Parameter{"Some": *invalidParam}
 
 	binder := NewUntypedRequestBinder(op1, new(spec.Swagger), strfmt.Default)
-	req, _ := http.NewRequest("GET", "http://localhost:8002/hello?name=the-name", nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://localhost:8002/hello?name=the-name", nil)
+	require.NoError(t, err)
 
-	err := binder.Bind(req, nil, new(stubConsumer), new(jsonRequestParams))
-	assert.Error(t, err)
+	err = binder.Bind(req, nil, new(stubConsumer), new(jsonRequestParams))
+	require.Error(t, err)
 
 	op2 := parametersForJSONRequestParams("")
 	binder = NewUntypedRequestBinder(op2, new(spec.Swagger), strfmt.Default)
 
-	req, _ = http.NewRequest("POST", "http://localhost:8002/hello/1?name=the-name", bytes.NewBuffer([]byte(`{"name":"toby","age":32}`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{"name":"toby","age":32}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application(")
 	data := jsonRequestParams{}
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
-	assert.Error(t, err)
+	require.Error(t, err)
 
-	req, _ = http.NewRequest("POST", "http://localhost:8002/hello/1?name=the-name", bytes.NewBuffer([]byte(`{]`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{]`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = jsonRequestParams{}
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	invalidMultiParam := spec.HeaderParam("tags").CollectionOf(new(spec.Items), "multi")
 	op3 := map[string]spec.Parameter{"Tags": *invalidMultiParam}
 	binder = NewUntypedRequestBinder(op3, new(spec.Swagger), strfmt.Default)
 
-	req, _ = http.NewRequest("POST", "http://localhost:8002/hello/1?name=the-name", bytes.NewBuffer([]byte(`{}`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = jsonRequestParams{}
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	invalidMultiParam = spec.PathParam("").CollectionOf(new(spec.Items), "multi")
 
 	op4 := map[string]spec.Parameter{"Tags": *invalidMultiParam}
 	binder = NewUntypedRequestBinder(op4, new(spec.Swagger), strfmt.Default)
 
-	req, _ = http.NewRequest("POST", "http://localhost:8002/hello/1?name=the-name", bytes.NewBuffer([]byte(`{}`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = jsonRequestParams{}
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	invalidInParam := spec.HeaderParam("tags").Typed("string", "")
 	invalidInParam.In = "invalid"
 	op5 := map[string]spec.Parameter{"Tags": *invalidInParam}
 	binder = NewUntypedRequestBinder(op5, new(spec.Swagger), strfmt.Default)
 
-	req, _ = http.NewRequest("POST", "http://localhost:8002/hello/1?name=the-name", bytes.NewBuffer([]byte(`{}`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = jsonRequestParams{}
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestRequestBindingForValid(t *testing.T) {
-	for _, fmt := range []string{"csv", "pipes", "tsv", "ssv", "multi"} {
+	for _, fmt := range []string{csvFormat, "pipes", "tsv", "ssv", "multi"} {
 		op1 := parametersForJSONRequestParams(fmt)
 
 		binder := NewUntypedRequestBinder(op1, new(spec.Swagger), strfmt.Default)
@@ -305,7 +317,7 @@ func TestRequestBindingForValid(t *testing.T) {
 
 		urlStr := "http://localhost:8002/hello/1?name=the-name&tags=" + queryString
 
-		req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer([]byte(`{"name":"toby","age":32}`)))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`{"name":"toby","age":32}`))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json;charset=utf-8")
 		req.Header.Set("X-Request-Id", "1325959595")
@@ -320,7 +332,7 @@ func TestRequestBindingForValid(t *testing.T) {
 			RequestID: 1325959595,
 			Tags:      []string{"one", "two", "three"},
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, data)
 	}
 
@@ -328,25 +340,27 @@ func TestRequestBindingForValid(t *testing.T) {
 
 	binder := NewUntypedRequestBinder(op1, new(spec.Swagger), strfmt.Default)
 	urlStr := "http://localhost:8002/hello/1?name=the-name&tags=one,two,three"
-	req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer([]byte(`{"name":"toby","age":32}`)))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`{"name":"toby","age":32}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json;charset=utf-8")
 	req.Header.Set("X-Request-Id", "1325959595")
 
 	data2 := jsonRequestPtr{}
-	err := binder.Bind(req, []RouteParam{{"id", "1"}}, runtime.JSONConsumer(), &data2)
+	err = binder.Bind(req, []RouteParam{{"id", "1"}}, runtime.JSONConsumer(), &data2)
 
 	expected2 := jsonRequestPtr{
 		Friend: &friend{"toby", 32},
 		Tags:   []string{"one", "two", "three"},
 	}
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if data2.Friend == nil {
 		t.Fatal("friend is nil")
 	}
 	assert.Equal(t, *expected2.Friend, *data2.Friend)
 	assert.Equal(t, expected2.Tags, data2.Tags)
 
-	req, _ = http.NewRequest("POST", urlStr, bytes.NewBuffer([]byte(`[{"name":"toby","age":32}]`)))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`[{"name":"toby","age":32}]`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json;charset=utf-8")
 	req.Header.Set("X-Request-Id", "1325959595")
 	op2 := parametersForJSONRequestSliceParams("")
@@ -358,7 +372,7 @@ func TestRequestBindingForValid(t *testing.T) {
 		Friend: []friend{{"toby", 32}},
 		Tags:   []string{"one", "two", "three"},
 	}
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected3.Friend, data3.Friend)
 	assert.Equal(t, expected3.Tags, data3.Tags)
 }
@@ -380,21 +394,23 @@ func TestFormUpload(t *testing.T) {
 	params := parametersForFormUpload()
 	binder := NewUntypedRequestBinder(params, new(spec.Swagger), strfmt.Default)
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, bytes.NewBufferString(`name=the-name&age=32`))
+	urlStr := testURL
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`name=the-name&age=32`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	data := formRequest{}
 	res := binder.Bind(req, nil, runtime.JSONConsumer(), &data)
-	assert.NoError(t, res)
+	require.NoError(t, res)
 	assert.Equal(t, "the-name", data.Name)
 	assert.Equal(t, 32, data.Age)
 
-	req, _ = http.NewRequest("POST", urlStr, bytes.NewBufferString(`name=%3&age=32`))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`name=%3&age=32`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	data = formRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
 type fileRequest struct {
@@ -417,67 +433,76 @@ func TestBindingFileUpload(t *testing.T) {
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "plain-jane.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, body)
+	urlStr := testURL
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data := fileRequest{}
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data.Name)
 	assert.NotNil(t, data.File)
 	assert.NotNil(t, data.File.Header)
 	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
 
 	bb, err := io.ReadAll(data.File.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = fileRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application(")
 	data = fileRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	body = bytes.NewBuffer(nil)
 	writer = multipart.NewWriter(body)
 	part, err = writer.CreateFormFile("bad-name", "plain-jane.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
-	req, _ = http.NewRequest("POST", urlStr, body)
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data = fileRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	_, _ = req.MultipartReader()
+	_, err = req.MultipartReader()
+	require.NoError(t, err)
 
 	data = fileRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	writer = multipart.NewWriter(body)
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data = fileRequest{}
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
 func paramsForOptionalFileUpload() *UntypedRequestBinder {
@@ -493,38 +518,41 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, body)
+	urlStr := testURL
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data := fileRequest{}
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data.Name)
 	assert.Nil(t, data.File.Data)
 	assert.Nil(t, data.File.Header)
 
 	writer = multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "plain-jane.txt")
-	assert.NoError(t, err)
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, err)
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.Close())
 
 	data = fileRequest{}
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data.Name)
 	assert.NotNil(t, data.File)
 	assert.NotNil(t, data.File.Header)
 	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
 
 	bb, err := io.ReadAll(data.File.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 }

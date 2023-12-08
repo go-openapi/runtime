@@ -16,7 +16,10 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -25,19 +28,21 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	goruntime "runtime"
 	"testing"
 	"time"
-
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
 
-	goruntime "runtime"
+const (
+	token       = "the-super-secret-token"
+	bearerToken = "Bearer " + token
+	charsetUTF8 = ";charset=utf-8"
 )
 
 // task This describes a task. Tasks require a content property to be set.
@@ -60,13 +65,11 @@ func TestRuntime_TLSAuthConfig(t *testing.T) {
 	opts.ServerName = "somewhere"
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			assert.Len(t, cfg.Certificates, 1)
-			assert.NotNil(t, cfg.RootCAs)
-			assert.Equal(t, "somewhere", cfg.ServerName)
-		}
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.Len(t, cfg.Certificates, 1)
+	assert.NotNil(t, cfg.RootCAs)
+	assert.Equal(t, "somewhere", cfg.ServerName)
 }
 
 func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
@@ -93,11 +96,9 @@ func TestRuntime_TLSAuthConfigWithRSAKey(t *testing.T) {
 	opts.LoadedCertificate = cert
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			assert.Len(t, cfg.Certificates, 1)
-		}
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.Len(t, cfg.Certificates, 1)
 }
 
 func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
@@ -125,11 +126,9 @@ func TestRuntime_TLSAuthConfigWithECKey(t *testing.T) {
 	opts.LoadedCertificate = cert
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			assert.Len(t, cfg.Certificates, 1)
-		}
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.Len(t, cfg.Certificates, 1)
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
@@ -146,11 +145,9 @@ func TestRuntime_TLSAuthConfigWithLoadedCA(t *testing.T) {
 	opts.LoadedCA = cert
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			assert.NotNil(t, cfg.RootCAs)
-		}
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.NotNil(t, cfg.RootCAs)
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
@@ -170,19 +167,17 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPool(t *testing.T) {
 	opts.LoadedCAPool = pool
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			require.NotNil(t, cfg.RootCAs)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	require.NotNil(t, cfg.RootCAs)
 
-			// Using require.Len prints the (very large and incomprehensible)
-			// Subjects list on failure, so instead use require.Equal.
-			require.Equal(t, 1, len(cfg.RootCAs.Subjects())) // nolint:staticcheck
-		}
-	}
+	// Using require.Len prints the (very large and incomprehensible)
+	// Subjects list on failure, so instead use require.Equal.
+	assert.Len(t, cfg.RootCAs.Subjects(), 1) //nolint:staticcheck
 }
 
 func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
-	certPem, err := os.ReadFile("../fixtures/certs/myCA.crt")
+	certPem, err := os.ReadFile(filepath.Join("..", "fixtures", "certs", "myCA.crt"))
 	require.NoError(t, err)
 
 	block, _ := pem.Decode(certPem)
@@ -199,22 +194,20 @@ func TestRuntime_TLSAuthConfigWithLoadedCAPoolAndLoadedCA(t *testing.T) {
 		pool, err = x509.SystemCertPool()
 		require.NoError(t, err)
 	}
-	startingCertCount := len(pool.Subjects()) // nolint:staticcheck
+	startingCertCount := len(pool.Subjects()) //nolint:staticcheck
 
 	var opts TLSClientOptions
 	opts.LoadedCAPool = pool
 	opts.LoadedCA = cert
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			require.NotNil(t, cfg.RootCAs)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	require.NotNil(t, cfg.RootCAs)
 
-			// Using require.Len prints the (very large and incomprehensible)
-			// Subjects list on failure, so instead use require.Equal.
-			require.Equal(t, startingCertCount+1, len(cfg.RootCAs.Subjects())) // nolint:staticcheck
-		}
-	}
+	// Using require.Len prints the (very large and incomprehensible)
+	// Subjects list on failure, so instead use require.Equal.
+	assert.Len(t, cfg.RootCAs.Subjects(), startingCertCount+1) //nolint:staticcheck
 }
 
 func TestRuntime_TLSAuthConfigWithVerifyPeerCertificate(t *testing.T) {
@@ -226,12 +219,10 @@ func TestRuntime_TLSAuthConfigWithVerifyPeerCertificate(t *testing.T) {
 	opts.VerifyPeerCertificate = verify
 
 	cfg, err := TLSClientAuth(opts)
-	if assert.NoError(t, err) {
-		if assert.NotNil(t, cfg) {
-			assert.True(t, cfg.InsecureSkipVerify)
-			assert.NotNil(t, cfg.VerifyPeerCertificate)
-		}
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.InsecureSkipVerify)
+	assert.NotNil(t, cfg.VerifyPeerCertificate)
 }
 
 func TestRuntime_ManualCertificateValidation(t *testing.T) {
@@ -242,15 +233,15 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	var verifyCalled bool
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		_ = jsongen.Encode(result)
+		require.NoError(t, jsongen.Encode(result))
 	}))
 
 	// root cert
-	rootCertFile := "../fixtures/certs/myCA.crt"
+	rootCertFile := filepath.Join("..", "fixtures", "certs", "myCA.crt")
 	rootCertPem, err := os.ReadFile(rootCertFile)
 	require.NoError(t, err)
 	rootCertRaw, _ := pem.Decode(rootCertPem)
@@ -262,12 +253,13 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 	serverCACertPool := x509.NewCertPool()
 	serverCACertPool.AddCert(rootCert)
 	server.TLS = &tls.Config{
-		RootCAs: serverCACertPool,
+		RootCAs:    serverCACertPool,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	// load server certs
-	serverCertFile := "../fixtures/certs/mycert1.crt"
-	serverKeyFile := "../fixtures/certs/mycert1.key"
+	serverCertFile := filepath.Join("..", "fixtures", "certs", "mycert1.crt")
+	serverKeyFile := filepath.Join("..", "fixtures", "certs", "mycert1.key")
 	server.TLS.Certificates = make([]tls.Certificate, 1)
 	server.TLS.Certificates[0], err = tls.LoadX509KeyPair(
 		serverCertFile,
@@ -283,7 +275,7 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 	// explicitly omitting DNSName check.
 	client, err := TLSClient(TLSClientOptions{
 		InsecureSkipVerify: true,
-		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			verifyCalled = true
 
 			caCertPool := x509.NewCertPool()
@@ -294,18 +286,19 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 				CurrentTime: time.Date(2017, time.July, 1, 1, 1, 1, 1, time.UTC),
 			}
 
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return err
+			cert, e := x509.ParseCertificate(rawCerts[0])
+			if e != nil {
+				return e
 			}
 
-			_, err = cert.Verify(opts)
-			return err
+			_, e = cert.Verify(opts)
+			return e
 		},
 	})
 
 	require.NoError(t, err)
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 	rt := NewWithClient(hu.Host, "/", []string{"https"}, client)
 
 	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
@@ -315,25 +308,24 @@ func TestRuntime_ManualCertificateValidation(t *testing.T) {
 	var received []task
 	_, err = rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				if err := consumer.Consume(response.Body(), &received); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				if e := consumer.Consume(response.Body(), &received); e != nil {
+					return nil, e
 				}
 				return result, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.True(t, verifyCalled)
-		assert.IsType(t, []task{}, received)
-		assert.EqualValues(t, result, received)
-	}
+	require.NoError(t, err)
+	assert.True(t, verifyCalled)
+	assert.IsType(t, []task{}, received)
+	assert.EqualValues(t, result, received)
 }
 
 func TestRuntime_Concurrent(t *testing.T) {
@@ -344,11 +336,11 @@ func TestRuntime_Concurrent(t *testing.T) {
 		{false, "task 1 content", 1},
 		{false, "task 2 content", 2},
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		_ = jsongen.Encode(result)
+		require.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -356,12 +348,13 @@ func TestRuntime_Concurrent(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	resCC := make(chan interface{})
 	errCC := make(chan error)
 	var res interface{}
-	var err error
 
 	for j := 0; j < 6; j++ {
 		go func() {
@@ -374,18 +367,18 @@ func TestRuntime_Concurrent(t *testing.T) {
 				for i := 0; i < 3; i++ {
 					resp, errp = rt.Submit(&runtime.ClientOperation{
 						ID:          "getTasks",
-						Method:      "GET",
+						Method:      http.MethodGet,
 						PathPattern: "/",
 						Params:      rwrtr,
 						Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-							if response.Code() == 200 {
-								var result []task
-								if err := consumer.Consume(response.Body(), &result); err != nil {
-									return nil, err
+							if response.Code() == http.StatusOK {
+								var res []task
+								if e := consumer.Consume(response.Body(), &res); e != nil {
+									return nil, e
 								}
-								return result, nil
+								return res, nil
 							}
-							return nil, errors.New("Generic error")
+							return nil, errors.New("generic error")
 						}),
 					})
 					<-time.After(100 * time.Millisecond)
@@ -405,11 +398,10 @@ func TestRuntime_Concurrent(t *testing.T) {
 		c--
 	}
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_Canary(t *testing.T) {
@@ -420,11 +412,11 @@ func TestRuntime_Canary(t *testing.T) {
 		{false, "task 1 content", 1},
 		{false, "task 2 content", 2},
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		_ = jsongen.Encode(result)
+		require.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -432,30 +424,30 @@ func TestRuntime_Canary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 type tasks struct {
@@ -471,11 +463,11 @@ func TestRuntime_XMLCanary(t *testing.T) {
 			{false, "task 2 content", 2},
 		},
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.XMLMime)
 		rw.WriteHeader(http.StatusOK)
 		xmlgen := xml.NewEncoder(rw)
-		_ = xmlgen.Encode(result)
+		require.NoError(t, xmlgen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -483,37 +475,38 @@ func TestRuntime_XMLCanary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result tasks
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res tasks
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, tasks{}, res)
-		actual := res.(tasks)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, tasks{}, res)
+	actual := res.(tasks)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_TextCanary(t *testing.T) {
 	// test that it can make a simple text request
 	// and get the response for it.
 	result := "1: task 1 content; 2: task 2 content"
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.TextMime)
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte(result))
@@ -524,30 +517,31 @@ func TestRuntime_TextCanary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result string
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res string
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, "", res)
-		actual := res.(string)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, "", res)
+	actual := res.(string)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_CSVCanary(t *testing.T) {
@@ -557,7 +551,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 1,task1,ok
 2,task2,fail
 `
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.CSVMime)
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte(result))
@@ -568,30 +562,31 @@ func TestRuntime_CSVCanary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result bytes.Buffer
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res bytes.Buffer
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, bytes.Buffer{}, res)
-		actual := res.(bytes.Buffer)
-		assert.EqualValues(t, result, actual.String())
-	}
+	require.NoError(t, err)
+	assert.IsType(t, bytes.Buffer{}, res)
+	actual := res.(bytes.Buffer)
+	assert.EqualValues(t, result, actual.String())
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -616,40 +611,40 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		}
 		assert.Equal(t, "localhost:3245", req.Host)
 		assert.Equal(t, "localhost:3245", req.URL.Host)
+
 		var resp http.Response
-		resp.StatusCode = 200
+		resp.StatusCode = http.StatusOK
 		resp.Header = make(http.Header)
 		resp.Header.Set("content-type", "application/json")
 		buf := bytes.NewBuffer(nil)
 		enc := json.NewEncoder(buf)
-		_ = enc.Encode(result)
+		require.NoError(t, enc.Encode(result))
 		resp.Body = io.NopCloser(buf)
 		return &resp, nil
 	})
 
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{"ws", "wss", "https"},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_CustomCookieJar(t *testing.T) {
@@ -671,7 +666,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 			rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 			rw.WriteHeader(http.StatusOK)
 			jsongen := json.NewEncoder(rw)
-			_ = jsongen.Encode([]task{})
+			require.NoError(t, jsongen.Encode([]task{}))
 		} else {
 			rw.WriteHeader(http.StatusUnauthorized)
 		}
@@ -682,26 +677,29 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
-	rt.Jar, _ = cookiejar.New(nil)
+	rt.Jar, err = cookiejar.New(nil)
+	require.NoError(t, err)
 
 	submit := func(authInfo runtime.ClientAuthInfoWriter) {
 		_, err := rt.Submit(&runtime.ClientOperation{
 			ID:          "getTasks",
-			Method:      "GET",
+			Method:      http.MethodGet,
 			PathPattern: "/",
 			Params:      rwrtr,
 			AuthInfo:    authInfo,
-			Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-				if response.Code() == 200 {
-					return nil, nil
+			Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+				if response.Code() == http.StatusOK {
+					return nil, nil //nolint:nilnil
 				}
-				return nil, errors.New("Generic error")
+				return nil, errors.New("generic error")
 			}),
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	submit(BasicAuth("username", "password"))
@@ -709,6 +707,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 }
 
 func TestRuntime_AuthCanary(t *testing.T) {
+
 	// test that it can make a simple request
 	// and get the response for it.
 	// defaults all the way down
@@ -717,14 +716,15 @@ func TestRuntime_AuthCanary(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
-			rw.WriteHeader(401)
+		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
+			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		_ = jsongen.Encode(result)
+		require.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -732,30 +732,30 @@ func TestRuntime_AuthCanary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:     "getTasks",
 		Params: rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
-		AuthInfo: BearerToken("the-super-secret-token"),
+		AuthInfo: BearerToken(token),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_PickConsumer(t *testing.T) {
@@ -765,11 +765,11 @@ func TestRuntime_PickConsumer(t *testing.T) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/octet-stream" {
-			rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+";charset=utf-8")
-			rw.WriteHeader(400)
+			rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
+			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+";charset=utf-8")
+		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
 		_ = jsongen.Encode(result)
@@ -780,7 +780,9 @@ func TestRuntime_PickConsumer(t *testing.T) {
 		return req.SetBodyParam(bytes.NewBufferString("hello"))
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:                 "getTasks",
@@ -790,23 +792,22 @@ func TestRuntime_PickConsumer(t *testing.T) {
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
-		AuthInfo: BearerToken("the-super-secret-token"),
+		AuthInfo: BearerToken(token),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_ContentTypeCanary(t *testing.T) {
@@ -818,11 +819,11 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
-			rw.WriteHeader(400)
+		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
+			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+";charset=utf-8")
+		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
 		_ = jsongen.Encode(result)
@@ -833,32 +834,33 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 		return nil
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{"http"},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
-		AuthInfo: BearerToken("the-super-secret-token"),
+		AuthInfo: BearerToken(token),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_ChunkedResponse(t *testing.T) {
@@ -870,12 +872,12 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
-			rw.WriteHeader(400)
+		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
+			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		rw.Header().Add(runtime.HeaderTransferEncoding, "chunked")
-		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+";charset=utf-8")
+		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
 		_ = jsongen.Encode(result)
@@ -886,64 +888,73 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		return nil
 	})
 
-	//specDoc, err := spec.Load("../../fixtures/codegen/todolist.simple.yml")
-	hu, _ := url.Parse(server.URL)
+	// specDoc, err := spec.Load("../../fixtures/codegen/todolist.simple.yml")
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{"http"})
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{"http"},
 		Params:      rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
-		AuthInfo: BearerToken("the-super-secret-token"),
+		AuthInfo: BearerToken(token),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_DebugValue(t *testing.T) {
-	original := os.Getenv("DEBUG")
+	t.Run("empty DEBUG means Debug is False", func(t *testing.T) {
+		t.Setenv("DEBUG", "")
 
-	// Emtpy DEBUG means Debug is False
-	_ = os.Setenv("DEBUG", "")
-	runtime := New("", "/", []string{"https"})
-	assert.False(t, runtime.Debug)
+		runtime := New("", "/", []string{"https"})
+		assert.False(t, runtime.Debug)
+	})
 
-	// Non-Empty Debug means Debug is True
+	t.Run("non-Empty DEBUG means Debug is True", func(t *testing.T) {
+		t.Run("with numerical value", func(t *testing.T) {
+			t.Setenv("DEBUG", "1")
 
-	_ = os.Setenv("DEBUG", "1")
-	runtime = New("", "/", []string{"https"})
-	assert.True(t, runtime.Debug)
+			runtime := New("", "/", []string{"https"})
+			assert.True(t, runtime.Debug)
+		})
 
-	_ = os.Setenv("DEBUG", "true")
-	runtime = New("", "/", []string{"https"})
-	assert.True(t, runtime.Debug)
+		t.Run("with boolean value true", func(t *testing.T) {
+			t.Setenv("DEBUG", "true")
 
-	_ = os.Setenv("DEBUG", "false")
-	runtime = New("", "/", []string{"https"})
-	assert.False(t, runtime.Debug)
+			runtime := New("", "/", []string{"https"})
+			assert.True(t, runtime.Debug)
+		})
 
-	_ = os.Setenv("DEBUG", "foo")
-	runtime = New("", "/", []string{"https"})
-	assert.True(t, runtime.Debug)
+		t.Run("with boolean value false", func(t *testing.T) {
+			t.Setenv("DEBUG", "false")
 
-	// Make sure DEBUG is initial value once again
-	_ = os.Setenv("DEBUG", original)
+			runtime := New("", "/", []string{"https"})
+			assert.False(t, runtime.Debug)
+		})
+
+		t.Run("with string value ", func(t *testing.T) {
+			t.Setenv("DEBUG", "foo")
+
+			runtime := New("", "/", []string{"https"})
+			assert.True(t, runtime.Debug)
+		})
+	})
 }
 
 func TestRuntime_OverrideScheme(t *testing.T) {
@@ -962,13 +973,13 @@ func TestRuntime_OverrideClient(t *testing.T) {
 }
 
 type overrideRoundTripper struct {
-	overriden bool
+	overridden bool
 }
 
-func (o *overrideRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	o.overriden = true
+func (o *overrideRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
+	o.overridden = true
 	res := new(http.Response)
-	res.StatusCode = 200
+	res.StatusCode = http.StatusOK
 	res.Body = io.NopCloser(bytes.NewBufferString("OK"))
 	return res, nil
 }
@@ -984,27 +995,26 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 	client2 := new(http.Client)
 	var transport = &overrideRoundTripper{}
 	client2.Transport = transport
-	if assert.NotEqual(t, client, client2) {
-		_, err := rt.Submit(&runtime.ClientOperation{
-			Client: client2,
-			Params: runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-				return nil
-			}),
-			Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
-				return nil, nil
-			}),
-		})
-		if assert.NoError(t, err) {
-			assert.True(t, transport.overriden)
-		}
-	}
+	require.NotEqual(t, client, client2)
+
+	_, err := rt.Submit(&runtime.ClientOperation{
+		Client: client2,
+		Params: runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
+			return nil
+		}),
+		Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+			return nil, nil //nolint:nilnil
+		}),
+	})
+	require.NoError(t, err)
+	assert.True(t, transport.overridden)
 }
 
 func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	var redirected bool
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+";charset=utf-8")
+		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
 
 		if req.URL.Path == "/api/tasks" {
 			redirected = true
@@ -1016,36 +1026,35 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	}))
 	defer server.Close()
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{"http"})
-
 	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
-	_, err := rt.Submit(&runtime.ClientOperation{
+	_, err = rt.Submit(&runtime.ClientOperation{
 		ID:          "getTasks",
-		Method:      "GET",
+		Method:      http.MethodGet,
 		PathPattern: "/api/tasks/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
 			if redirected {
 				return nil, errors.New("expected Submit to preserve trailing slashes - this caused a redirect")
 			}
 			if response.Code() == http.StatusOK {
-				return nil, nil
+				return nil, nil //nolint:nilnil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
-
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRuntime_FallbackConsumer(t *testing.T) {
 	result := `W3siY29tcGxldGVkIjpmYWxzZSwiY29udGVudCI6ImRHRnpheUF4SUdOdmJuUmxiblE9IiwiaWQiOjF9XQ==`
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, "application/x-task")
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte(result))
@@ -1056,11 +1065,12 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		return req.SetBodyParam(bytes.NewBufferString("hello"))
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 	rt := New(hu.Host, "/", []string{"http"})
 
 	// without the fallback consumer
-	_, err := rt.Submit(&runtime.ClientOperation{
+	_, err = rt.Submit(&runtime.ClientOperation{
 		ID:                 "getTasks",
 		Method:             "POST",
 		PathPattern:        "/",
@@ -1068,20 +1078,18 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []byte
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []byte
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
-
-	if assert.Error(t, err) {
-		assert.Equal(t, `no consumer: "application/x-task"`, err.Error())
-	}
+	require.Error(t, err)
+	assert.Equal(t, `no consumer: "application/x-task"`, err.Error())
 
 	// add the fallback consumer
 	rt.Consumers["*/*"] = rt.Consumers[runtime.DefaultMime]
@@ -1093,22 +1101,21 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []byte
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []byte
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []byte{}, res)
-		actual := res.([]byte)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []byte{}, res)
+	actual := res.([]byte)
+	assert.EqualValues(t, result, actual)
 }
 
 func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
@@ -1120,8 +1127,8 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 		{false, "task 2 content", 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get(runtime.HeaderAuthorization) != "Bearer the-super-secret-token" {
-			rw.WriteHeader(401)
+		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
+			rw.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
@@ -1132,10 +1139,11 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	defer server.Close()
 
 	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
-		return req.SetHeaderParam(runtime.HeaderAuthorization, "Bearer the-super-secret-token")
+		return req.SetHeaderParam(runtime.HeaderAuthorization, bearerToken)
 	})
 
-	hu, _ := url.Parse(server.URL)
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{"http"})
 	rt.DefaultAuthentication = BearerToken("not-the-super-secret-token")
@@ -1143,20 +1151,19 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 		ID:     "getTasks",
 		Params: rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
-			if response.Code() == 200 {
-				var result []task
-				if err := consumer.Consume(response.Body(), &result); err != nil {
-					return nil, err
+			if response.Code() == http.StatusOK {
+				var res []task
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
 				}
-				return result, nil
+				return res, nil
 			}
-			return nil, errors.New("Generic error")
+			return nil, errors.New("generic error")
 		}),
 	})
 
-	if assert.NoError(t, err) {
-		assert.IsType(t, []task{}, res)
-		actual := res.([]task)
-		assert.EqualValues(t, result, actual)
-	}
+	require.NoError(t, err)
+	assert.IsType(t, []task{}, res)
+	actual := res.([]task)
+	assert.EqualValues(t, result, actual)
 }

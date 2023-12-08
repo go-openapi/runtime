@@ -1,3 +1,4 @@
+//nolint:dupl
 package middleware
 
 import (
@@ -43,7 +44,6 @@ func (r *RedocOpts) EnsureDefaults() {
 
 // Redoc creates a middleware to serve a documentation site for a swagger spec.
 // This allows for altering the spec before starting the http listener.
-//
 func Redoc(opts RedocOpts, next http.Handler) http.Handler {
 	opts.EnsureDefaults()
 

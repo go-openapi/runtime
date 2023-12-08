@@ -16,6 +16,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -26,30 +27,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/go-openapi/runtime"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUntypedFormPost(t *testing.T) {
 	params := parametersForFormUpload()
 	binder := NewUntypedRequestBinder(params, nil, strfmt.Default)
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, bytes.NewBufferString(`name=the-name&age=32`))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, bytes.NewBufferString(`name=the-name&age=32`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	data := make(map[string]interface{})
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.EqualValues(t, 32, data["age"])
 
-	req, _ = http.NewRequest("POST", urlStr, bytes.NewBufferString(`name=%3&age=32`))
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, bytes.NewBufferString(`name=%3&age=32`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
 func TestUntypedFileUpload(t *testing.T) {
@@ -58,69 +60,77 @@ func TestUntypedFileUpload(t *testing.T) {
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "plain-jane.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, body)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data := make(map[string]interface{})
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
 	file := data["file"].(runtime.File)
-	assert.NotNil(t, file.Header)
+	require.NotNil(t, file.Header)
 	assert.Equal(t, "plain-jane.txt", file.Header.Filename)
 
 	bb, err := io.ReadAll(file.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application(")
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	body = bytes.NewBuffer(nil)
 	writer = multipart.NewWriter(body)
 	part, err = writer.CreateFormFile("bad-name", "plain-jane.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
-	req, _ = http.NewRequest("POST", urlStr, body)
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	_, _ = req.MultipartReader()
+	_, err = req.MultipartReader()
+	require.NoError(t, err)
 
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	writer = multipart.NewWriter(body)
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data = make(map[string]interface{})
-	assert.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
 func TestUntypedOptionalFileUpload(t *testing.T) {
@@ -128,30 +138,32 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	urlStr := "http://localhost:8002/hello"
-	req, _ := http.NewRequest("POST", urlStr, body)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	data := make(map[string]interface{})
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 
 	writer = multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "plain-jane.txt")
-	assert.NoError(t, err)
-	_, _ = part.Write([]byte("the file contents"))
-	_ = writer.WriteField("name", "the-name")
-	assert.NoError(t, writer.Close())
+	require.NoError(t, err)
+	_, err = part.Write([]byte("the file contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.Close())
 
-	req, _ = http.NewRequest("POST", urlStr, body)
+	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	assert.NoError(t, writer.Close())
+	require.NoError(t, writer.Close())
 
 	data = make(map[string]interface{})
-	assert.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
@@ -176,7 +188,8 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	dt2 := time.Date(2014, 10, 12, 8, 5, 5, 0, time.UTC)
 	delivered := strfmt.DateTime(dt2)
 	picture := base64.URLEncoding.EncodeToString([]byte("hello"))
-	uri, _ := url.Parse("http://localhost:8002/hello/7575")
+	uri, err := url.Parse("http://localhost:8002/hello/7575")
+	require.NoError(t, err)
 	qs := uri.Query()
 	qs.Add("name", name)
 	qs.Add("confirmed", "true")
@@ -188,13 +201,14 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	qs.Add("delivered", delivered.String())
 	qs.Add("picture", picture)
 
-	req, _ := http.NewRequest("POST", uri.String()+"?"+qs.Encode(), bytes.NewBuffer([]byte(`{"name":"toby","age":32}`)))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, uri.String()+"?"+qs.Encode(), bytes.NewBufferString(`{"name":"toby","age":32}`))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Request-Id", "19394858")
 
 	data := make(map[string]interface{})
-	err := binder.Bind(req, RouteParams([]RouteParam{{"id", "7575"}}), runtime.JSONConsumer(), &data)
-	assert.NoError(t, err)
+	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "7575"}}), runtime.JSONConsumer(), &data)
+	require.NoError(t, err)
 	assert.Equal(t, id, data["id"])
 	assert.Equal(t, name, data["name"])
 	assert.Equal(t, friend, data["friend"])
@@ -206,6 +220,7 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	assert.Equal(t, age, data["age"])
 	assert.Equal(t, factor, data["factor"])
 	assert.Equal(t, score, data["score"])
-	pb, _ := base64.URLEncoding.DecodeString(picture)
+	pb, err := base64.URLEncoding.DecodeString(picture)
+	require.NoError(t, err)
 	assert.EqualValues(t, pb, data["picture"].(strfmt.Base64))
 }

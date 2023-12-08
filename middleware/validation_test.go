@@ -16,16 +16,17 @@ package middleware
 
 import (
 	"bytes"
+	stdcontext "context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/go-openapi/errors"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestValidation(ctx *Context, next http.Handler) http.Handler {
@@ -57,13 +58,13 @@ func TestContentTypeValidation(t *testing.T) {
 	mw := newTestValidation(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/api/pets", nil)
+	request, _ := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	request.Header.Add("Accept", "*/*")
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("content-type", "application(")
 	request.Header.Add("Accept", "application/json")
 	request.ContentLength = 1
@@ -73,7 +74,7 @@ func TestContentTypeValidation(t *testing.T) {
 	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("content-type", "text/html")
 	request.ContentLength = 1
@@ -83,7 +84,7 @@ func TestContentTypeValidation(t *testing.T) {
 	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", strings.NewReader(`{"name":"dog"}`))
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", strings.NewReader(`{"name":"dog"}`))
 	request.Header.Add("Accept", "application/json")
 	request.Header.Add("content-type", "text/html")
 	request.TransferEncoding = []string{"chunked"}
@@ -93,7 +94,7 @@ func TestContentTypeValidation(t *testing.T) {
 	assert.Equal(t, "application/json", recorder.Header().Get("content-type"))
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Accept", "application/json+special")
 	request.Header.Add("content-type", "text/html")
 
@@ -103,7 +104,7 @@ func TestContentTypeValidation(t *testing.T) {
 
 	// client sends data with unsupported mime
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Accept", "application/json") // this content type is served by default by the API
 	request.Header.Add("content-type", "application/json+special")
 	request.ContentLength = 1
@@ -114,7 +115,7 @@ func TestContentTypeValidation(t *testing.T) {
 
 	// client sends a body of data with no mime: breaks
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", nil)
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Accept", "application/json")
 	request.ContentLength = 1
 
@@ -130,7 +131,7 @@ func TestResponseFormatValidation(t *testing.T) {
 	mw := newTestValidation(context, http.HandlerFunc(terminator))
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("POST", "/api/pets", bytes.NewBuffer([]byte(`name: Dog`)))
+	request, _ := http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", bytes.NewBufferString(`name: Dog`))
 	request.Header.Set(runtime.HeaderContentType, "application/x-yaml")
 	request.Header.Set(runtime.HeaderAccept, "application/x-yaml")
 
@@ -138,7 +139,7 @@ func TestResponseFormatValidation(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code, recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
-	request, _ = http.NewRequest("POST", "/api/pets", bytes.NewBuffer([]byte(`name: Dog`)))
+	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", bytes.NewBufferString(`name: Dog`))
 	request.Header.Set(runtime.HeaderContentType, "application/x-yaml")
 	request.Header.Set(runtime.HeaderAccept, "application/sml")
 
@@ -167,11 +168,11 @@ func TestValidateContentType(t *testing.T) {
 	for _, v := range data {
 		err := validateContentType(v.allowed, v.hdr)
 		if v.err == nil {
-			assert.NoError(t, err, "input: %q", v.hdr)
+			require.NoError(t, err, "input: %q", v.hdr)
 		} else {
-			assert.Error(t, err, "input: %q", v.hdr)
+			require.Error(t, err, "input: %q", v.hdr)
 			assert.IsType(t, &errors.Validation{}, err, "input: %q", v.hdr)
-			assert.Equal(t, v.err.Error(), err.Error(), "input: %q", v.hdr)
+			require.EqualErrorf(t, err, v.err.Error(), "input: %q", v.hdr)
 			assert.EqualValues(t, http.StatusUnsupportedMediaType, err.(*errors.Validation).Code())
 		}
 	}
