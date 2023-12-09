@@ -420,7 +420,6 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	assert.Equal(t, expected3, actuallines[7])
 }
 
-//nolint:dupl
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	cont, err := os.ReadFile("./runtime.go")
 	require.NoError(t, err)
@@ -478,7 +477,6 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	fileverifier("empty", 0, filepath.Base(emptyFile.Name()), []byte{})
 }
 
-//nolint:dupl
 func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	cont, err := os.ReadFile("./runtime.go")
 	require.NoError(t, err)
