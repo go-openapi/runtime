@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	query  = "query"
-	header = "header"
+	query            = "query"
+	header           = "header"
+	accessTokenParam = "access_token"
 )
 
 // HttpAuthenticator is a function that authenticates a HTTP request
@@ -226,12 +227,12 @@ func BearerAuth(name string, authenticate ScopedTokenAuthentication) runtime.Aut
 		}
 		if token == "" {
 			qs := r.Request.URL.Query()
-			token = qs.Get("access_token")
+			token = qs.Get(accessTokenParam)
 		}
 		//#nosec
 		ct, _, _ := runtime.ContentType(r.Request.Header)
 		if token == "" && (ct == "application/x-www-form-urlencoded" || ct == "multipart/form-data") {
-			token = r.Request.FormValue("access_token")
+			token = r.Request.FormValue(accessTokenParam)
 		}
 
 		if token == "" {
@@ -256,12 +257,12 @@ func BearerAuthCtx(name string, authenticate ScopedTokenAuthenticationCtx) runti
 		}
 		if token == "" {
 			qs := r.Request.URL.Query()
-			token = qs.Get("access_token")
+			token = qs.Get(accessTokenParam)
 		}
 		//#nosec
 		ct, _, _ := runtime.ContentType(r.Request.Header)
 		if token == "" && (ct == "application/x-www-form-urlencoded" || ct == "multipart/form-data") {
-			token = r.Request.FormValue("access_token")
+			token = r.Request.FormValue(accessTokenParam)
 		}
 
 		if token == "" {

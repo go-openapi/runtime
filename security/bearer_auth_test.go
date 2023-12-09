@@ -3,6 +3,7 @@ package security
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -15,343 +16,285 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var bearerAuth = ScopedTokenAuthentication(func(token string, _ []string) (interface{}, error) {
-	if token == "token123" {
-		return "admin", nil
+const (
+	owners       = "owners_auth"
+	validToken   = "token123"
+	invalidToken = "token124"
+	principal    = "admin"
+	authPath     = "/blah"
+	invalidParam = "access_toke"
+)
+
+type authExpectation uint8
+
+const (
+	expectIsAuthorized authExpectation = iota
+	expectInvalidAuthorization
+	expectNoAuthorization
+)
+
+func TestBearerAuth(t *testing.T) {
+	bearerAuth := ScopedTokenAuthentication(func(token string, _ []string) (interface{}, error) {
+		if token == validToken {
+			return principal, nil
+		}
+		return nil, errors.Unauthenticated("bearer")
+	})
+	ba := BearerAuth(owners, bearerAuth)
+	ctx := context.Background()
+
+	t.Run("with valid bearer auth", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, "", validToken, expectIsAuthorized),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "", validToken, expectIsAuthorized),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, "", validToken, expectIsAuthorized),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, "", validToken, expectIsAuthorized),
+		)
+	})
+
+	t.Run("with invalid token", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, "", invalidToken, expectInvalidAuthorization),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "", invalidToken, expectInvalidAuthorization),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, "", invalidToken, expectInvalidAuthorization),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, "", invalidToken, expectInvalidAuthorization),
+		)
+	})
+
+	t.Run("with missing auth", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, invalidParam, validToken, expectNoAuthorization),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "Beare", validToken, expectNoAuthorization),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, invalidParam, validToken, expectNoAuthorization),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, invalidParam, validToken, expectNoAuthorization),
+		)
+	})
+}
+
+func TestBearerAuthCtx(t *testing.T) {
+	bearerAuthCtx := ScopedTokenAuthenticationCtx(func(ctx context.Context, token string, _ []string) (context.Context, interface{}, error) {
+		if token == validToken {
+			return context.WithValue(ctx, extra, extraWisdom), principal, nil
+		}
+		return context.WithValue(ctx, reason, expReason), nil, errors.Unauthenticated("bearer")
+	})
+	ba := BearerAuthCtx(owners, bearerAuthCtx)
+	ctx := context.WithValue(context.Background(), original, wisdom)
+
+	assertContextOK := func(requestContext context.Context, t *testing.T) {
+		// when authorized, we have an "extra" key in context
+		assert.Equal(t, wisdom, requestContext.Value(original))
+		assert.Equal(t, extraWisdom, requestContext.Value(extra))
+		assert.Nil(t, requestContext.Value(reason))
 	}
-	return nil, errors.Unauthenticated("bearer")
-})
 
-func TestValidBearerAuth(t *testing.T) {
-	ba := BearerAuth("owners_auth", bearerAuth)
-
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_token=token123", nil)
-	require.NoError(t, err)
-
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req1))
-
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token123")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req2))
-
-	body := url.Values(map[string][]string{})
-	body.Set("access_token", "token123")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req3))
-
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	err = writer.WriteField("access_token", "token123")
-	require.NoError(t, err)
-	writer.Close()
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req4))
-}
-
-//nolint:dupl
-func TestInvalidBearerAuth(t *testing.T) {
-	ba := BearerAuth("owners_auth", bearerAuth)
-
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_token=token124", nil)
-	require.NoError(t, err)
-
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token124")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-
-	body := url.Values(map[string][]string{})
-	body.Set("access_token", "token124")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	require.NoError(t, writer.WriteField("access_token", "token124"))
-	writer.Close()
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-}
-
-//nolint:dupl
-func TestMissingBearerAuth(t *testing.T) {
-	ba := BearerAuth("owners_auth", bearerAuth)
-
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_toke=token123", nil)
-	require.NoError(t, err)
-
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2.Header.Set(runtime.HeaderAuthorization, "Beare token123")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-
-	body := url.Values(map[string][]string{})
-	body.Set("access_toke", "token123")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	require.NoError(t, writer.WriteField("access_toke", "token123"))
-	writer.Close()
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-}
-
-var bearerAuthCtx = ScopedTokenAuthenticationCtx(func(ctx context.Context, token string, requiredScopes []string) (context.Context, interface{}, error) {
-	if token == "token123" {
-		return context.WithValue(ctx, extra, extraWisdom), "admin", nil
+	assertContextKO := func(requestContext context.Context, t *testing.T) {
+		// when not authorized, we have a "reason" key in context
+		assert.Equal(t, wisdom, requestContext.Value(original))
+		assert.Nil(t, requestContext.Value(extra))
+		assert.Equal(t, expReason, requestContext.Value(reason))
 	}
-	return context.WithValue(ctx, reason, expReason), nil, errors.Unauthenticated("bearer")
-})
 
-func TestValidBearerAuthCtx(t *testing.T) {
-	ba := BearerAuthCtx("owners_auth", bearerAuthCtx)
+	assertContextNone := func(requestContext context.Context, t *testing.T) {
+		// when missing authorization, we only have the original context
+		assert.Equal(t, wisdom, requestContext.Value(original))
+		assert.Nil(t, requestContext.Value(extra))
+		assert.Nil(t, requestContext.Value(reason))
+	}
 
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_token=token123", nil)
-	require.NoError(t, err)
-	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req1.Context().Value(original))
-	assert.Equal(t, extraWisdom, req1.Context().Value(extra))
-	assert.Nil(t, req1.Context().Value(reason))
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req1))
+	t.Run("with valid bearer auth", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, "", validToken, expectIsAuthorized, assertContextOK),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "", validToken, expectIsAuthorized, assertContextOK),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, "", validToken, expectIsAuthorized, assertContextOK),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, "", validToken, expectIsAuthorized, assertContextOK),
+		)
+	})
 
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token123")
+	t.Run("with invalid token", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, "", invalidToken, expectInvalidAuthorization, assertContextKO),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "", invalidToken, expectInvalidAuthorization, assertContextKO),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, "", invalidToken, expectInvalidAuthorization, assertContextKO),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, "", invalidToken, expectInvalidAuthorization, assertContextKO),
+		)
+	})
 
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req2.Context().Value(original))
-	assert.Equal(t, extraWisdom, req2.Context().Value(extra))
-	assert.Nil(t, req2.Context().Value(reason))
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req2))
-
-	body := url.Values(map[string][]string{})
-	body.Set("access_token", "token123")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3 = req3.WithContext(context.WithValue(req3.Context(), original, wisdom))
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req3.Context().Value(original))
-	assert.Equal(t, extraWisdom, req3.Context().Value(extra))
-	assert.Nil(t, req3.Context().Value(reason))
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req3))
-
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	require.NoError(t, writer.WriteField("access_token", "token123"))
-	writer.Close()
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4 = req4.WithContext(context.WithValue(req4.Context(), original, wisdom))
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.True(t, ok)
-	assert.Equal(t, "admin", usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req4.Context().Value(original))
-	assert.Equal(t, extraWisdom, req4.Context().Value(extra))
-	assert.Nil(t, req4.Context().Value(reason))
-	assert.Equal(t, "owners_auth", OAuth2SchemeName(req4))
+	t.Run("with missing auth", func(t *testing.T) {
+		t.Run("token in query param",
+			testAuthenticateBearerInQuery(ctx, ba, invalidParam, validToken, expectNoAuthorization, assertContextNone),
+		)
+		t.Run("token in header",
+			testAuthenticateBearerInHeader(ctx, ba, "Beare", validToken, expectNoAuthorization, assertContextNone),
+		)
+		t.Run("token in urlencoded form",
+			testAuthenticateBearerInForm(ctx, ba, invalidParam, validToken, expectNoAuthorization, assertContextNone),
+		)
+		t.Run("token in multipart form",
+			testAuthenticateBearerInMultipartForm(ctx, ba, invalidParam, validToken, expectNoAuthorization, assertContextNone),
+		)
+	})
 }
 
-func TestInvalidBearerAuthCtx(t *testing.T) {
-	ba := BearerAuthCtx("owners_auth", bearerAuthCtx)
+func testIsAuthorized(_ context.Context, req *http.Request, authorizer runtime.Authenticator, expectAuthorized authExpectation, extraAsserters ...func(context.Context, *testing.T)) func(*testing.T) {
+	return func(t *testing.T) {
+		hasToken, usr, err := authorizer.Authenticate(&ScopedAuthRequest{Request: req})
+		switch expectAuthorized {
 
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_token=token124", nil)
-	require.NoError(t, err)
-	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-	assert.Equal(t, wisdom, req1.Context().Value(original))
-	assert.Equal(t, expReason, req1.Context().Value(reason))
-	assert.Nil(t, req1.Context().Value(extra))
+		case expectIsAuthorized:
+			require.NoError(t, err)
+			assert.True(t, hasToken)
+			assert.Equal(t, principal, usr)
+			assert.Equal(t, owners, OAuth2SchemeName(req))
 
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	req2.Header.Set(runtime.HeaderAuthorization, "Bearer token124")
+		case expectInvalidAuthorization:
+			require.Error(t, err)
+			require.ErrorContains(t, err, "unauthenticated")
+			assert.True(t, hasToken)
+			assert.Nil(t, usr)
+			assert.Equal(t, owners, OAuth2SchemeName(req))
 
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-	assert.Equal(t, wisdom, req2.Context().Value(original))
-	assert.Equal(t, expReason, req2.Context().Value(reason))
-	assert.Nil(t, req2.Context().Value(extra))
+		case expectNoAuthorization:
+			require.NoError(t, err)
+			assert.False(t, hasToken)
+			assert.Nil(t, usr)
+			assert.Empty(t, OAuth2SchemeName(req))
+		}
 
-	body := url.Values(map[string][]string{})
-	body.Set("access_token", "token124")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3 = req3.WithContext(context.WithValue(req3.Context(), original, wisdom))
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-	assert.Equal(t, wisdom, req3.Context().Value(original))
-	assert.Equal(t, expReason, req3.Context().Value(reason))
-	assert.Nil(t, req3.Context().Value(extra))
-
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	require.NoError(t, writer.WriteField("access_token", "token124"))
-	writer.Close()
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4 = req4.WithContext(context.WithValue(req4.Context(), original, wisdom))
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
-
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.True(t, ok)
-	assert.Equal(t, nil, usr)
-	require.Error(t, err)
-	assert.Equal(t, wisdom, req4.Context().Value(original))
-	assert.Equal(t, expReason, req4.Context().Value(reason))
-	assert.Nil(t, req4.Context().Value(extra))
+		for _, contextAsserter := range extraAsserters {
+			contextAsserter(req.Context(), t)
+		}
+	}
 }
 
-func TestMissingBearerAuthCtx(t *testing.T) {
-	ba := BearerAuthCtx("owners_auth", bearerAuthCtx)
+func shouldAuthorizeOrNot(expectAuthorized authExpectation) string {
+	if expectAuthorized == expectIsAuthorized {
+		return "should authorize"
+	}
 
-	req1, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah?access_toke=token123", nil)
-	require.NoError(t, err)
-	req1 = req1.WithContext(context.WithValue(req1.Context(), original, wisdom))
-	ok, usr, err := ba.Authenticate(&ScopedAuthRequest{Request: req1})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req1.Context().Value(original))
-	assert.Nil(t, req1.Context().Value(reason))
-	assert.Nil(t, req1.Context().Value(extra))
+	return "should not authorize"
+}
 
-	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/blah", nil)
-	require.NoError(t, err)
-	req2.Header.Set(runtime.HeaderAuthorization, "Beare token123")
+func testAuthenticateBearerInQuery(
+	// build a request with the token as a query parameter, then check against the authorizer
+	//
+	// the request context after authorization may be checked with the extraAsserters.
+	ctx context.Context, authorizer runtime.Authenticator, parameter, token string, expectAuthorized authExpectation,
+	extraAsserters ...func(context.Context, *testing.T),
+) func(*testing.T) {
+	if parameter == "" {
+		parameter = accessTokenParam
+	}
 
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req2})
-	req2 = req2.WithContext(context.WithValue(req2.Context(), original, wisdom))
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req2.Context().Value(original))
-	assert.Nil(t, req2.Context().Value(reason))
-	assert.Nil(t, req2.Context().Value(extra))
+	return func(t *testing.T) {
+		req, err := http.NewRequestWithContext(
+			ctx, http.MethodGet,
+			fmt.Sprintf("%s?%s=%s", authPath, parameter, token),
+			nil,
+		)
+		require.NoError(t, err)
 
-	body := url.Values(map[string][]string{})
-	body.Set("access_toke", "token123")
-	req3, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", strings.NewReader(body.Encode()))
-	require.NoError(t, err)
-	req3 = req3.WithContext(context.WithValue(req3.Context(), original, wisdom))
-	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		t.Run(
+			shouldAuthorizeOrNot(expectAuthorized),
+			testIsAuthorized(ctx, req, authorizer, expectAuthorized, extraAsserters...),
+		)
+	}
+}
 
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req3})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req3.Context().Value(original))
-	assert.Nil(t, req3.Context().Value(reason))
-	assert.Nil(t, req3.Context().Value(extra))
+func testAuthenticateBearerInHeader(
+	// build a request with the token as a header, then check against the authorizer
+	ctx context.Context, authorizer runtime.Authenticator, parameter, token string, expectAuthorized authExpectation,
+	extraAsserters ...func(context.Context, *testing.T),
+) func(*testing.T) {
+	if parameter == "" {
+		parameter = "Bearer"
+	}
 
-	mpbody := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(mpbody)
-	err = writer.WriteField("access_toke", "token123")
-	require.NoError(t, err)
-	require.NoError(t, writer.Close())
-	req4, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/blah", mpbody)
-	require.NoError(t, err)
-	req4 = req4.WithContext(context.WithValue(req4.Context(), original, wisdom))
-	req4.Header.Set("Content-Type", writer.FormDataContentType())
+	return func(t *testing.T) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, authPath, nil)
+		require.NoError(t, err)
+		req.Header.Set(runtime.HeaderAuthorization, fmt.Sprintf("%s %s", parameter, token))
 
-	ok, usr, err = ba.Authenticate(&ScopedAuthRequest{Request: req4})
-	assert.False(t, ok)
-	assert.Equal(t, nil, usr)
-	require.NoError(t, err)
-	assert.Equal(t, wisdom, req4.Context().Value(original))
-	assert.Nil(t, req4.Context().Value(reason))
-	assert.Nil(t, req4.Context().Value(extra))
+		t.Run(
+			shouldAuthorizeOrNot(expectAuthorized),
+			testIsAuthorized(ctx, req, authorizer, expectAuthorized, extraAsserters...),
+		)
+	}
+}
+
+func testAuthenticateBearerInForm(
+	// build a request with the token as a form field, then check against the authorizer
+	ctx context.Context, authorizer runtime.Authenticator, parameter, token string, expectAuthorized authExpectation,
+	extraAsserters ...func(context.Context, *testing.T),
+) func(*testing.T) {
+	if parameter == "" {
+		parameter = accessTokenParam
+	}
+
+	return func(t *testing.T) {
+		body := url.Values(map[string][]string{})
+		body.Set(parameter, token)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, authPath, strings.NewReader(body.Encode()))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		t.Run(
+			shouldAuthorizeOrNot(expectAuthorized),
+			testIsAuthorized(ctx, req, authorizer, expectAuthorized, extraAsserters...),
+		)
+	}
+}
+func testAuthenticateBearerInMultipartForm(
+	// build a request with the token as a multipart form field, then check against the authorizer
+	ctx context.Context, authorizer runtime.Authenticator, parameter, token string, expectAuthorized authExpectation,
+	extraAsserters ...func(context.Context, *testing.T),
+) func(*testing.T) {
+	if parameter == "" {
+		parameter = accessTokenParam
+	}
+
+	return func(t *testing.T) {
+		body := bytes.NewBuffer(nil)
+		writer := multipart.NewWriter(body)
+		require.NoError(t, writer.WriteField(parameter, token))
+		require.NoError(t, writer.Close())
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, authPath, body)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+
+		t.Run(
+			shouldAuthorizeOrNot(expectAuthorized),
+			testIsAuthorized(ctx, req, authorizer, expectAuthorized, extraAsserters...),
+		)
+	}
 }
