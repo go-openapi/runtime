@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:goconst
 package client
 
 import (
@@ -38,6 +37,11 @@ import (
 	"github.com/go-openapi/runtime/yamlpc"
 	"github.com/go-openapi/strfmt"
 	"github.com/opentracing/opentracing-go"
+)
+
+const (
+	schemeHTTP  = "http"
+	schemeHTTPS = "https"
 )
 
 // TLSClientOptions to configure client authentication with mutual TLS
@@ -112,7 +116,9 @@ type TLSClientOptions struct {
 // TLSClientAuth creates a tls.Config for mutual auth
 func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	// create client tls config
-	cfg := &tls.Config{} //nolint:gosec
+	cfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	// load client cert if specified
 	if opts.Certificate != "" {
@@ -158,11 +164,12 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	// When no CA certificate is provided, default to the system cert pool
 	// that way when a request is made to a server known by the system trust store,
 	// the name is still verified
-	if opts.LoadedCA != nil { //nolint:gocritic
+	switch {
+	case opts.LoadedCA != nil:
 		caCertPool := basePool(opts.LoadedCAPool)
 		caCertPool.AddCert(opts.LoadedCA)
 		cfg.RootCAs = caCertPool
-	} else if opts.CA != "" {
+	case opts.CA != "":
 		// load ca cert
 		caCert, err := os.ReadFile(opts.CA)
 		if err != nil {
@@ -171,7 +178,7 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 		caCertPool := basePool(opts.LoadedCAPool)
 		caCertPool.AppendCertsFromPEM(caCert)
 		cfg.RootCAs = caCertPool
-	} else if opts.LoadedCAPool != nil {
+	case opts.LoadedCAPool != nil:
 		cfg.RootCAs = opts.LoadedCAPool
 	}
 
@@ -227,7 +234,7 @@ type Runtime struct {
 	Host     string
 	BasePath string
 	Formats  strfmt.Registry
-	Context  context.Context //nolint:containedctx
+	Context  context.Context //nolint:containedctx  // we precisely want this type to contain the request context
 
 	Debug  bool
 	logger logger.Logger
@@ -316,7 +323,7 @@ func (r *Runtime) pickScheme(schemes []string) string {
 	if v := r.selectScheme(schemes); v != "" {
 		return v
 	}
-	return "http"
+	return schemeHTTP
 }
 
 func (r *Runtime) selectScheme(schemes []string) string {
@@ -327,9 +334,9 @@ func (r *Runtime) selectScheme(schemes []string) string {
 
 	scheme := schemes[0]
 	// prefer https, but skip when not possible
-	if scheme != "https" && schLen > 1 {
+	if scheme != schemeHTTPS && schLen > 1 {
 		for _, sch := range schemes {
-			if sch == "https" {
+			if sch == schemeHTTPS {
 				scheme = sch
 				break
 			}

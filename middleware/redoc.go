@@ -29,16 +29,16 @@ func (r *RedocOpts) EnsureDefaults() {
 		r.BasePath = "/"
 	}
 	if r.Path == "" {
-		r.Path = "docs"
+		r.Path = defaultDocsPath
 	}
 	if r.SpecURL == "" {
-		r.SpecURL = "/swagger.json"
+		r.SpecURL = defaultDocsURL
 	}
 	if r.RedocURL == "" {
 		r.RedocURL = redocLatest
 	}
 	if r.Title == "" {
-		r.Title = "API documentation"
+		r.Title = defaultDocsTitle
 	}
 }
 

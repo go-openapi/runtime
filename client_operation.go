@@ -30,7 +30,7 @@ type ClientOperation struct {
 	AuthInfo           ClientAuthInfoWriter
 	Params             ClientRequestWriter
 	Reader             ClientResponseReader
-	Context            context.Context //nolint:containedctx
+	Context            context.Context //nolint:containedctx // we precisely want this type to contain the request context
 	Client             *http.Client
 }
 

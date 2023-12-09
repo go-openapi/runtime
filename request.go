@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -114,9 +115,11 @@ func (p *peekingReader) Close() error {
 	return nil
 }
 
-// JSONRequest creates a new http request with json headers set
+// JSONRequest creates a new http request with json headers set.
+//
+// It uses context.Background.
 func JSONRequest(method, urlStr string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, urlStr, body) //nolint:noctx
+	req, err := http.NewRequestWithContext(context.Background(), method, urlStr, body)
 	if err != nil {
 		return nil, err
 	}

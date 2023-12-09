@@ -121,7 +121,7 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 		attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),
 		attribute.String("http.method", http.MethodGet),
 		attribute.String("span.kind", trace.SpanKindClient.String()),
-		attribute.String("http.scheme", "https"),
+		attribute.String("http.scheme", schemeHTTPS),
 		// NOTE: this becomes http.response.status_code with semconv v1.21
 		attribute.Int("http.status_code", 490),
 	}, span.Attributes)

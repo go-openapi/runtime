@@ -42,7 +42,7 @@ type mockRuntime struct {
 func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (interface{}, error) {
 	_ = operation.Params.WriteToRequest(&m.req, nil)
 	_, _ = operation.Reader.ReadResponse(&tres{}, nil)
-	return nil, nil //nolint:nilnil
+	return map[string]interface{}{}, nil
 }
 
 func testOperation(ctx context.Context) *runtime.ClientOperation {
@@ -52,7 +52,7 @@ func testOperation(ctx context.Context) *runtime.ClientOperation {
 		PathPattern:        "/kubernetes-clusters/{cluster_id}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
+		Schemes:            []string{schemeHTTPS},
 		Reader: runtime.ClientResponseReaderFunc(func(runtime.ClientResponse, runtime.Consumer) (interface{}, error) {
 			return nil, nil
 		}),

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:goconst
 package middleware
 
 import (
@@ -34,6 +33,11 @@ import (
 )
 
 const defaultMaxMemory = 32 << 20
+
+const (
+	typeString = "string"
+	typeArray  = "array"
+)
 
 var textUnmarshalType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 
@@ -67,7 +71,7 @@ func (p *untypedParamBinder) typeForSchema(tpe, format string, items *spec.Items
 	case "boolean":
 		return reflect.TypeOf(true)
 
-	case "string":
+	case typeString:
 		if tt, ok := p.formats.GetType(format); ok {
 			return tt
 		}
@@ -95,7 +99,7 @@ func (p *untypedParamBinder) typeForSchema(tpe, format string, items *spec.Items
 			return reflect.TypeOf(float64(0))
 		}
 
-	case "array":
+	case typeArray:
 		if items == nil {
 			return nil
 		}
@@ -120,7 +124,7 @@ func (p *untypedParamBinder) allowsMulti() bool {
 
 func (p *untypedParamBinder) readValue(values runtime.Gettable, target reflect.Value) ([]string, bool, bool, error) {
 	name, in, cf, tpe := p.parameter.Name, p.parameter.In, p.parameter.CollectionFormat, p.parameter.Type
-	if tpe == "array" {
+	if tpe == typeArray {
 		if cf == "multi" {
 			if !p.allowsMulti() {
 				return nil, false, false, errors.InvalidCollectionFormat(name, in, cf)
@@ -209,10 +213,11 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 			if ffErr != nil {
 				if p.parameter.Required {
 					return errors.NewParseError(p.Name, p.parameter.In, "", ffErr)
-				} else { //nolint:revive
-					return nil
 				}
+
+				return nil
 			}
+
 			target.Set(reflect.ValueOf(runtime.File{Data: file, Header: header}))
 			return nil
 		}
@@ -264,7 +269,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 }
 
 func (p *untypedParamBinder) bindValue(data []string, hasKey bool, target reflect.Value) error {
-	if p.parameter.Type == "array" {
+	if p.parameter.Type == typeArray {
 		return p.setSliceFieldValue(target, p.parameter.Default, data, hasKey)
 	}
 	var d string
@@ -318,7 +323,7 @@ func (p *untypedParamBinder) setFieldValue(target reflect.Value, defaultValue in
 		return nil
 	}
 
-	switch target.Kind() { //nolint:exhaustive
+	switch target.Kind() { //nolint:exhaustive // we want to check only types that map from a swagger parameter
 	case reflect.Bool:
 		if data == "" {
 			if target.CanSet() {

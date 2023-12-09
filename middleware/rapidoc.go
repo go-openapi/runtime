@@ -1,4 +1,4 @@
-//nolint:dupl,goconst
+//nolint:dupl
 package middleware
 
 import (
@@ -29,16 +29,16 @@ func (r *RapiDocOpts) EnsureDefaults() {
 		r.BasePath = "/"
 	}
 	if r.Path == "" {
-		r.Path = "docs"
+		r.Path = defaultDocsPath
 	}
 	if r.SpecURL == "" {
-		r.SpecURL = "/swagger.json"
+		r.SpecURL = defaultDocsURL
 	}
 	if r.RapiDocURL == "" {
 		r.RapiDocURL = rapidocLatest
 	}
 	if r.Title == "" {
-		r.Title = "API documentation"
+		r.Title = defaultDocsTitle
 	}
 }
 

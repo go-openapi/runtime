@@ -84,7 +84,9 @@ func TestNotFound(t *testing.T) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params)
 	}
-	res, err := http.Get(server.URL) //nolint:noctx
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
 	defer res.Body.Close()

@@ -16,6 +16,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -317,13 +318,13 @@ DoneChoosingBodySource:
 
 	urlPath := path.Join(basePathURL.Path, pathPatternURL.Path)
 	for k, v := range r.pathParams {
-		urlPath = strings.Replace(urlPath, "{"+k+"}", url.PathEscape(v), -1) //nolint:gocritic
+		urlPath = strings.ReplaceAll(urlPath, "{"+k+"}", url.PathEscape(v))
 	}
 	if reinstateSlash {
-		urlPath = urlPath + "/" //nolint:gocritic
+		urlPath += "/"
 	}
 
-	req, err := http.NewRequest(r.method, urlPath, body) //nolint:noctx
+	req, err := http.NewRequestWithContext(context.Background(), r.method, urlPath, body)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +362,7 @@ func (r *request) GetMethod() string {
 func (r *request) GetPath() string {
 	path := r.pathPattern
 	for k, v := range r.pathParams {
-		path = strings.Replace(path, "{"+k+"}", v, -1) //nolint:gocritic
+		path = strings.ReplaceAll(path, "{"+k+"}", v)
 	}
 	return path
 }

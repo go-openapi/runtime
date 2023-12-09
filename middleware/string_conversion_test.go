@@ -109,7 +109,7 @@ func TestParamBinding(t *testing.T) {
 	fld := val.FieldByName(pName)
 
 	binder := &untypedParamBinder{
-		parameter: spec.QueryParam(pName).Typed("string", "").WithDefault("some-name"),
+		parameter: spec.QueryParam(pName).Typed(typeString, "").WithDefault("some-name"),
 		Name:      pName,
 	}
 
@@ -172,7 +172,7 @@ func TestParamBinding(t *testing.T) {
 	timeField := val.FieldByName(pName)
 	dt := strfmt.DateTime(time.Date(2014, 3, 19, 2, 9, 0, 0, time.UTC))
 	binder = &untypedParamBinder{
-		parameter: spec.QueryParam(pName).Typed("string", "date-time").WithDefault(dt),
+		parameter: spec.QueryParam(pName).Typed(typeString, "date-time").WithDefault(dt),
 		Name:      pName,
 	}
 	exp := strfmt.DateTime(time.Date(2014, 5, 14, 2, 9, 0, 0, time.UTC))
@@ -192,7 +192,7 @@ func TestParamBinding(t *testing.T) {
 	pName = "Birthdate"
 	dateField := val.FieldByName(pName)
 	binder = &untypedParamBinder{
-		parameter: spec.QueryParam(pName).Typed("string", "date").WithDefault(ddt),
+		parameter: spec.QueryParam(pName).Typed(typeString, "date").WithDefault(ddt),
 		Name:      pName,
 	}
 	expd := strfmt.Date(time.Date(2014, 5, 14, 0, 0, 0, 0, time.UTC))
@@ -213,7 +213,7 @@ func TestParamBinding(t *testing.T) {
 	pName = "LastFailure"
 	ftimeField := val.FieldByName(pName)
 	binder = &untypedParamBinder{
-		parameter: spec.QueryParam(pName).Typed("string", "date").WithDefault(fdt),
+		parameter: spec.QueryParam(pName).Typed(typeString, "date").WithDefault(fdt),
 		Name:      pName,
 	}
 	exp = strfmt.DateTime(time.Date(2014, 5, 14, 2, 9, 0, 0, time.UTC))
@@ -239,7 +239,7 @@ func TestParamBinding(t *testing.T) {
 	pName = "Unsupported"
 	unsupportedField := val.FieldByName(pName)
 	binder = &untypedParamBinder{
-		parameter: spec.QueryParam(pName).Typed("string", ""),
+		parameter: spec.QueryParam(pName).Typed(typeString, ""),
 		Name:      pName,
 	}
 	err = binder.setFieldValue(unsupportedField, nil, "", true)
@@ -255,7 +255,7 @@ func TestSliceConversion(t *testing.T) {
 	// _, _, err := readFormattedSliceFieldValue("Prefs", prefsField, cData, "csv", nil)
 	// require.Error(t, err)
 
-	sliced := []string{"some", "string", "values"}
+	sliced := []string{"some", typeString, "values"}
 	seps := map[string]string{"ssv": " ", "tsv": "\t", "pipes": "|", "csv": ",", "": ","}
 
 	tagsField := val.FieldByName("Tags")

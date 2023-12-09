@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +20,9 @@ func TestRapiDocMiddleware(t *testing.T) {
 	rapidoc.ServeHTTP(recorder, req)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, "text/html; charset=utf-8", recorder.Header().Get("Content-Type"))
-	assert.Contains(t, recorder.Body.String(), "<title>API documentation</title>")
-	assert.Contains(t, recorder.Body.String(), "<rapi-doc spec-url=\"/swagger.json\"></rapi-doc>")
+	var o RapiDocOpts
+	o.EnsureDefaults()
+	assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
+	assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", o.SpecURL))
 	assert.Contains(t, recorder.Body.String(), rapidocLatest)
 }
