@@ -30,38 +30,76 @@ import (
 func TestServeSpecMiddleware(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	ctx := NewContext(spec, api, nil)
-	handler := Spec("", ctx.spec.Raw(), nil)
 
-	t.Run("serves spec", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
-		require.NoError(t, err)
-		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-		recorder := httptest.NewRecorder()
+	t.Run("Spec handler", func(t *testing.T) {
+		handler := Spec("", ctx.spec.Raw(), nil)
 
-		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		t.Run("serves spec", func(t *testing.T) {
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
+			require.NoError(t, err)
+			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+			assert.Equal(t, http.StatusOK, recorder.Code)
+
+			responseHeaders := recorder.Result().Header //nolint:bodyclose // false positive from linter
+			responseContentType := responseHeaders.Get("Content-Type")
+			assert.Equal(t, applicationJSON, responseContentType)
+
+			responseBody := recorder.Body
+			require.NotNil(t, responseBody)
+			require.JSONEq(t, string(spec.Raw()), responseBody.String())
+		})
+
+		t.Run("returns 404 when no next handler", func(t *testing.T) {
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
+			require.NoError(t, err)
+			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+			assert.Equal(t, http.StatusNotFound, recorder.Code)
+		})
+
+		t.Run("forwards to next handler for other url", func(t *testing.T) {
+			handler = Spec("", ctx.spec.Raw(), http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+				rw.WriteHeader(http.StatusOK)
+			}))
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
+			require.NoError(t, err)
+			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+			assert.Equal(t, http.StatusOK, recorder.Code)
+		})
 	})
 
-	t.Run("returns 404 when no next handler", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
-		require.NoError(t, err)
-		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-		recorder := httptest.NewRecorder()
+	t.Run("Spec handler with options", func(t *testing.T) {
+		handler := Spec("/swagger", ctx.spec.Raw(), nil,
+			WithSpecPath("spec"),
+			WithSpecDocument("myapi-swagger.json"),
+		)
 
-		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusNotFound, recorder.Code)
-	})
+		t.Run("serves spec", func(t *testing.T) {
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger/spec/myapi-swagger.json", nil)
+			require.NoError(t, err)
+			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+			recorder := httptest.NewRecorder()
 
-	t.Run("forwards to next handler for other url", func(t *testing.T) {
-		handler = Spec("", ctx.spec.Raw(), http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
-			rw.WriteHeader(http.StatusOK)
-		}))
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
-		require.NoError(t, err)
-		request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
-		recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			assert.Equal(t, http.StatusOK, recorder.Code)
+		})
 
-		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		t.Run("should not find spec there", func(t *testing.T) {
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
+			require.NoError(t, err)
+			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, request)
+			assert.Equal(t, http.StatusNotFound, recorder.Code)
+		})
 	})
 }
