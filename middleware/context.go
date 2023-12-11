@@ -18,6 +18,8 @@ import (
 	stdContext "context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -584,45 +586,92 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 	c.api.ServeErrorFor(route.Operation.ID)(rw, r, errors.New(http.StatusInternalServerError, "can't produce response"))
 }
 
-func (c *Context) APIHandlerSwaggerUI(builder Builder) http.Handler {
+// APIHandlerSwaggerUI returns a handler to serve the API.
+//
+// This handler includes a swagger spec, router and the contract defined in the swagger spec.
+//
+// A spec UI (SwaggerUI) is served at {API base path}/docs and the spec document at /swagger.json
+// (these can be modified with uiOptions).
+func (c *Context) APIHandlerSwaggerUI(builder Builder, opts ...UIOption) http.Handler {
 	b := builder
 	if b == nil {
 		b = PassthroughBuilder
 	}
 
-	var title string
-	sp := c.spec.Spec()
-	if sp != nil && sp.Info != nil && sp.Info.Title != "" {
-		title = sp.Info.Title
-	}
+	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
+	var swaggerUIOpts SwaggerUIOpts
+	fromCommonToAnyOptions(uiOpts, &swaggerUIOpts)
 
-	swaggerUIOpts := SwaggerUIOpts{
-		BasePath: c.BasePath(),
-		Title:    title,
-	}
-
-	return Spec("", c.spec.Raw(), SwaggerUI(swaggerUIOpts, c.RoutesHandler(b)))
+	return Spec(specPath, c.spec.Raw(), SwaggerUI(swaggerUIOpts, c.RoutesHandler(b)), specOpts...)
 }
 
-// APIHandler returns a handler to serve the API, this includes a swagger spec, router and the contract defined in the swagger spec
-func (c *Context) APIHandler(builder Builder) http.Handler {
+// APIHandlerRapiDoc returns a handler to serve the API.
+//
+// This handler includes a swagger spec, router and the contract defined in the swagger spec.
+//
+// A spec UI (RapiDoc) is served at {API base path}/docs and the spec document at /swagger.json
+// (these can be modified with uiOptions).
+func (c *Context) APIHandlerRapiDoc(builder Builder, opts ...UIOption) http.Handler {
 	b := builder
 	if b == nil {
 		b = PassthroughBuilder
 	}
 
+	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
+	var rapidocUIOpts RapiDocOpts
+	fromCommonToAnyOptions(uiOpts, &rapidocUIOpts)
+
+	return Spec(specPath, c.spec.Raw(), RapiDoc(rapidocUIOpts, c.RoutesHandler(b)), specOpts...)
+}
+
+// APIHandler returns a handler to serve the API.
+//
+// This handler includes a swagger spec, router and the contract defined in the swagger spec.
+//
+// A spec UI (Redoc) is served at {API base path}/docs and the spec document at /swagger.json
+// (these can be modified with uiOptions).
+func (c *Context) APIHandler(builder Builder, opts ...UIOption) http.Handler {
+	b := builder
+	if b == nil {
+		b = PassthroughBuilder
+	}
+
+	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
+	var redocOpts RedocOpts
+	fromCommonToAnyOptions(uiOpts, &redocOpts)
+
+	return Spec(specPath, c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(b)), specOpts...)
+}
+
+func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []SpecOption) {
 	var title string
 	sp := c.spec.Spec()
 	if sp != nil && sp.Info != nil && sp.Info.Title != "" {
 		title = sp.Info.Title
 	}
 
-	redocOpts := RedocOpts{
-		BasePath: c.BasePath(),
-		Title:    title,
+	// default options (may be overridden)
+	optsForContext := []UIOption{
+		WithUIBasePath(c.BasePath()),
+		WithUITitle(title),
+	}
+	optsForContext = append(optsForContext, opts...)
+	uiOpts := uiOptionsWithDefaults(optsForContext)
+
+	// If spec URL is provided, there is a non-default path to serve the spec.
+	// This makes sure that the UI middleware is aligned with the Spec middleware.
+	u, _ := url.Parse(uiOpts.SpecURL)
+	var specPath string
+	if u != nil {
+		specPath = u.Path
 	}
 
-	return Spec("", c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(b)))
+	pth, doc := path.Split(specPath)
+	if pth == "." {
+		pth = ""
+	}
+
+	return pth, uiOpts, []SpecOption{WithSpecDocument(doc)}
 }
 
 // RoutesHandler returns a handler to serve the API, just the routes and the contract defined in the swagger spec

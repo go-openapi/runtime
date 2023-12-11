@@ -17,6 +17,7 @@ package middleware
 import (
 	stdcontext "context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,8 +32,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const applicationJSON = "application/json"
 
 type stubBindRequester struct {
 }
@@ -131,28 +130,226 @@ func TestContentType_Issue174(t *testing.T) {
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
 
+const (
+	testHost = "https://localhost:8080"
+
+	// how to get the spec document?
+	defaultSpecPath = "/swagger.json"
+	defaultSpecURL  = testHost + defaultSpecPath
+	// how to get the UI asset?
+	defaultUIURL = testHost + "/api/docs"
+)
+
 func TestServe(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	handler := Serve(spec, api)
 
-	// serve spec document
-	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "http://localhost:8080/swagger.json", nil)
-	require.NoError(t, err)
+	t.Run("serve spec document", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultSpecURL, nil)
+		require.NoError(t, err)
 
-	request.Header.Add("Content-Type", runtime.JSONMime)
-	request.Header.Add("Accept", runtime.JSONMime)
-	recorder := httptest.NewRecorder()
+		request.Header.Add("Content-Type", runtime.JSONMime)
+		request.Header.Add("Accept", runtime.JSONMime)
+		recorder := httptest.NewRecorder()
 
-	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
 
-	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "http://localhost:8080/swagger-ui", nil)
-	require.NoError(t, err)
+	t.Run("should not find UI there", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, testHost+"/swagger-ui", nil)
+		require.NoError(t, err)
+		recorder := httptest.NewRecorder()
 
-	recorder = httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+	})
 
-	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, 404, recorder.Code)
+	t.Run("should find UI here", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultUIURL, nil)
+		require.NoError(t, err)
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+
+		htmlResponse := recorder.Body.String()
+		assert.Containsf(t, htmlResponse, "<title>Swagger Petstore</title>", "should default to the API's title")
+		assert.Containsf(t, htmlResponse, "<redoc", "should default to Redoc UI")
+		assert.Containsf(t, htmlResponse, "spec-url='/swagger.json'>", "should default to /swagger.json spec document")
+	})
+}
+
+func TestServeWithUIs(t *testing.T) {
+	spec, api := petstore.NewAPI(t)
+	ctx := NewContext(spec, api, nil)
+
+	const (
+		alternateSpecURL  = testHost + "/specs/petstore.json"
+		alternateSpecPath = "/specs/petstore.json"
+		alternateUIURL    = testHost + "/ui/docs"
+	)
+
+	uiOpts := []UIOption{
+		WithUIBasePath("ui"), // override the base path from the spec, implies /ui
+		WithUIPath("docs"),
+		WithUISpecURL("/specs/petstore.json"),
+	}
+
+	t.Run("with APIHandler", func(t *testing.T) {
+		t.Run("with defaults", func(t *testing.T) {
+			handler := ctx.APIHandler(nil)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Containsf(t, htmlResponse, "<redoc", "should default to Redoc UI")
+			})
+
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+
+		t.Run("with options", func(t *testing.T) {
+			handler := ctx.APIHandler(nil, uiOpts...)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Contains(t, htmlResponse, fmt.Sprintf("<redoc spec-url='%s'></redoc>", alternateSpecPath))
+			})
+
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+	})
+
+	t.Run("with APIHandlerSwaggerUI", func(t *testing.T) {
+		t.Run("with defaults", func(t *testing.T) {
+			handler := ctx.APIHandlerSwaggerUI(nil)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Contains(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(defaultSpecPath, `/`, `\/`)))
+			})
+
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+
+		t.Run("with options", func(t *testing.T) {
+			handler := ctx.APIHandlerSwaggerUI(nil, uiOpts...)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Contains(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(alternateSpecPath, `/`, `\/`)))
+			})
+
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+	})
+
+	t.Run("with APIHandlerRapiDoc", func(t *testing.T) {
+		t.Run("with defaults", func(t *testing.T) {
+			handler := ctx.APIHandlerRapiDoc(nil)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Contains(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", defaultSpecPath))
+			})
+
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, defaultSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+
+		t.Run("with options", func(t *testing.T) {
+			handler := ctx.APIHandlerRapiDoc(nil, uiOpts...)
+
+			t.Run("should find UI", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateUIURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+
+				htmlResponse := recorder.Body.String()
+				assert.Contains(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", alternateSpecPath))
+			})
+			t.Run("should find spec", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateSpecURL, nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				handler.ServeHTTP(recorder, request)
+				assert.Equal(t, http.StatusOK, recorder.Code)
+			})
+		})
+	})
 }
 
 func TestContextAuthorize(t *testing.T) {
