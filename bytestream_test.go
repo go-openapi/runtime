@@ -390,6 +390,7 @@ func TestByteStreamProducer(t *testing.T) {
 }
 
 type binaryUnmarshalDummy struct {
+	err error
 	str string
 }
 
@@ -398,6 +399,10 @@ type binaryUnmarshalDummyZeroAlloc struct {
 }
 
 func (b *binaryUnmarshalDummy) UnmarshalBinary(data []byte) error {
+	if b.err != nil {
+		return b.err
+	}
+
 	if len(data) == 0 {
 		return errors.New("no text given")
 	}
