@@ -73,3 +73,16 @@ func TestCSVProducer(t *testing.T) {
 	err = prod.Produce(nil, data)
 	require.Error(t, err)
 }
+
+type readerFromDummy struct {
+	err error
+	b   bytes.Buffer
+}
+
+func (r *readerFromDummy) ReadFrom(rdr io.Reader) (int64, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+
+	return r.b.ReadFrom(rdr)
+}

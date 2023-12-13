@@ -17,10 +17,10 @@ func TestByteStreamConsumer(t *testing.T) {
 	const expected = "the data for the stream to be sent over the wire"
 	consumer := ByteStreamConsumer()
 
-	t.Run("can consume as a WriterTo", func(t *testing.T) {
-		var dest io.WriterTo = new(bytes.Buffer)
+	t.Run("can consume as a ReaderFrom", func(t *testing.T) {
+		var dest = &readerFromDummy{}
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), dest))
-		assert.Equal(t, expected, dest.(*bytes.Buffer).String())
+		assert.Equal(t, expected, dest.b.String())
 	})
 
 	t.Run("can consume as a Writer", func(t *testing.T) {
@@ -223,168 +223,167 @@ func TestByteStreamProducer(t *testing.T) {
 	producer := ByteStreamProducer()
 
 	t.Run("can produce from a WriterTo", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		var data io.WriterTo = bytes.NewBufferString(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from a Reader", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		var data io.Reader = bytes.NewBufferString(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from a binary marshaler", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		data := &binaryMarshalDummy{str: expected}
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from a string", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		data := expected
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from a []byte", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		data := []byte(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
-		rdr.Reset()
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from an error", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		data := errors.New(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from an aliased string", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		type aliasedString string
 		var data aliasedString = expected
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from an interface with underlying type string", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		var data interface{} = expected
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from an aliased []byte", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		type binarySlice []byte
 		var data binarySlice = []byte(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce from an interface with underling type []byte", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		var data interface{} = []byte(expected)
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, expected, rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, expected, w.String())
 	})
 
 	t.Run("can produce JSON from an arbitrary struct", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		type dummy struct {
 			Message string `json:"message,omitempty"`
 		}
 		data := dummy{Message: expected}
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
 	})
 
 	t.Run("can produce JSON from a pointer to an arbitrary struct", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		type dummy struct {
 			Message string `json:"message,omitempty"`
 		}
 		data := dummy{Message: expected}
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
 	})
 
 	t.Run("can produce JSON from an arbitrary slice", func(t *testing.T) {
-		var rdr bytes.Buffer
+		var w bytes.Buffer
 		data := []string{expected}
-		require.NoError(t, producer.Produce(&rdr, data))
-		assert.Equal(t, fmt.Sprintf(`[%q]`, expected), rdr.String())
+		require.NoError(t, producer.Produce(&w, data))
+		assert.Equal(t, fmt.Sprintf(`[%q]`, expected), w.String())
 	})
 
 	t.Run("with CloseStream option", func(t *testing.T) {
 		t.Run("wants to close stream", func(t *testing.T) {
 			closingProducer := ByteStreamProducer(ClosesStream)
-			r := &closingWriter{}
+			w := &closingWriter{}
 			data := bytes.NewBufferString(expected)
 
-			require.NoError(t, closingProducer.Produce(r, data))
-			assert.Equal(t, expected, r.String())
-			assert.EqualValues(t, 1, r.calledClose)
+			require.NoError(t, closingProducer.Produce(w, data))
+			assert.Equal(t, expected, w.String())
+			assert.EqualValues(t, 1, w.calledClose)
 		})
 
 		t.Run("don't want to close stream", func(t *testing.T) {
 			nonClosingProducer := ByteStreamProducer()
-			r := &closingWriter{}
+			w := &closingWriter{}
 			data := bytes.NewBufferString(expected)
 
-			require.NoError(t, nonClosingProducer.Produce(r, data))
-			assert.Equal(t, expected, r.String())
-			assert.EqualValues(t, 0, r.calledClose)
+			require.NoError(t, nonClosingProducer.Produce(w, data))
+			assert.Equal(t, expected, w.String())
+			assert.EqualValues(t, 0, w.calledClose)
 		})
 
 		t.Run("always close data reader whenever possible", func(t *testing.T) {
 			nonClosingProducer := ByteStreamProducer()
-			r := &closingWriter{}
+			w := &closingWriter{}
 			data := &closingReader{b: bytes.NewBufferString(expected)}
 
-			require.NoError(t, nonClosingProducer.Produce(r, data))
-			assert.Equal(t, expected, r.String())
-			assert.EqualValuesf(t, 0, r.calledClose, "expected the input reader NOT to be closed")
+			require.NoError(t, nonClosingProducer.Produce(w, data))
+			assert.Equal(t, expected, w.String())
+			assert.EqualValuesf(t, 0, w.calledClose, "expected the input reader NOT to be closed")
 			assert.EqualValuesf(t, 1, data.calledClose, "expected the data reader to be closed")
 		})
 	})
 
 	t.Run("error cases", func(t *testing.T) {
 		t.Run("MarshalBinary error gets propagated", func(t *testing.T) {
-			var rdr bytes.Buffer
+			var writer bytes.Buffer
 			data := new(binaryMarshalDummy)
-			require.Error(t, producer.Produce(&rdr, data))
+			require.Error(t, producer.Produce(&writer, data))
 		})
 
-		t.Run("nil data is never accepter", func(t *testing.T) {
-			var rdr bytes.Buffer
-			require.Error(t, producer.Produce(&rdr, nil))
+		t.Run("nil data is never accepted", func(t *testing.T) {
+			var writer bytes.Buffer
+			require.Error(t, producer.Produce(&writer, nil))
 		})
 
-		t.Run("nil readers should also never be acccepted", func(t *testing.T) {
+		t.Run("nil writer should also never be acccepted", func(t *testing.T) {
 			data := expected
 			require.Error(t, producer.Produce(nil, data))
 		})
 
 		t.Run("bool is an unsupported type", func(t *testing.T) {
-			var rdr bytes.Buffer
+			var writer bytes.Buffer
 			data := true
-			require.Error(t, producer.Produce(&rdr, data))
+			require.Error(t, producer.Produce(&writer, data))
 		})
 
 		t.Run("WriteJSON error gets propagated", func(t *testing.T) {
-			var rdr bytes.Buffer
+			var writer bytes.Buffer
 			type cannotMarshal struct {
 				X func() `json:"x"`
 			}
 			data := cannotMarshal{}
-			require.Error(t, producer.Produce(&rdr, data))
+			require.Error(t, producer.Produce(&writer, data))
 		})
 
 	})

@@ -153,7 +153,7 @@ func ByteStreamProducer(opts ...byteStreamOpt) Producer {
 			return errors.New("ByteStreamProducer requires a writer") // early exit
 		}
 		if data == nil {
-			return errors.New("nil destination for ByteStreamProducer")
+			return errors.New("nil data for ByteStreamProducer")
 		}
 
 		closer := defaultCloser
