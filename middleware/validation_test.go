@@ -55,32 +55,32 @@ func TestContentTypeValidation(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Content-Type", "application(")
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusBadRequest, recorder.Code)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.Header.Add("Content-Type", "text/html")
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusUnsupportedMediaType, recorder.Code)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", strings.NewReader(`{"name":"dog"}`))
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.Header.Add("Content-Type", "text/html")
 	request.TransferEncoding = []string{"chunked"}
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusUnsupportedMediaType, recorder.Code)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
@@ -89,28 +89,28 @@ func TestContentTypeValidation(t *testing.T) {
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, 406, recorder.Code)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 
 	// client sends data with unsupported mime
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
-	request.Header.Add("Accept", "application/json") // this content type is served by default by the API
+	request.Header.Add("Accept", jsonMime) // this content type is served by default by the API
 	request.Header.Add("Content-Type", "application/json+special")
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, 415, recorder.Code) // Unsupported media type
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 
 	// client sends a body of data with no mime: breaks
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, 415, recorder.Code)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 }
 
 func TestResponseFormatValidation(t *testing.T) {
@@ -141,18 +141,16 @@ func TestResponseFormatValidation(t *testing.T) {
 // (errors.NewParseError). The matching matrix lives in
 // server-middleware/mediatype/match_test.go.
 func TestValidateContentType(t *testing.T) {
-	const json = "application/json"
-
 	t.Run("nil allowed accepts anything", func(t *testing.T) {
-		require.NoError(t, validateContentType(nil, json))
+		require.NoError(t, validateContentType(nil, jsonMime))
 	})
 
 	t.Run("match returns nil", func(t *testing.T) {
-		require.NoError(t, validateContentType([]string{json}, json))
+		require.NoError(t, validateContentType([]string{jsonMime}, jsonMime))
 	})
 
 	t.Run("no match returns 415", func(t *testing.T) {
-		err := validateContentType([]string{json}, "text/html")
+		err := validateContentType([]string{jsonMime}, "text/html")
 		require.Error(t, err)
 		var v *errors.Validation
 		require.ErrorAs(t, err, &v)
@@ -162,7 +160,7 @@ func TestValidateContentType(t *testing.T) {
 	t.Run("malformed actual returns 400", func(t *testing.T) {
 		// In the normal runtime flow this case is caught upstream by
 		// runtime.ContentType. The smoke test exercises the direct path.
-		err := validateContentType([]string{json}, "application(")
+		err := validateContentType([]string{jsonMime}, "application(")
 		require.Error(t, err)
 		var p *errors.ParseError
 		require.ErrorAs(t, err, &p)

@@ -41,7 +41,7 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 	assert.EqualT(t, http.StatusMethodNotAllowed, recorder.Code)
 
 	methods := strings.Split(recorder.Header().Get("Allow"), ",")
@@ -53,7 +53,7 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, jsonMime, recorder.Header().Get("Content-Type"))
 	assert.EqualT(t, http.StatusNotFound, recorder.Code)
 
 	recorder = httptest.NewRecorder()
@@ -124,9 +124,9 @@ func TestRouterBuilder(t *testing.T) {
 	assert.Len(t, val.Consumes, 2)
 	assert.Len(t, val.Produces, 2)
 
-	assert.MapContainsT(t, val.Consumers, "application/json")
+	assert.MapContainsT(t, val.Consumers, jsonMime)
 	assert.MapContainsT(t, val.Producers, "application/x-yaml")
-	assert.SliceContainsT(t, val.Consumes, "application/json")
+	assert.SliceContainsT(t, val.Consumes, jsonMime)
 	assert.SliceContainsT(t, val.Produces, "application/x-yaml")
 
 	assert.Len(t, val.Parameters, 1)
@@ -178,7 +178,7 @@ func TestRouter_EscapedPath(t *testing.T) {
 	ri, _, _ := context.RouteInfo(request)
 	require.NotNil(t, ri)
 	require.NotNil(t, ri.Params)
-	assert.EqualT(t, "abc/def", ri.Params.Get("id"))
+	assert.EqualT(t, "abc/def", ri.Params.Get(paramKeyID))
 }
 
 func TestRouterStruct(t *testing.T) {
@@ -192,7 +192,7 @@ func TestRouterStruct(t *testing.T) {
 	assert.TrueT(t, ok)
 	require.NotNil(t, entry)
 	assert.Len(t, entry.Params, 1)
-	assert.EqualT(t, "id", entry.Params[0].Name)
+	assert.EqualT(t, paramKeyID, entry.Params[0].Name)
 
 	_, ok = router.Lookup("delete", "/pets")
 	assert.FalseT(t, ok)
@@ -217,7 +217,7 @@ func TestPathConverter(t *testing.T) {
 		denco   string
 	}{
 		{"/", "/"},
-		{"/something", "/something"},
+		{pathSomething, pathSomething},
 		{"/{id}", "/:id"},
 		{"/{id}/something/{anotherId}", "/:id/something/:anotherId"},
 		{"/{petid}", "/:petid"},
@@ -241,7 +241,7 @@ func TestEscapeLiteralColons(t *testing.T) {
 		expected string
 	}{
 		{"/", "/"},
-		{"/something", "/something"},
+		{pathSomething, pathSomething},
 		{"/allow/{serverName}/tokenlist:add", "/allow/{serverName}/tokenlist%3Aadd"},
 		{"/path:with:colons", "/path%3Awith%3Acolons"},
 		{"/{id}:{name}", "/{id}%3A{name}"},
@@ -334,8 +334,8 @@ func TestExtractCompositParameters(t *testing.T) {
 		names   []string
 		values  []string
 	}{
-		{name: "fragment", value: "gie", pattern: "e", names: []string{"fragment"}, values: []string{"gi"}},
-		{name: "fragment", value: "t.simpson", pattern: ".{subfragment}", names: []string{"fragment", "subfragment"}, values: []string{"t", "simpson"}},
+		{name: valFragment, value: "gie", pattern: "e", names: []string{valFragment}, values: []string{"gi"}},
+		{name: valFragment, value: "t.simpson", pattern: ".{subfragment}", names: []string{valFragment, "subfragment"}, values: []string{"t", "simpson"}},
 	}
 	for _, tc := range cases {
 		names, values := decodeCompositParams(tc.name, tc.value, tc.pattern, nil, nil)

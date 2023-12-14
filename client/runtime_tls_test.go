@@ -142,8 +142,8 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 	// explicitly omitting DNSName check.
 	fixtures := newTLSFixtures(t)
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	host, clean := testTLSServer(t, fixtures, result)
 	t.Cleanup(clean)
@@ -153,7 +153,7 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 
 	var received []task
 	operation := &runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {

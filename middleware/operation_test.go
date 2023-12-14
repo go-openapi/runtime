@@ -20,7 +20,7 @@ func TestOperationExecutor(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
 	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(_ any) (any, error) {
 		return []any{
-			map[string]any{"id": 1, "name": "a dog"},
+			map[string]any{paramKeyID: 1, paramKeyName: "a dog"},
 		}, nil
 	}))
 
@@ -31,7 +31,7 @@ func TestOperationExecutor(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	require.NoError(t, err)
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusOK, recorder.Code)
@@ -49,7 +49,7 @@ func TestOperationExecutor(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	require.NoError(t, err)
-	request.Header.Add("Accept", "application/json")
+	request.Header.Add("Accept", jsonMime)
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusUnprocessableEntity, recorder.Code)

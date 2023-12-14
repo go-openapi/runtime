@@ -112,7 +112,7 @@ func mustGetFile(path string) *os.File {
 func TestBuildRequest_SetBody(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
 
-	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
 
 	_ = r.SetBodyParam(bd)
 	assert.Equal(t, bd, r.payload)
@@ -137,7 +137,7 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
-	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "world")
@@ -162,7 +162,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
-	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "wrong")
@@ -201,7 +201,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		XMLName xml.Name `xml:"person"`
 		Name    string   `xml:"name"`
 		Hobby   string   `xml:"hobby"`
-	}{{xml.Name{}, "Tom", "Organ trail"}, {xml.Name{}, "John", "Bird watching"}}
+	}{{xml.Name{}, valTom, valOrganTrail}, {xml.Name{}, valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "world")
@@ -517,7 +517,7 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 		_ = req.SetPathParam("id", "1234")
 		_ = req.SetFileParam("file1", contentTypeProvider{
 			NamedReadCloser: mustGetFile("./runtime.go"),
-			contentType:     "application/octet-stream",
+			contentType:     runtime.DefaultMime,
 		})
 		_ = req.SetFileParam("file2", mustGetFile("./request.go"))
 
@@ -550,7 +550,7 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 		assert.Equal(t, content, actual)
 		assert.EqualT(t, mpff.Header.Get("Content-Type"), contentType)
 	}
-	fileverifier("file1", 0, "runtime.go", cont, "application/octet-stream")
+	fileverifier("file1", 0, "runtime.go", cont, runtime.DefaultMime)
 	fileverifier("file2", 0, "request.go", cont2, "text/plain; charset=utf-8")
 }
 

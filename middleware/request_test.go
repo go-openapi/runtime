@@ -66,9 +66,9 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed(typeString, "")
-	idParam := spec.PathParam("id").Typed("integer", "int64")
-	ageParam := spec.QueryParam("age").Typed("integer", "int32")
+	nameParam := spec.QueryParam(paramKeyName).Typed(typeString, "")
+	idParam := spec.PathParam(paramKeyID).Typed("integer", "int64")
+	ageParam := spec.QueryParam(paramKeyAge).Typed("integer", "int32")
 	scoreParam := spec.QueryParam("score").Typed("number", "float")
 	factorParam := spec.QueryParam("factor").Typed("number", "double")
 
@@ -77,7 +77,7 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
 	requestIDParam.Extensions = spec.Extensions(map[string]any{})
-	requestIDParam.Extensions.Add("go-name", "RequestID")
+	requestIDParam.Extensions.Add("go-name", keyRequestID)
 
 	items := new(spec.Items)
 	items.Type = typeString
@@ -89,18 +89,18 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	pictureParam := spec.QueryParam("picture").Typed(typeString, "byte") // base64 encoded during transport
 
 	return map[string]spec.Parameter{
-		"ID":        *idParam,
-		"Name":      *nameParam,
-		"RequestID": *requestIDParam,
-		"Friend":    *friendParam,
-		"Tags":      *tagsParam,
-		"Age":       *ageParam,
-		"Score":     *scoreParam,
-		"Factor":    *factorParam,
-		"Confirmed": *confirmedParam,
-		"Planned":   *plannedParam,
-		"Delivered": *deliveredParam,
-		"Picture":   *pictureParam,
+		keyID:        *idParam,
+		keyName:      *nameParam,
+		keyRequestID: *requestIDParam,
+		keyFriend:    *friendParam,
+		keyTags:      *tagsParam,
+		"Age":        *ageParam,
+		"Score":      *scoreParam,
+		"Factor":     *factorParam,
+		"Confirmed":  *confirmedParam,
+		"Planned":    *plannedParam,
+		"Delivered":  *deliveredParam,
+		"Picture":    *pictureParam,
 	}
 }
 
@@ -108,62 +108,62 @@ func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed(typeString, "")
-	idParam := spec.PathParam("id").Typed("integer", "int64")
+	nameParam := spec.QueryParam(paramKeyName).Typed(typeString, "")
+	idParam := spec.PathParam(paramKeyID).Typed("integer", "int64")
 
 	friendSchema := new(spec.Schema).Typed("object", "")
 	friendParam := spec.BodyParam("friend", friendSchema)
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
 	requestIDParam.Extensions = spec.Extensions(map[string]any{})
-	requestIDParam.Extensions.Add("go-name", "RequestID")
+	requestIDParam.Extensions.Add("go-name", keyRequestID)
 
 	items := new(spec.Items)
 	items.Type = typeString
 	tagsParam := spec.QueryParam("tags").CollectionOf(items, fmt)
 
 	return map[string]spec.Parameter{
-		"ID":        *idParam,
-		"Name":      *nameParam,
-		"RequestID": *requestIDParam,
-		"Friend":    *friendParam,
-		"Tags":      *tagsParam,
+		keyID:        *idParam,
+		keyName:      *nameParam,
+		keyRequestID: *requestIDParam,
+		keyFriend:    *friendParam,
+		keyTags:      *tagsParam,
 	}
 }
 func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 	if fmt == "" {
 		fmt = csvFormat
 	}
-	nameParam := spec.QueryParam("name").Typed(typeString, "")
-	idParam := spec.PathParam("id").Typed("integer", "int64")
+	nameParam := spec.QueryParam(paramKeyName).Typed(typeString, "")
+	idParam := spec.PathParam(paramKeyID).Typed("integer", "int64")
 
 	friendSchema := new(spec.Schema).Typed("object", "")
 	friendParam := spec.BodyParam("friend", spec.ArrayProperty(friendSchema))
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
 	requestIDParam.Extensions = spec.Extensions(map[string]any{})
-	requestIDParam.Extensions.Add("go-name", "RequestID")
+	requestIDParam.Extensions.Add("go-name", keyRequestID)
 
 	items := new(spec.Items)
 	items.Type = typeString
 	tagsParam := spec.QueryParam("tags").CollectionOf(items, fmt)
 
 	return map[string]spec.Parameter{
-		"ID":        *idParam,
-		"Name":      *nameParam,
-		"RequestID": *requestIDParam,
-		"Friend":    *friendParam,
-		"Tags":      *tagsParam,
+		keyID:        *idParam,
+		keyName:      *nameParam,
+		keyRequestID: *requestIDParam,
+		keyFriend:    *friendParam,
+		keyTags:      *tagsParam,
 	}
 }
 
 func TestRequestBindingDefaultValue(t *testing.T) {
 	confirmed := true
 	name := "thomas"
-	friend := map[string]any{"name": "toby", "age": float64(32)}
+	friend := map[string]any{paramKeyName: valToby, paramKeyAge: float64(32)}
 	id, age, score, factor := int64(7575), int32(348), float32(5.309), float64(37.403)
 	requestID := 19394858
-	tags := []string{"one", "two", "three"}
+	tags := []string{tagOne, tagTwo, tagThree}
 	dt1 := time.Date(2014, 8, 9, 0, 0, 0, 0, time.UTC)
 	planned := strfmt.Date(dt1)
 	dt2 := time.Date(2014, 10, 12, 8, 5, 5, 0, time.UTC)
@@ -171,11 +171,11 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	uri, err := url.Parse(testURL)
 	require.NoError(t, err)
 	defaults := map[string]any{
-		"id":           id,
-		"age":          age,
+		paramKeyID:     id,
+		paramKeyAge:    age,
 		"score":        score,
 		"factor":       factor,
-		"name":         name,
+		paramKeyName:   name,
 		"friend":       friend,
 		"X-Request-Id": requestID,
 		"tags":         tags,
@@ -193,21 +193,21 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, uri.String(), bytes.NewBuffer(nil))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	binder := NewUntypedRequestBinder(op3, new(spec.Swagger), strfmt.Default)
 
 	data := make(map[string]any)
 	err = binder.Bind(req, RouteParams(nil), runtime.JSONConsumer(), &data)
 	require.NoError(t, err)
-	assert.Equal(t, defaults["id"], data["id"])
-	assert.Equal(t, name, data["name"])
+	assert.Equal(t, defaults[paramKeyID], data[paramKeyID])
+	assert.Equal(t, name, data[paramKeyName])
 	assert.Equal(t, friend, data["friend"])
 	assert.EqualValues(t, requestID, data["X-Request-Id"])
 	assert.Equal(t, tags, data["tags"])
 	assert.Equal(t, planned, data["planned"])
 	assert.Equal(t, delivered, data["delivered"])
 	assert.Equal(t, confirmed, data["confirmed"])
-	assert.Equal(t, age, data["age"])
+	assert.Equal(t, age, data[paramKeyAge])
 	assert.InDelta(t, factor, data["factor"], 1e-6)
 	assert.InDelta(t, score, data["score"], 1e-6)
 	assert.EqualT(t, "hello", string(data["picture"].(strfmt.Base64)))
@@ -232,70 +232,70 @@ func TestRequestBindingForInvalid(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application(")
 	data := jsonRequestParams{}
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{]`))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = jsonRequestParams{}
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 
-	invalidMultiParam := spec.HeaderParam("tags").CollectionOf(new(spec.Items), "multi")
-	op3 := map[string]spec.Parameter{"Tags": *invalidMultiParam}
+	invalidMultiParam := spec.HeaderParam("tags").CollectionOf(new(spec.Items), multiFmt)
+	op3 := map[string]spec.Parameter{keyTags: *invalidMultiParam}
 	binder = NewUntypedRequestBinder(op3, new(spec.Swagger), strfmt.Default)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = jsonRequestParams{}
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 
-	invalidMultiParam = spec.PathParam("").CollectionOf(new(spec.Items), "multi")
+	invalidMultiParam = spec.PathParam("").CollectionOf(new(spec.Items), multiFmt)
 
-	op4 := map[string]spec.Parameter{"Tags": *invalidMultiParam}
+	op4 := map[string]spec.Parameter{keyTags: *invalidMultiParam}
 	binder = NewUntypedRequestBinder(op4, new(spec.Swagger), strfmt.Default)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = jsonRequestParams{}
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 
 	invalidInParam := spec.HeaderParam("tags").Typed(typeString, "")
 	invalidInParam.In = "invalid"
-	op5 := map[string]spec.Parameter{"Tags": *invalidInParam}
+	op5 := map[string]spec.Parameter{keyTags: *invalidInParam}
 	binder = NewUntypedRequestBinder(op5, new(spec.Swagger), strfmt.Default)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, "http://localhost:8002/hello/1?name=the-name", bytes.NewBufferString(`{}`))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = jsonRequestParams{}
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 	require.Error(t, err)
 }
 
 func TestRequestBindingForValid(t *testing.T) {
-	for _, fmt := range []string{csvFormat, "pipes", "tsv", "ssv", "multi"} {
+	for _, fmt := range []string{csvFormat, pipesFmt, tsvFmt, ssvFmt, multiFmt} {
 		op1 := parametersForJSONRequestParams(fmt)
 
 		binder := NewUntypedRequestBinder(op1, new(spec.Swagger), strfmt.Default)
 
-		lval := []string{"one", "two", "three"}
+		lval := []string{tagOne, tagTwo, tagThree}
 		var queryString string
 		var skipEscape bool
 		switch fmt {
-		case "multi":
+		case multiFmt:
 			skipEscape = true
 			queryString = strings.Join(lval, "&tags=")
-		case "ssv":
+		case ssvFmt:
 			queryString = strings.Join(lval, " ")
-		case "pipes":
+		case pipesFmt:
 			queryString = strings.Join(lval, "|")
-		case "tsv":
+		case tsvFmt:
 			queryString = strings.Join(lval, "\t")
 		default:
 			queryString = strings.Join(lval, ",")
@@ -312,14 +312,14 @@ func TestRequestBindingForValid(t *testing.T) {
 		req.Header.Set("X-Request-Id", "1325959595")
 
 		data := jsonRequestParams{}
-		err = binder.Bind(req, RouteParams([]RouteParam{{"id", "1"}}), runtime.JSONConsumer(), &data)
+		err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "1"}}), runtime.JSONConsumer(), &data)
 
 		expected := jsonRequestParams{
 			ID:        1,
 			Name:      "the-name",
-			Friend:    friend{"toby", 32},
+			Friend:    friend{valToby, 32},
 			RequestID: 1325959595,
-			Tags:      []string{"one", "two", "three"},
+			Tags:      []string{tagOne, tagTwo, tagThree},
 		}
 		require.NoError(t, err)
 		assert.Equal(t, expected, data)
@@ -335,11 +335,11 @@ func TestRequestBindingForValid(t *testing.T) {
 	req.Header.Set("X-Request-Id", "1325959595")
 
 	data2 := jsonRequestPtr{}
-	err = binder.Bind(req, []RouteParam{{"id", "1"}}, runtime.JSONConsumer(), &data2)
+	err = binder.Bind(req, []RouteParam{{paramKeyID, "1"}}, runtime.JSONConsumer(), &data2)
 
 	expected2 := jsonRequestPtr{
-		Friend: &friend{"toby", 32},
-		Tags:   []string{"one", "two", "three"},
+		Friend: &friend{valToby, 32},
+		Tags:   []string{tagOne, tagTwo, tagThree},
 	}
 	require.NoError(t, err)
 	if data2.Friend == nil {
@@ -355,11 +355,11 @@ func TestRequestBindingForValid(t *testing.T) {
 	op2 := parametersForJSONRequestSliceParams("")
 	binder = NewUntypedRequestBinder(op2, new(spec.Swagger), strfmt.Default)
 	data3 := jsonRequestSlice{}
-	err = binder.Bind(req, []RouteParam{{"id", "1"}}, runtime.JSONConsumer(), &data3)
+	err = binder.Bind(req, []RouteParam{{paramKeyID, "1"}}, runtime.JSONConsumer(), &data3)
 
 	expected3 := jsonRequestSlice{
-		Friend: []friend{{"toby", 32}},
-		Tags:   []string{"one", "two", "three"},
+		Friend: []friend{{valToby, 32}},
+		Tags:   []string{tagOne, tagTwo, tagThree},
 	}
 	require.NoError(t, err)
 	assert.Equal(t, expected3.Friend, data3.Friend)
@@ -372,11 +372,11 @@ type formRequest struct {
 }
 
 func parametersForFormUpload() map[string]spec.Parameter {
-	nameParam := spec.FormDataParam("name").Typed(typeString, "")
+	nameParam := spec.FormDataParam(paramKeyName).Typed(typeString, "")
 
-	ageParam := spec.FormDataParam("age").Typed("integer", "int32")
+	ageParam := spec.FormDataParam(paramKeyAge).Typed("integer", "int32")
 
-	return map[string]spec.Parameter{"Name": *nameParam, "Age": *ageParam}
+	return map[string]spec.Parameter{keyName: *nameParam, "Age": *ageParam}
 }
 
 func TestFormUpload(t *testing.T) {
@@ -408,11 +408,11 @@ type fileRequest struct {
 }
 
 func paramsForFileUpload() *UntypedRequestBinder {
-	nameParam := spec.FormDataParam("name").Typed(typeString, "")
+	nameParam := spec.FormDataParam(paramKeyName).Typed(typeString, "")
 
 	fileParam := spec.FileParam("file").AsRequired()
 
-	params := map[string]spec.Parameter{"Name": *nameParam, "File": *fileParam}
+	params := map[string]spec.Parameter{keyName: *nameParam, "File": *fileParam}
 	return NewUntypedRequestBinder(params, new(spec.Swagger), strfmt.Default)
 }
 
@@ -426,7 +426,7 @@ func TestBindingFileUpload(t *testing.T) {
 
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	urlStr := testURL
@@ -447,7 +447,7 @@ func TestBindingFileUpload(t *testing.T) {
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = fileRequest{}
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
@@ -464,7 +464,7 @@ func TestBindingFileUpload(t *testing.T) {
 
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
 	require.NoError(t, err)
@@ -483,7 +483,7 @@ func TestBindingFileUpload(t *testing.T) {
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	writer = multipart.NewWriter(body)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)
@@ -495,10 +495,10 @@ func TestBindingFileUpload(t *testing.T) {
 }
 
 func paramsForOptionalFileUpload() *UntypedRequestBinder {
-	nameParam := spec.FormDataParam("name").Typed(typeString, "")
+	nameParam := spec.FormDataParam(paramKeyName).Typed(typeString, "")
 	fileParam := spec.FileParam("file").AsOptional()
 
-	params := map[string]spec.Parameter{"Name": *nameParam, "File": *fileParam}
+	params := map[string]spec.Parameter{keyName: *nameParam, "File": *fileParam}
 	return NewUntypedRequestBinder(params, new(spec.Swagger), strfmt.Default)
 }
 
@@ -507,7 +507,7 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	urlStr := testURL
@@ -526,7 +526,7 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, body)

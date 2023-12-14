@@ -21,10 +21,10 @@ func TestParseContentType(t *testing.T) {
 		err         *errors.ParseError
 	}{
 		{"application/json", "application/json", "", nil},
-		{"text/html; charset=utf-8", "text/html", "utf-8", nil},
-		{"text/html;charset=utf-8", "text/html", "utf-8", nil},
+		{"text/html; charset=utf-8", HTMLMime, charsetUTF8Val, nil},
+		{"text/html;charset=utf-8", HTMLMime, charsetUTF8Val, nil},
 		{"", "application/octet-stream", "", nil},
-		{"text/html;           charset=utf-8", "text/html", "utf-8", nil},
+		{"text/html;           charset=utf-8", HTMLMime, charsetUTF8Val, nil},
 		{"application(", "", "", errors.NewParseError("Content-Type", "header", "application(", reason1)},
 		{"application/json;char*", "", "", errors.NewParseError("Content-Type", "header", "application/json;char*", reason2)},
 	}

@@ -32,8 +32,8 @@ func TestUntypedFormPost(t *testing.T) {
 
 	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data["name"])
-	assert.EqualValues(t, 32, data["age"])
+	assert.Equal(t, "the-name", data[paramKeyName])
+	assert.EqualValues(t, 32, data[paramKeyAge])
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, bytes.NewBufferString(`name=%3&age=32`))
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestUntypedFileUpload(t *testing.T) {
 
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
@@ -62,7 +62,7 @@ func TestUntypedFileUpload(t *testing.T) {
 
 	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data["name"])
+	assert.Equal(t, "the-name", data[paramKeyName])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
 	file := data["file"].(runtime.File)
@@ -75,7 +75,7 @@ func TestUntypedFileUpload(t *testing.T) {
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
@@ -92,7 +92,7 @@ func TestUntypedFileUpload(t *testing.T) {
 
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	writer = multipart.NewWriter(body)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
@@ -127,7 +127,7 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 
 	body := bytes.NewBuffer(nil)
 	writer := multipart.NewWriter(body)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
@@ -136,14 +136,14 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 
 	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data["name"])
+	assert.Equal(t, "the-name", data[paramKeyName])
 
 	writer = multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", "plain-jane.txt")
 	require.NoError(t, err)
 	_, err = part.Write([]byte("the file contents"))
 	require.NoError(t, err)
-	require.NoError(t, writer.WriteField("name", "the-name"))
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
 	require.NoError(t, writer.Close())
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
@@ -153,7 +153,7 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 
 	data = make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data["name"])
+	assert.Equal(t, "the-name", data[paramKeyName])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
 	file := data["file"].(runtime.File)
@@ -168,10 +168,10 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 
 	confirmed := true
 	name := "thomas"
-	friend := map[string]any{"name": "toby", "age": json.Number("32")}
+	friend := map[string]any{paramKeyName: valToby, paramKeyAge: json.Number("32")}
 	id, age, score, factor := int64(7575), int32(348), float32(5.309), float64(37.403)
 	requestID := 19394858
-	tags := []string{"one", "two", "three"}
+	tags := []string{tagOne, tagTwo, tagThree}
 	dt1 := time.Date(2014, 8, 9, 0, 0, 0, 0, time.UTC)
 	planned := strfmt.Date(dt1)
 	dt2 := time.Date(2014, 10, 12, 8, 5, 5, 0, time.UTC)
@@ -180,9 +180,9 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	uri, err := url.Parse("http://localhost:8002/hello/7575")
 	require.NoError(t, err)
 	qs := uri.Query()
-	qs.Add("name", name)
+	qs.Add(paramKeyName, name)
 	qs.Add("confirmed", "true")
-	qs.Add("age", "348")
+	qs.Add(paramKeyAge, "348")
 	qs.Add("score", "5.309")
 	qs.Add("factor", "37.403")
 	qs.Add("tags", strings.Join(tags, ","))
@@ -192,21 +192,21 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, uri.String()+"?"+qs.Encode(), bytes.NewBufferString(`{"name":"toby","age":32}`))
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", jsonMime)
 	req.Header.Set("X-Request-Id", "19394858")
 
 	data := make(map[string]any)
-	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "7575"}}), runtime.JSONConsumer(), &data)
+	err = binder.Bind(req, RouteParams([]RouteParam{{paramKeyID, "7575"}}), runtime.JSONConsumer(), &data)
 	require.NoError(t, err)
-	assert.Equal(t, id, data["id"])
-	assert.Equal(t, name, data["name"])
+	assert.Equal(t, id, data[paramKeyID])
+	assert.Equal(t, name, data[paramKeyName])
 	assert.Equal(t, friend, data["friend"])
 	assert.EqualValues(t, requestID, data["X-Request-Id"])
 	assert.Equal(t, tags, data["tags"])
 	assert.Equal(t, planned, data["planned"])
 	assert.Equal(t, delivered, data["delivered"])
 	assert.Equal(t, confirmed, data["confirmed"])
-	assert.Equal(t, age, data["age"])
+	assert.Equal(t, age, data[paramKeyAge])
 	assert.InDelta(t, factor, data["factor"], 1e-6)
 	assert.InDelta(t, score, data["score"], 1e-6)
 	pb, err := base64.URLEncoding.DecodeString(picture)

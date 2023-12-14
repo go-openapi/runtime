@@ -18,9 +18,9 @@ func TestNextSeparator(t *testing.T) {
 		start    int
 		expected any
 	}{
-		{"/path/to/route", 0, 0},
-		{"/path/to/route", 1, 5},
-		{"/path/to/route", 9, 14},
+		{pathPathToRoute, 0, 0},
+		{pathPathToRoute, 1, 5},
+		{pathPathToRoute, 9, 14},
 		{"/path.html", 1, 10},
 		{"/foo/bar.html", 1, 4},
 		{"/foo/bar.html/baz.png", 5, 13},

@@ -11,12 +11,12 @@ import (
 
 func TestGetOK(t *testing.T) {
 	m := make(map[string][]string)
-	m["key1"] = []string{"value1"}
+	m["key1"] = []string{valValue1}
 	m["key2"] = []string{}
 	values := Values(m)
 
 	v, hasKey, hasValue := values.GetOK("key1")
-	require.Equal(t, []string{"value1"}, v)
+	require.Equal(t, []string{valValue1}, v)
 	require.TrueT(t, hasKey)
 	require.TrueT(t, hasValue)
 

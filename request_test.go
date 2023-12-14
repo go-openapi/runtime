@@ -221,6 +221,6 @@ func TestReadSingle(t *testing.T) {
 func TestReadCollection(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "value1,value2")
-	assert.Equal(t, []string{"value1", "value2"}, ReadCollectionValue(Values(values), "something", "csv"))
+	assert.Equal(t, []string{valValue1, valValue2}, ReadCollectionValue(Values(values), "something", "csv"))
 	assert.Empty(t, ReadCollectionValue(Values(values), "notthere", ""))
 }

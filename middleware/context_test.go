@@ -540,7 +540,7 @@ func TestContextRender(t *testing.T) {
 	ri, request, _ := ctx.RouteInfo(request)
 
 	recorder := httptest.NewRecorder()
-	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{"name": "hello"})
+	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{paramKeyName: valHello})
 	assert.EqualT(t, http.StatusOK, recorder.Code)
 	assert.JSONEqT(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
@@ -556,7 +556,7 @@ func TestContextRender(t *testing.T) {
 	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	require.NoError(t, err)
 	request.Header.Set(runtime.HeaderAccept, "text/xml")
-	assert.Panics(t, func() { ctx.Respond(recorder, request, []string{}, nil, map[string]any{"name": "hello"}) })
+	assert.Panics(t, func() { ctx.Respond(recorder, request, []string{}, nil, map[string]any{paramKeyName: valHello}) })
 
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	require.NoError(t, err)
@@ -564,7 +564,7 @@ func TestContextRender(t *testing.T) {
 	ri, request, _ = ctx.RouteInfo(request)
 
 	recorder = httptest.NewRecorder()
-	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{"name": "hello"})
+	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{paramKeyName: valHello})
 	assert.EqualT(t, http.StatusOK, recorder.Code)
 	assert.JSONEqT(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
