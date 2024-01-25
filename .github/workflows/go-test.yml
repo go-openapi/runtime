@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        go_version: ['oldstable', 'stable' ]
+        go_version: ['oldstable', 'stable', '1.19' ]
 
     steps:
     - name: Run unit tests
