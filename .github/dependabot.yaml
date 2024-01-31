@@ -9,7 +9,6 @@ updates:
     groups:                              # <- group all github actions updates in a single PR
       # 1. development-dependencies are auto-merged
       development-dependencies:
-        dependency-type: all
         patterns:
           - '*'
 
