@@ -56,7 +56,7 @@ func testOperation(ctx context.Context) *runtime.ClientOperation {
 		Reader: runtime.ClientResponseReaderFunc(func(runtime.ClientResponse, runtime.Consumer) (interface{}, error) {
 			return nil, nil
 		}),
-		Params: runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
 		AuthInfo: PassThroughAuth,

@@ -73,7 +73,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -149,7 +149,7 @@ func TestRuntime_Canary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -200,7 +200,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -242,7 +242,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -287,7 +287,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -325,7 +325,7 @@ func (fn roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) 
 }
 
 func TestRuntime_CustomTransport(t *testing.T) {
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 	result := []task{
@@ -402,7 +402,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -457,7 +457,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -559,7 +559,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -613,7 +613,7 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -728,7 +728,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 
 	_, err := rt.Submit(&runtime.ClientOperation{
 		Client: client2,
-		Params: runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
+		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
 		Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
@@ -759,7 +759,7 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
-	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+	rwrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 		return nil
 	})
 
@@ -1200,7 +1200,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 		})
 	})
 	t.Run("with no context, request uses the default timeout", func(t *testing.T) {
-		requestEmptyWriter := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		requestEmptyWriter := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		})
 		host, cleaner := serverBuilder(t, serverDelay, result)

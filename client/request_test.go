@@ -428,7 +428,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	emptyFile, err := os.CreateTemp("", "empty")
 	require.NoError(t, err)
 
-	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetFormParam("something", "some value")
 		_ = req.SetFileParam("file", mustGetFile("./runtime.go"))
 		_ = req.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
@@ -736,7 +736,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			bodyContent, e := io.ReadAll(io.Reader(body))
 			require.NoError(t, e)
 
-			require.EqualValues(t, req.ContentLength, len(bodyContent))
+			require.Len(t, bodyContent, int(req.ContentLength))
 			require.EqualValues(t, "\"test body\"\n", string(bodyContent))
 
 			// Read the body a second time before sending the request

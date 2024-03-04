@@ -61,7 +61,7 @@ func TestApiKeyAuth(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.True(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.Error(t, err)
 		})
 
@@ -73,7 +73,7 @@ func TestApiKeyAuth(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.False(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.NoError(t, err)
 		})
 	})
@@ -99,7 +99,7 @@ func TestApiKeyAuth(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.True(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.Error(t, err)
 		})
 
@@ -110,7 +110,7 @@ func TestApiKeyAuth(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.False(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.NoError(t, err)
 		})
 	})
@@ -150,7 +150,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			require.NoError(t, err)
 			ok, usr, err := ta.Authenticate(req)
 			assert.True(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.Error(t, err)
 
 			assert.Equal(t, wisdom, req.Context().Value(original))
@@ -165,7 +165,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.False(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.NoError(t, err)
 
 			assert.Equal(t, wisdom, req.Context().Value(original))
@@ -199,7 +199,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.True(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.Error(t, err)
 
 			assert.Equal(t, wisdom, req.Context().Value(original))
@@ -213,7 +213,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 
 			ok, usr, err := ta.Authenticate(req)
 			assert.False(t, ok)
-			assert.Equal(t, nil, usr)
+			assert.Nil(t, usr)
 			require.NoError(t, err)
 
 			assert.Equal(t, wisdom, req.Context().Value(original))
