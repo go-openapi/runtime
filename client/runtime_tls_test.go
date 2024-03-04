@@ -116,7 +116,7 @@ func TestRuntimeTLSOptions(t *testing.T) {
 		})
 
 		t.Run("with TLSAuthConfig with VerifyPeer option", func(t *testing.T) {
-			verify := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			verify := func(_ [][]byte, _ [][]*x509.Certificate) error {
 				return nil
 			}
 
@@ -156,7 +156,7 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 		ID:          "getTasks",
 		Method:      http.MethodGet,
 		PathPattern: "/",
-		Params: runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {

@@ -30,7 +30,8 @@ func Test_OpenTelemetryRuntime_submit(t *testing.T) {
 	otel.SetTracerProvider(tp)
 
 	tracer := tp.Tracer("go-runtime")
-	ctx, _ := tracer.Start(context.Background(), "op")
+	ctx, span := tracer.Start(context.Background(), "op")
+	defer span.End()
 
 	assertOpenTelemetrySubmit(t, testOperation(ctx), exporter, 1)
 }
@@ -48,7 +49,8 @@ func Test_OpenTelemetryRuntime_submit_nilAuthInfo(t *testing.T) {
 	otel.SetTracerProvider(tp)
 
 	tracer := tp.Tracer("go-runtime")
-	ctx, _ := tracer.Start(context.Background(), "op")
+	ctx, span := tracer.Start(context.Background(), "op")
+	defer span.End()
 
 	operation := testOperation(ctx)
 	operation.AuthInfo = nil
@@ -66,7 +68,8 @@ func Test_OpenTelemetryRuntime_submit_nilContext(t *testing.T) {
 	otel.SetTracerProvider(tp)
 
 	tracer := tp.Tracer("go-runtime")
-	ctx, _ := tracer.Start(context.Background(), "op")
+	ctx, span := tracer.Start(context.Background(), "op")
+	defer span.End()
 	operation := testOperation(ctx)
 	operation.Context = nil
 
@@ -86,7 +89,8 @@ func Test_injectOpenTelemetrySpanContext(t *testing.T) {
 	otel.SetTracerProvider(tp)
 
 	tracer := tp.Tracer("go-runtime")
-	ctx, _ := tracer.Start(context.Background(), "op")
+	ctx, span := tracer.Start(context.Background(), "op")
+	defer span.End()
 	operation := testOperation(ctx)
 
 	header := map[string][]string{}

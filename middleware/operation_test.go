@@ -29,7 +29,7 @@ import (
 
 func TestOperationExecutor(t *testing.T) {
 	spec, api := petstore.NewAPI(t)
-	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
+	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(_ interface{}) (interface{}, error) {
 		return []interface{}{
 			map[string]interface{}{"id": 1, "name": "a dog"},
 		}, nil
@@ -49,7 +49,7 @@ func TestOperationExecutor(t *testing.T) {
 	assert.Equal(t, `[{"id":1,"name":"a dog"}]`+"\n", recorder.Body.String())
 
 	spec, api = petstore.NewAPI(t)
-	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(params interface{}) (interface{}, error) {
+	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(_ interface{}) (interface{}, error) {
 		return nil, errors.New(http.StatusUnprocessableEntity, "expected")
 	}))
 

@@ -44,7 +44,7 @@ func NewPetstore() (http.Handler, error) {
 	return middleware.Serve(spec, api), nil
 }
 
-var getAllPets = runtime.OperationHandlerFunc(func(data interface{}) (interface{}, error) {
+var getAllPets = runtime.OperationHandlerFunc(func(_ interface{}) (interface{}, error) {
 	return pets, nil
 })
 

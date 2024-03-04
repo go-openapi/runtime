@@ -219,8 +219,8 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	assert.Equal(t, delivered, data["delivered"])
 	assert.Equal(t, confirmed, data["confirmed"])
 	assert.Equal(t, age, data["age"])
-	assert.Equal(t, factor, data["factor"])
-	assert.Equal(t, score, data["score"])
+	assert.InDelta(t, factor, data["factor"], 1e-6)
+	assert.InDelta(t, score, data["score"], 1e-6)
 	assert.Equal(t, "hello", string(data["picture"].(strfmt.Base64)))
 }
 
