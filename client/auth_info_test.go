@@ -18,17 +18,17 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/go-openapi/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-openapi/runtime"
 )
 
 func TestBasicAuth(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/", nil)
 
 	writer := BasicAuth("someone", "with a password")
-	err = writer.AuthenticateRequest(r, nil)
+	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
 	req := new(http.Request)
@@ -41,44 +41,40 @@ func TestBasicAuth(t *testing.T) {
 }
 
 func TestAPIKeyAuth_Query(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/", nil)
 
 	writer := APIKeyAuth("api_key", "query", "the-shared-key")
-	err = writer.AuthenticateRequest(r, nil)
+	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "the-shared-key", r.query.Get("api_key"))
 }
 
 func TestAPIKeyAuth_Header(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/", nil)
 
 	writer := APIKeyAuth("x-api-token", "header", "the-shared-key")
-	err = writer.AuthenticateRequest(r, nil)
+	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "the-shared-key", r.header.Get("x-api-token"))
 }
 
 func TestBearerTokenAuth(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/", nil)
 
 	writer := BearerToken("the-shared-token")
-	err = writer.AuthenticateRequest(r, nil)
+	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "Bearer the-shared-token", r.header.Get(runtime.HeaderAuthorization))
 }
 
 func TestCompose(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/", nil)
 
 	writer := Compose(APIKeyAuth("x-api-key", "header", "the-api-key"), APIKeyAuth("x-secret-key", "header", "the-secret-key"))
-	err = writer.AuthenticateRequest(r, nil)
+	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "the-api-key", r.header.Get("x-api-key"))

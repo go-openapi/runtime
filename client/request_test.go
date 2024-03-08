@@ -30,10 +30,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-openapi/runtime"
 )
 
 var testProducers = map[string]runtime.Producer{
@@ -43,8 +44,7 @@ var testProducers = map[string]runtime.Producer{
 }
 
 func TestBuildRequest_SetHeaders(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", nil)
 
 	// single value
 	_ = r.SetHeaderParam("X-Rate-Limit", "500")
@@ -58,16 +58,14 @@ func TestBuildRequest_SetHeaders(t *testing.T) {
 }
 
 func TestBuildRequest_SetPath(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
 
 	_ = r.SetPathParam("id", "1345")
 	assert.Equal(t, "1345", r.pathParams["id"])
 }
 
 func TestBuildRequest_SetQuery(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", nil)
 
 	// single value
 	_ = r.SetQueryParam("hello", "there")
@@ -80,8 +78,7 @@ func TestBuildRequest_SetQuery(t *testing.T) {
 
 func TestBuildRequest_SetForm(t *testing.T) {
 	// non-multipart
-	r, err := newRequest(http.MethodPost, "/flats", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats", nil)
 	_ = r.SetFormParam("hello", "world")
 	assert.Equal(t, "world", r.formFields.Get("hello"))
 	_ = r.SetFormParam("goodbye", "cruel", "world")
@@ -90,11 +87,10 @@ func TestBuildRequest_SetForm(t *testing.T) {
 
 func TestBuildRequest_SetFile(t *testing.T) {
 	// needs to convert form to multipart
-	r, err := newRequest(http.MethodPost, "/flats/{id}/image", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/image", nil)
 
 	// error if it isn't there
-	err = r.SetFileParam("not there", os.NewFile(0, "./i-dont-exist"))
+	err := r.SetFileParam("not there", os.NewFile(0, "./i-dont-exist"))
 	require.Error(t, err)
 
 	// error if it isn't a file
@@ -125,8 +121,7 @@ func mustGetFile(path string) *os.File {
 }
 
 func TestBuildRequest_SetBody(t *testing.T) {
-	r, err := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
 
 	bd := []struct{ Name, Hobby string }{{"Tom", "Organ trail"}, {"John", "Bird watching"}}
 
@@ -142,8 +137,7 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
@@ -162,8 +156,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
@@ -197,8 +190,7 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 		return nil
 	})
 
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
 	req, err := r.buildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
@@ -228,8 +220,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.XMLMime)
 
 	req, err := r.BuildHTTP(runtime.XMLMime, "", testProducers, nil)
@@ -256,8 +247,7 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.TextMime)
 
 	req, err := r.BuildHTTP(runtime.TextMime, "", testProducers, nil)
@@ -281,8 +271,7 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
@@ -305,8 +294,7 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
 
 	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil)
@@ -330,8 +318,7 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
@@ -356,8 +343,7 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
 	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil)
@@ -390,8 +376,7 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
 	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil)
@@ -438,8 +423,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
@@ -492,8 +476,7 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
 	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil)
 	require.NoError(t, err)
@@ -554,8 +537,7 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 
 		return nil
 	})
-	r, err := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
@@ -594,8 +576,7 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
 	require.NoError(t, err)
@@ -613,8 +594,7 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 		_ = req.SetHeaderParam("X-Rate-Limit", "200")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
 	require.NoError(t, err)
@@ -634,8 +614,7 @@ func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 		_ = req.SetPathParam("id", "1234")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?foo=bar", testProducers, nil)
 	require.NoError(t, err)
@@ -653,8 +632,7 @@ func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
 		_ = req.SetPathParam("id", "1234")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/?foo=bar", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/?foo=bar", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
 	require.NoError(t, err)
@@ -671,8 +649,7 @@ func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T
 		_ = req.SetPathParam("id", "1234")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
 	require.NoError(t, err)
@@ -689,8 +666,7 @@ func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testin
 		_ = req.SetPathParam("id", "1234")
 		return nil
 	})
-	r, err := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
-	require.NoError(t, err)
+	r := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
 	require.NoError(t, err)
