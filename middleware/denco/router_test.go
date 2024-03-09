@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/go-openapi/runtime/middleware/denco"
 	"github.com/stretchr/testify/assert"
@@ -266,7 +265,6 @@ func TestRouter_Lookup(t *testing.T) {
 
 func TestRouter_Lookup_withManyRoutes(t *testing.T) {
 	n := 1000
-	rand.Seed(time.Now().UnixNano())
 	records := make([]denco.Record, n)
 	for i := 0; i < n; i++ {
 		records[i] = denco.Record{Key: "/" + randomString(rand.Intn(50)+10), Value: fmt.Sprintf("route%d", i)} //#nosec
