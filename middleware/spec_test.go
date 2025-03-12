@@ -43,9 +43,9 @@ func TestServeSpecMiddleware(t *testing.T) {
 			handler.ServeHTTP(recorder, request)
 			assert.Equal(t, http.StatusOK, recorder.Code)
 
-			responseHeaders := recorder.Result().Header //nolint:bodyclose // false positive from linter
+			responseHeaders := recorder.Result().Header
 			responseContentType := responseHeaders.Get("Content-Type")
-			assert.Equal(t, applicationJSON, responseContentType)
+			assert.Equal(t, applicationJSON, responseContentType) //nolint:testifylint
 
 			responseBody := recorder.Body
 			require.NotNil(t, responseBody)

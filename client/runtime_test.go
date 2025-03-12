@@ -69,7 +69,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		require.NoError(t, jsongen.Encode(result))
+		assert.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -145,7 +145,7 @@ func TestRuntime_Canary(t *testing.T) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		require.NoError(t, jsongen.Encode(result))
+		assert.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -196,7 +196,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.XMLMime)
 		rw.WriteHeader(http.StatusOK)
 		xmlgen := xml.NewEncoder(rw)
-		require.NoError(t, xmlgen.Encode(result))
+		assert.NoError(t, xmlgen.Encode(result))
 	}))
 	defer server.Close()
 
@@ -344,7 +344,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		var resp http.Response
 		resp.StatusCode = http.StatusOK
 		resp.Header = make(http.Header)
-		resp.Header.Set("content-type", "application/json")
+		resp.Header.Set("Content-Type", "application/json")
 		buf := bytes.NewBuffer(nil)
 		enc := json.NewEncoder(buf)
 		require.NoError(t, enc.Encode(result))
@@ -395,7 +395,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 			rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 			rw.WriteHeader(http.StatusOK)
 			jsongen := json.NewEncoder(rw)
-			require.NoError(t, jsongen.Encode([]task{}))
+			assert.NoError(t, jsongen.Encode([]task{}))
 		} else {
 			rw.WriteHeader(http.StatusUnauthorized)
 		}
@@ -453,7 +453,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		require.NoError(t, jsongen.Encode(result))
+		assert.NoError(t, jsongen.Encode(result))
 	}))
 	defer server.Close()
 

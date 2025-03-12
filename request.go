@@ -50,7 +50,7 @@ func HasBody(r *http.Request) bool {
 		return true
 	}
 
-	if r.Header.Get("content-length") != "" {
+	if r.Header.Get("Content-Length") != "" {
 		// in this case, no Transfer-Encoding should be present
 		// we have a header set but it was explicitly set to 0, so we assume no body
 		return false

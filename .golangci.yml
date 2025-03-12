@@ -1,23 +1,26 @@
 linters-settings:
-  govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0
   gocyclo:
     min-complexity: 45
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 200
   goconst:
     min-len: 2
     min-occurrences: 3
 
+issues:
+  # exclude from linting reports various type conversion code smells in the denco router.
+  exclude-rules:
+  - path: middleware/denco
+    linters:
+    - gosec
+    text: G115
+
 linters:
   enable-all: true
   disable:
+    - err113 # disabled temporarily: there are just too many issues to address
     - nilerr # nilerr crashes on this repo
-    - maligned
+    - recvcheck
     - unparam
     - lll
     - gochecknoinits
@@ -30,9 +33,6 @@ linters:
     - wrapcheck
     - testpackage
     - nlreturn
-    - gomnd
-    - exhaustivestruct
-    - goerr113
     - errorlint
     - nestif
     - godot
@@ -40,7 +40,6 @@ linters:
     - paralleltest
     - tparallel
     - thelper
-    - ifshort
     - exhaustruct
     - varnamelen
     - gci
@@ -53,10 +52,15 @@ linters:
     - forcetypeassert
     - cyclop
     # deprecated linters
-    - deadcode
-    - interfacer
-    - scopelint
-    - varcheck
-    - structcheck
-    - golint
-    - nosnakecase
+    #- deadcode
+    #- interfacer
+    #- scopelint
+    #- varcheck
+    #- structcheck
+    #- golint
+    #- nosnakecase
+    #- maligned
+    #- goerr113
+    #- ifshort
+    #- gomnd
+    #- exhaustivestruct

@@ -50,8 +50,8 @@ func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, err
 	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 		if span != nil {
 			code := response.Code()
-			ext.HTTPStatusCode.Set(span, uint16(code))
-			if code >= 400 {
+			ext.HTTPStatusCode.Set(span, uint16(code)) //nolint:gosec // safe to convert regular HTTP codes, no adverse impact other than a garbled trace when converting a code larger than 65535
+			if code >= http.StatusBadRequest {
 				ext.Error.Set(span, true)
 			}
 		}

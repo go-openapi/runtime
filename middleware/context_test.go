@@ -450,7 +450,7 @@ func TestContextNegotiateContentType(t *testing.T) {
 
 	request, _ := http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	// request.Header.Add("Accept", "*/*")
-	request.Header.Add("content-type", "text/html")
+	request.Header.Add("Content-Type", "text/html")
 
 	v := request.Context().Value(ctxBoundParams)
 	assert.Nil(t, v)
@@ -469,15 +469,15 @@ func TestContextBindValidRequest(t *testing.T) {
 	// invalid content-type value
 	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", strings.NewReader(`{"name":"dog"}`))
 	require.NoError(t, err)
-	request.Header.Add("content-type", "/json")
+	request.Header.Add("Content-Type", "/json")
 
 	ri, request, _ := ctx.RouteInfo(request)
-	assertAPIError(t, 400, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
+	assertAPIError(t, http.StatusBadRequest, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
 
 	// unsupported content-type value
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", strings.NewReader(`{"name":"dog"}`))
 	require.NoError(t, err)
-	request.Header.Add("content-type", "text/html")
+	request.Header.Add("Content-Type", "text/html")
 
 	ri, request, _ = ctx.RouteInfo(request)
 	assertAPIError(t, http.StatusUnsupportedMediaType, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
@@ -486,7 +486,7 @@ func TestContextBindValidRequest(t *testing.T) {
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	require.NoError(t, err)
 	request.Header.Add("Accept", "application/vnd.cia.v1+json")
-	request.Header.Add("content-type", applicationJSON)
+	request.Header.Add("Content-Type", applicationJSON)
 
 	ri, request, _ = ctx.RouteInfo(request)
 	assertAPIError(t, http.StatusNotAcceptable, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
@@ -516,7 +516,7 @@ func TestContextBindAndValidate(t *testing.T) {
 
 	request, _ := http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	request.Header.Add("Accept", "*/*")
-	request.Header.Add("content-type", "text/html")
+	request.Header.Add("Content-Type", "text/html")
 	request.ContentLength = 1
 
 	v := request.Context().Value(ctxBoundParams)
@@ -553,11 +553,11 @@ func TestContextRender(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, map[string]interface{}{"name": "hello"})
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
+	assert.JSONEq(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, errors.New("this went wrong"))
-	assert.Equal(t, 500, recorder.Code)
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 
 	// recorder = httptest.NewRecorder()
 	// assert.Panics(t, func() { ctx.Respond(recorder, request, []string{ct}, ri, map[int]interface{}{1: "hello"}) })
@@ -577,11 +577,11 @@ func TestContextRender(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, map[string]interface{}{"name": "hello"})
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
+	assert.JSONEq(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, errors.New("this went wrong"))
-	assert.Equal(t, 500, recorder.Code)
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 
 	// recorder = httptest.NewRecorder()
 	// assert.Panics(t, func() { ctx.Respond(recorder, request, []string{ct}, ri, map[int]interface{}{1: "hello"}) })
@@ -595,7 +595,7 @@ func TestContextRender(t *testing.T) {
 	require.NoError(t, err)
 	ri, request, _ = ctx.RouteInfo(request)
 	ctx.Respond(recorder, request, ri.Produces, ri, nil)
-	assert.Equal(t, 204, recorder.Code)
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
 }
 
 func TestContextValidResponseFormat(t *testing.T) {

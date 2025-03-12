@@ -37,7 +37,7 @@ func TestSimplePetstoreSpec(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, swaggerJSON, rw.Body.String())
+	assert.JSONEq(t, swaggerJSON, rw.Body.String())
 }
 
 func TestSimplePetstoreAllPets(t *testing.T) {
@@ -51,7 +51,7 @@ func TestSimplePetstoreAllPets(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, "[{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"},{\"id\":2,\"name\":\"Cat\",\"status\":\"pending\"}]\n", rw.Body.String())
+	assert.JSONEq(t, "[{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"},{\"id\":2,\"name\":\"Cat\",\"status\":\"pending\"}]\n", rw.Body.String())
 }
 
 func TestSimplePetstorePetByID(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSimplePetstorePetByID(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, "{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"}\n", rw.Body.String())
+	assert.JSONEq(t, "{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreAddPet(t *testing.T) {
@@ -79,7 +79,7 @@ func TestSimplePetstoreAddPet(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.Equal(t, "{\"id\":3,\"name\":\"Fish\",\"status\":\"available\"}\n", rw.Body.String())
+	assert.JSONEq(t, "{\"id\":3,\"name\":\"Fish\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreDeletePet(t *testing.T) {
@@ -101,5 +101,5 @@ func TestSimplePetstoreDeletePet(t *testing.T) {
 	rw = httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusNotFound, rw.Code)
-	assert.Equal(t, "{\"code\":404,\"message\":\"not found: pet 1\"}", rw.Body.String())
+	assert.JSONEq(t, "{\"code\":404,\"message\":\"not found: pet 1\"}", rw.Body.String())
 }

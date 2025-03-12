@@ -29,6 +29,11 @@ import (
 	"github.com/go-openapi/runtime"
 )
 
+const (
+	smallPreallocatedSlots  = 10
+	mediumPreallocatedSlots = 30
+)
+
 // NewAPI creates the default untyped API
 func NewAPI(spec *loads.Document) *API {
 	var an *analysis.Spec
@@ -38,8 +43,8 @@ func NewAPI(spec *loads.Document) *API {
 	api := &API{
 		spec:           spec,
 		analyzer:       an,
-		consumers:      make(map[string]runtime.Consumer, 10),
-		producers:      make(map[string]runtime.Producer, 10),
+		consumers:      make(map[string]runtime.Consumer, smallPreallocatedSlots),
+		producers:      make(map[string]runtime.Producer, smallPreallocatedSlots),
 		authenticators: make(map[string]runtime.Authenticator),
 		operations:     make(map[string]map[string]runtime.OperationHandler),
 		ServeError:     errors.ServeError,
@@ -115,7 +120,7 @@ func (d *API) RegisterAuthorizer(handler runtime.Authorizer) {
 // RegisterConsumer registers a consumer for a media type.
 func (d *API) RegisterConsumer(mediaType string, handler runtime.Consumer) {
 	if d.consumers == nil {
-		d.consumers = make(map[string]runtime.Consumer, 10)
+		d.consumers = make(map[string]runtime.Consumer, smallPreallocatedSlots)
 	}
 	d.consumers[strings.ToLower(mediaType)] = handler
 }
@@ -123,7 +128,7 @@ func (d *API) RegisterConsumer(mediaType string, handler runtime.Consumer) {
 // RegisterProducer registers a producer for a media type
 func (d *API) RegisterProducer(mediaType string, handler runtime.Producer) {
 	if d.producers == nil {
-		d.producers = make(map[string]runtime.Producer, 10)
+		d.producers = make(map[string]runtime.Producer, smallPreallocatedSlots)
 	}
 	d.producers[strings.ToLower(mediaType)] = handler
 }
@@ -131,7 +136,7 @@ func (d *API) RegisterProducer(mediaType string, handler runtime.Producer) {
 // RegisterOperation registers an operation handler for an operation name
 func (d *API) RegisterOperation(method, path string, handler runtime.OperationHandler) {
 	if d.operations == nil {
-		d.operations = make(map[string]map[string]runtime.OperationHandler, 30)
+		d.operations = make(map[string]map[string]runtime.OperationHandler, mediumPreallocatedSlots)
 	}
 	um := strings.ToUpper(method)
 	if b, ok := d.operations[um]; !ok || b == nil {

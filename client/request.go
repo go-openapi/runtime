@@ -169,7 +169,8 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 						fileContentType = p.ContentType()
 					} else {
 						// Need to read the data so that we can detect the content type
-						buf := make([]byte, 512)
+						const contentTypeBufferSize = 512
+						buf := make([]byte, contentTypeBufferSize)
 						size, err := fi.Read(buf)
 						if err != nil && err != io.EOF {
 							logClose(err, pw)

@@ -27,7 +27,7 @@ import (
 
 const (
 	apiKeyParam  = "api_key"
-	apiKeyHeader = "X-API-KEY"
+	apiKeyHeader = "X-Api-Key" //nolint:gosec
 )
 
 func TestApiKeyAuth(t *testing.T) {

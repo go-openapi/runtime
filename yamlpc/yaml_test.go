@@ -48,7 +48,7 @@ func TestYAMLProducer(t *testing.T) {
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
 	require.NoError(t, err)
-	assert.Equal(t, consProdYAML, rw.Body.String())
+	assert.YAMLEq(t, consProdYAML, rw.Body.String())
 }
 
 type failReaderWriter struct {
