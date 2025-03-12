@@ -46,7 +46,7 @@ func TestOperationExecutor(t *testing.T) {
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Equal(t, `[{"id":1,"name":"a dog"}]`+"\n", recorder.Body.String())
+	assert.JSONEq(t, `[{"id":1,"name":"a dog"}]`+"\n", recorder.Body.String())
 
 	spec, api = petstore.NewAPI(t)
 	api.RegisterOperation("get", "/pets", runtime.OperationHandlerFunc(func(_ interface{}) (interface{}, error) {
@@ -64,5 +64,5 @@ func TestOperationExecutor(t *testing.T) {
 	request.SetBasicAuth("admin", "admin")
 	mw.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
-	assert.Equal(t, `{"code":422,"message":"expected"}`, recorder.Body.String())
+	assert.JSONEq(t, `{"code":422,"message":"expected"}`, recorder.Body.String())
 }

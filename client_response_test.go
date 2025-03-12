@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -72,7 +71,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 	})
 	_, err := reader.ReadResponse(response{}, nil)
 	require.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), "writer closed"), err.Error())
+	require.ErrorContains(t, err, "writer closed")
 
 	reader = func(r ClientResponse, _ Consumer) (interface{}, error) {
 		_, _ = io.ReadAll(r.Body())

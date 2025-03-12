@@ -53,11 +53,11 @@ func TestAPIKeyAuth_Query(t *testing.T) {
 func TestAPIKeyAuth_Header(t *testing.T) {
 	r := newRequest(http.MethodGet, "/", nil)
 
-	writer := APIKeyAuth("x-api-token", "header", "the-shared-key")
+	writer := APIKeyAuth("X-Api-Token", "header", "the-shared-key")
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "the-shared-key", r.header.Get("x-api-token"))
+	assert.Equal(t, "the-shared-key", r.header.Get("X-Api-Token"))
 }
 
 func TestBearerTokenAuth(t *testing.T) {
@@ -73,10 +73,10 @@ func TestBearerTokenAuth(t *testing.T) {
 func TestCompose(t *testing.T) {
 	r := newRequest(http.MethodGet, "/", nil)
 
-	writer := Compose(APIKeyAuth("x-api-key", "header", "the-api-key"), APIKeyAuth("x-secret-key", "header", "the-secret-key"))
+	writer := Compose(APIKeyAuth("X-Api-Key", "header", "the-api-key"), APIKeyAuth("X-Secret-Key", "header", "the-secret-key"))
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "the-api-key", r.header.Get("x-api-key"))
-	assert.Equal(t, "the-secret-key", r.header.Get("x-secret-key"))
+	assert.Equal(t, "the-api-key", r.header.Get("X-Api-Key"))
+	assert.Equal(t, "the-secret-key", r.header.Get("X-Secret-Key"))
 }

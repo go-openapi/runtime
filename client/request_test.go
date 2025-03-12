@@ -142,7 +142,7 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 }
@@ -162,7 +162,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := json.Marshal(bd)
@@ -197,7 +197,7 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := json.Marshal(bd)
@@ -227,7 +227,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := xml.Marshal(bd)
@@ -254,7 +254,7 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expectedBody := []byte(bd)
@@ -278,7 +278,7 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expected := []byte("something=some+value")
@@ -301,7 +301,7 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, runtime.URLencodedFormMime, req.Header.Get(runtime.HeaderContentType))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
@@ -325,7 +325,7 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	assert.Condition(t, func() bool { return req.ContentLength > 0 },
@@ -350,7 +350,7 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
@@ -383,7 +383,7 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
@@ -410,7 +410,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	require.NoError(t, err)
 	cont2, err := os.ReadFile("./request.go")
 	require.NoError(t, err)
-	emptyFile, err := os.CreateTemp("", "empty")
+	emptyFile, err := os.CreateTemp("", "empty") //nolint:usetesting
 	require.NoError(t, err)
 
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
@@ -429,7 +429,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 
@@ -482,7 +482,7 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/flats/1234/", req.URL.Path)
 	mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
@@ -581,7 +581,7 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
 }
@@ -600,7 +600,7 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("x-rate-limit"))
+	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.Equal(t, "world", req.URL.Query().Get("hello"))
 	assert.Equal(t, "/basepath/flats/1234/?*&^%/", req.URL.Path)
 	assert.Equal(t, "/basepath/flats/1234%2F%3F%2A&%5E%25/", req.URL.RawPath)
@@ -693,7 +693,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.WriteHeader(http.StatusCreated)
 		_, err := rw.Write([]byte("test result"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 	hu, err := url.Parse(server.URL)

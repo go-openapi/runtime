@@ -185,7 +185,7 @@ func testTLSServer(t testing.TB, fixtures *tlsFixtures, expectedResult []task) (
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
 		rw.WriteHeader(http.StatusOK)
 		jsongen := json.NewEncoder(rw)
-		require.NoError(t, jsongen.Encode(expectedResult))
+		assert.NoError(t, jsongen.Encode(expectedResult))
 	}))
 
 	// create server tls config

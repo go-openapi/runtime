@@ -341,7 +341,7 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 			if len(res) == 0 {
 				cons, ok := route.Consumers[ct]
 				if !ok {
-					res = append(res, errors.New(500, "no consumer registered for %s", ct))
+					res = append(res, errors.New(http.StatusInternalServerError, "no consumer registered for %s", ct))
 				} else {
 					route.Consumer = cons
 					requestContentType = ct

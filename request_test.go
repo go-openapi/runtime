@@ -176,8 +176,8 @@ func TestJSONRequest(t *testing.T) {
 	req, err := JSONRequest(http.MethodGet, "/swagger.json", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodGet, req.Method)
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderContentType))
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderAccept))
+	assert.Equal(t, JSONMime, req.Header.Get(HeaderContentType)) //nolint:testifylint
+	assert.Equal(t, JSONMime, req.Header.Get(HeaderAccept))      //nolint:testifylint
 
 	req, err = JSONRequest(http.MethodGet, "%2", nil)
 	require.Error(t, err)

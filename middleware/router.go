@@ -377,7 +377,8 @@ func (d *defaultRouter) Lookup(method, path string) (*MatchedRoute, bool) {
 					}
 					// a workaround to handle fragment/composing parameters until they are supported in denco router
 					// check if this parameter is a fragment within a path segment
-					if xpos := strings.Index(entry.PathPattern, fmt.Sprintf("{%s}", p.Name)) + len(p.Name) + 2; xpos < len(entry.PathPattern) && entry.PathPattern[xpos] != '/' {
+					const enclosureSize = 2
+					if xpos := strings.Index(entry.PathPattern, fmt.Sprintf("{%s}", p.Name)) + len(p.Name) + enclosureSize; xpos < len(entry.PathPattern) && entry.PathPattern[xpos] != '/' {
 						// extract fragment parameters
 						ep := strings.Split(entry.PathPattern[xpos:], "/")[0]
 						pnames, pvalues := decodeCompositParams(p.Name, v, ep, nil, nil)
