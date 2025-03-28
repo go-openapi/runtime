@@ -1,66 +1,64 @@
-linters-settings:
-  gocyclo:
-    min-complexity: 45
-  dupl:
-    threshold: 200
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-
-issues:
-  # exclude from linting reports various type conversion code smells in the denco router.
-  exclude-rules:
-  - path: middleware/denco
-    linters:
-    - gosec
-    text: G115
-
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    - err113 # disabled temporarily: there are just too many issues to address
-    - nilerr # nilerr crashes on this repo
-    - recvcheck
-    - unparam
-    - lll
-    - gochecknoinits
-    - gochecknoglobals
-    - funlen
-    - godox
-    - gocognit
-    - whitespace
-    - wsl
-    - wrapcheck
-    - testpackage
-    - nlreturn
-    - errorlint
-    - nestif
-    - godot
-    - gofumpt
-    - paralleltest
-    - tparallel
-    - thelper
-    - exhaustruct
-    - varnamelen
-    - gci
-    - depguard
-    - errchkjson
-    - inamedparam
-    - nonamedreturns
-    - musttag
-    - ireturn
-    - forcetypeassert
     - cyclop
-    # deprecated linters
-    #- deadcode
-    #- interfacer
-    #- scopelint
-    #- varcheck
-    #- structcheck
-    #- golint
-    #- nosnakecase
-    #- maligned
-    #- goerr113
-    #- ifshort
-    #- gomnd
-    #- exhaustivestruct
+    - depguard
+    - err113 # disabled temporarily: there are just too many issues to address
+    - errchkjson
+    - errorlint
+    - exhaustruct
+    - forcetypeassert
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - godot
+    - godox
+    - gosmopolitan
+    - inamedparam
+    - ireturn
+    - lll
+    - musttag
+    - nestif
+    - nilerr # nilerr crashes on this repo
+    - nlreturn
+    - nonamedreturns
+    - paralleltest
+    - testpackage
+    - thelper
+    - tparallel
+    - unparam
+    - varnamelen
+    - whitespace
+    - wrapcheck
+    - wsl
+  settings:
+    dupl:
+      threshold: 200
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 45
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
