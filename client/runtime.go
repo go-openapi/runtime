@@ -32,19 +32,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/opentracing/opentracing-go"
-
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/yamlpc"
+	"github.com/go-openapi/strfmt"
+	"github.com/opentracing/opentracing-go"
 )
 
 const (
 	schemeHTTP  = "http"
 	schemeHTTPS = "https"
 )
+
+// DefaultTimeout the default request timeout
+var DefaultTimeout = 30 * time.Second
 
 // TLSClientOptions to configure client authentication with mutual TLS
 type TLSClientOptions struct {
@@ -193,13 +195,6 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	return cfg, nil
 }
 
-func basePool(pool *x509.CertPool) *x509.CertPool {
-	if pool == nil {
-		return x509.NewCertPool()
-	}
-	return pool
-}
-
 // TLSTransport creates a http client transport suitable for mutual tls auth
 func TLSTransport(opts TLSClientOptions) (http.RoundTripper, error) {
 	cfg, err := TLSClientAuth(opts)
@@ -218,9 +213,6 @@ func TLSClient(opts TLSClientOptions) (*http.Client, error) {
 	}
 	return &http.Client{Transport: transport}, nil
 }
-
-// DefaultTimeout the default request timeout
-var DefaultTimeout = 30 * time.Second
 
 // Runtime represents an API client that uses the transport
 // to make http requests based on a swagger specification.
@@ -318,42 +310,6 @@ func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOpt) runtime.ClientTran
 	return newOpenTelemetryTransport(r, r.Host, opts)
 }
 
-func (r *Runtime) pickScheme(schemes []string) string {
-	if v := r.selectScheme(r.schemes); v != "" {
-		return v
-	}
-	if v := r.selectScheme(schemes); v != "" {
-		return v
-	}
-	return schemeHTTP
-}
-
-func (r *Runtime) selectScheme(schemes []string) string {
-	schLen := len(schemes)
-	if schLen == 0 {
-		return ""
-	}
-
-	scheme := schemes[0]
-	// prefer https, but skip when not possible
-	if scheme != schemeHTTPS && schLen > 1 {
-		for _, sch := range schemes {
-			if sch == schemeHTTPS {
-				scheme = sch
-				break
-			}
-		}
-	}
-	return scheme
-}
-
-func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
-	if left == nil {
-		return right
-	}
-	return left
-}
-
 // EnableConnectionReuse drains the remaining body from a response
 // so that go will reuse the TCP connections.
 //
@@ -376,57 +332,7 @@ func (r *Runtime) EnableConnectionReuse() {
 	)
 }
 
-// takes a client operation and creates equivalent http.Request
-func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request, *http.Request, error) { //nolint:revive,stylecheck
-	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
-
-	request := newRequest(operation.Method, operation.PathPattern, params)
-
-	var accept []string
-	accept = append(accept, operation.ProducesMediaTypes...)
-	if err := request.SetHeaderParam(runtime.HeaderAccept, accept...); err != nil {
-		return nil, nil, err
-	}
-
-	if auth == nil && r.DefaultAuthentication != nil {
-		auth = runtime.ClientAuthInfoWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
-			if req.GetHeaderParams().Get(runtime.HeaderAuthorization) != "" {
-				return nil
-			}
-			return r.DefaultAuthentication.AuthenticateRequest(req, reg)
-		})
-	}
-	// if auth != nil {
-	//	if err := auth.AuthenticateRequest(request, r.Formats); err != nil {
-	//		return nil, err
-	//	}
-	//}
-
-	// TODO: pick appropriate media type
-	cmt := r.DefaultMediaType
-	for _, mediaType := range operation.ConsumesMediaTypes {
-		// Pick first non-empty media type
-		if mediaType != "" {
-			cmt = mediaType
-			break
-		}
-	}
-
-	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
-		return nil, nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
-	}
-
-	req, err := request.buildHTTP(cmt, r.BasePath, r.Producers, r.Formats, auth)
-	if err != nil {
-		return nil, nil, err
-	}
-	req.URL.Scheme = r.pickScheme(operation.Schemes)
-	req.URL.Host = r.Host
-	req.Host = r.Host
-	return request, req, nil
-}
-
-func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive,stylecheck
+func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
 	_, req, err = r.createHttpRequest(operation)
 	return
 }
@@ -549,4 +455,97 @@ func (r *Runtime) SetResponseReader(f ClientResponseFunc) {
 		return
 	}
 	r.response = f
+}
+
+func (r *Runtime) pickScheme(schemes []string) string {
+	if v := r.selectScheme(r.schemes); v != "" {
+		return v
+	}
+	if v := r.selectScheme(schemes); v != "" {
+		return v
+	}
+	return schemeHTTP
+}
+
+func (r *Runtime) selectScheme(schemes []string) string {
+	schLen := len(schemes)
+	if schLen == 0 {
+		return ""
+	}
+
+	scheme := schemes[0]
+	// prefer https, but skip when not possible
+	if scheme != schemeHTTPS && schLen > 1 {
+		for _, sch := range schemes {
+			if sch == schemeHTTPS {
+				scheme = sch
+				break
+			}
+		}
+	}
+	return scheme
+}
+
+func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
+	if left == nil {
+		return right
+	}
+	return left
+}
+
+// takes a client operation and creates equivalent http.Request
+func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request, *http.Request, error) { //nolint:revive
+	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
+
+	request := newRequest(operation.Method, operation.PathPattern, params)
+
+	var accept []string
+	accept = append(accept, operation.ProducesMediaTypes...)
+	if err := request.SetHeaderParam(runtime.HeaderAccept, accept...); err != nil {
+		return nil, nil, err
+	}
+
+	if auth == nil && r.DefaultAuthentication != nil {
+		auth = runtime.ClientAuthInfoWriterFunc(func(req runtime.ClientRequest, reg strfmt.Registry) error {
+			if req.GetHeaderParams().Get(runtime.HeaderAuthorization) != "" {
+				return nil
+			}
+			return r.DefaultAuthentication.AuthenticateRequest(req, reg)
+		})
+	}
+	// if auth != nil {
+	//	if err := auth.AuthenticateRequest(request, r.Formats); err != nil {
+	//		return nil, err
+	//	}
+	//}
+
+	// TODO: pick appropriate media type
+	cmt := r.DefaultMediaType
+	for _, mediaType := range operation.ConsumesMediaTypes {
+		// Pick first non-empty media type
+		if mediaType != "" {
+			cmt = mediaType
+			break
+		}
+	}
+
+	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
+		return nil, nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
+	}
+
+	req, err := request.buildHTTP(cmt, r.BasePath, r.Producers, r.Formats, auth)
+	if err != nil {
+		return nil, nil, err
+	}
+	req.URL.Scheme = r.pickScheme(operation.Schemes)
+	req.URL.Host = r.Host
+	req.Host = r.Host
+	return request, req, nil
+}
+
+func basePool(pool *x509.CertPool) *x509.CertPool {
+	if pool == nil {
+		return x509.NewCertPool()
+	}
+	return pool
 }

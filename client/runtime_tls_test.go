@@ -177,7 +177,7 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 	assert.IsType(t, []task{}, resp)
 
 	assert.Truef(t, certVerifyCalled, "the client cert verification has not been called")
-	assert.EqualValues(t, result, received)
+	assert.Equal(t, result, received)
 }
 
 func testTLSServer(t testing.TB, fixtures *tlsFixtures, expectedResult []task) (string, func()) {

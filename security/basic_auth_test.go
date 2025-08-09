@@ -67,7 +67,7 @@ func TestBasicAuth(t *testing.T) {
 		ok, usr, err := ba.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 
 		assert.NotEmpty(t, FailedBasicAuth(req))
 		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
@@ -103,7 +103,7 @@ func TestBasicAuth(t *testing.T) {
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 		assert.Equal(t, "realm", FailedBasicAuth(req))
 	})
 
@@ -117,7 +117,7 @@ func TestBasicAuth(t *testing.T) {
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 }
@@ -155,7 +155,7 @@ func TestBasicAuthCtx(t *testing.T) {
 		ok, usr, err := ba.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 
 		assert.Equal(t, wisdom, req.Context().Value(original))
 		assert.Nil(t, req.Context().Value(extra))
@@ -193,7 +193,7 @@ func TestBasicAuthCtx(t *testing.T) {
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 		assert.Equal(t, "realm", FailedBasicAuth(req))
 	})
 
@@ -207,7 +207,7 @@ func TestBasicAuthCtx(t *testing.T) {
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, "", usr)
+		assert.Empty(t, usr)
 		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 }

@@ -93,7 +93,7 @@ func TestSimplePetstoreDeletePet(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
 	assert.Equal(t, http.StatusNoContent, rw.Code)
-	assert.Equal(t, "", rw.Body.String())
+	assert.Empty(t, rw.Body.String())
 
 	r, err = runtime.JSONRequest(http.MethodGet, "/api/pets/1", nil)
 	require.NoError(t, err)

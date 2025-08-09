@@ -54,7 +54,7 @@ func TestBuildRequest_SetHeaders(t *testing.T) {
 
 	// multi value
 	_ = r.SetHeaderParam("X-Accepts", "json", "xml", "yaml")
-	assert.EqualValues(t, []string{"json", "xml", "yaml"}, r.header["X-Accepts"])
+	assert.Equal(t, []string{"json", "xml", "yaml"}, r.header["X-Accepts"])
 }
 
 func TestBuildRequest_SetPath(t *testing.T) {
@@ -514,6 +514,7 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 
 type contentTypeProvider struct {
 	runtime.NamedReadCloser
+
 	contentType string
 }
 
@@ -713,7 +714,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			require.NoError(t, e)
 
 			require.Len(t, bodyContent, int(req.ContentLength))
-			require.EqualValues(t, "\"test body\"\n", string(bodyContent))
+			require.Equal(t, "\"test body\"\n", string(bodyContent))
 
 			// Read the body a second time before sending the request
 			body, e = req.GetBody()
@@ -721,7 +722,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			bodyContent, e = io.ReadAll(io.Reader(body))
 			require.NoError(t, e)
 			require.Len(t, bodyContent, int(req.ContentLength))
-			require.EqualValues(t, "\"test body\"\n", string(bodyContent))
+			require.Equal(t, "\"test body\"\n", string(bodyContent))
 		},
 	}
 
@@ -752,5 +753,5 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := res.(string)
-	require.EqualValues(t, "test result", actual)
+	require.Equal(t, "test result", actual)
 }

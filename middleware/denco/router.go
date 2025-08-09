@@ -148,7 +148,7 @@ func (bc baseCheck) Base() int {
 }
 
 func (bc *baseCheck) SetBase(base int) {
-	*bc |= baseCheck(base) << flagsBits
+	*bc |= baseCheck(base) << flagsBits //nolint:gosec // integer conversion is ok
 }
 
 func (bc baseCheck) Check() byte {
@@ -196,7 +196,7 @@ func (da *doubleArray) lookup(path string, params []Param, idx int) (*node, []Pa
 	indices := make([]uint64, 0, 1)
 	for i := 0; i < len(path); i++ {
 		if da.bc[idx].IsAnyParam() {
-			indices = append(indices, (uint64(i)<<indexOffset)|(uint64(idx)&indexMask))
+			indices = append(indices, (uint64(i)<<indexOffset)|(uint64(idx)&indexMask)) //nolint:gosec // integer conversion is okay
 		}
 		c := path[i]
 		if idx = nextIndex(da.bc[idx].Base(), c); idx >= len(da.bc) || da.bc[idx].Check() != c {
@@ -209,7 +209,7 @@ func (da *doubleArray) lookup(path string, params []Param, idx int) (*node, []Pa
 
 BACKTRACKING:
 	for j := len(indices) - 1; j >= 0; j-- {
-		i, idx := int(indices[j]>>indexOffset), int(indices[j]&indexMask)
+		i, idx := int(indices[j]>>indexOffset), int(indices[j]&indexMask) //nolint:gosec // integer conversion is okay
 		if da.bc[idx].IsSingleParam() {
 			nextIdx := nextIndex(da.bc[idx].Base(), ParamCharacter)
 			if nextIdx >= len(da.bc) {
@@ -436,6 +436,7 @@ func NewRecord(key string, value interface{}) Record {
 // record represents a record that use to build the Double-Array.
 type record struct {
 	Record
+
 	paramNames []string
 }
 

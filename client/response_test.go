@@ -34,7 +34,7 @@ func TestResponse(t *testing.T) {
 	under.Body = io.NopCloser(bytes.NewBufferString("some content"))
 
 	var resp runtime.ClientResponse = response{under}
-	assert.EqualValues(t, under.StatusCode, resp.Code())
+	assert.Equal(t, under.StatusCode, resp.Code())
 	assert.Equal(t, under.Status, resp.Message())
 	assert.Equal(t, "blahblah", resp.GetHeader("blah"))
 	assert.Equal(t, []string{"blahblah"}, resp.GetHeaders("blah"))
