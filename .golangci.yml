@@ -23,8 +23,10 @@ linters:
     - nestif
     - nilerr # nilerr crashes on this repo
     - nlreturn
+    - noinlineerr
     - nonamedreturns
     - paralleltest
+    - recvcheck
     - testpackage
     - thelper
     - tparallel
@@ -33,6 +35,7 @@ linters:
     - whitespace
     - wrapcheck
     - wsl
+    - wsl_v5
   settings:
     dupl:
       threshold: 200

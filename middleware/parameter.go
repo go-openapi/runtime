@@ -66,85 +66,6 @@ func (p *untypedParamBinder) Type() reflect.Type {
 	return p.typeForSchema(p.parameter.Type, p.parameter.Format, p.parameter.Items)
 }
 
-func (p *untypedParamBinder) typeForSchema(tpe, format string, items *spec.Items) reflect.Type {
-	switch tpe {
-	case "boolean":
-		return reflect.TypeOf(true)
-
-	case typeString:
-		if tt, ok := p.formats.GetType(format); ok {
-			return tt
-		}
-		return reflect.TypeOf("")
-
-	case "integer":
-		switch format {
-		case "int8":
-			return reflect.TypeOf(int8(0))
-		case "int16":
-			return reflect.TypeOf(int16(0))
-		case "int32":
-			return reflect.TypeOf(int32(0))
-		case "int64":
-			return reflect.TypeOf(int64(0))
-		default:
-			return reflect.TypeOf(int64(0))
-		}
-
-	case "number":
-		switch format {
-		case "float":
-			return reflect.TypeOf(float32(0))
-		case "double":
-			return reflect.TypeOf(float64(0))
-		}
-
-	case typeArray:
-		if items == nil {
-			return nil
-		}
-		itemsType := p.typeForSchema(items.Type, items.Format, items.Items)
-		if itemsType == nil {
-			return nil
-		}
-		return reflect.MakeSlice(reflect.SliceOf(itemsType), 0, 0).Type()
-
-	case "file":
-		return reflect.TypeOf(&runtime.File{}).Elem()
-
-	case "object":
-		return reflect.TypeOf(map[string]interface{}{})
-	}
-	return nil
-}
-
-func (p *untypedParamBinder) allowsMulti() bool {
-	return p.parameter.In == "query" || p.parameter.In == "formData"
-}
-
-func (p *untypedParamBinder) readValue(values runtime.Gettable, target reflect.Value) ([]string, bool, bool, error) {
-	name, in, cf, tpe := p.parameter.Name, p.parameter.In, p.parameter.CollectionFormat, p.parameter.Type
-	if tpe == typeArray {
-		if cf == "multi" {
-			if !p.allowsMulti() {
-				return nil, false, false, errors.InvalidCollectionFormat(name, in, cf)
-			}
-			vv, hasKey, _ := values.GetOK(name)
-			return vv, false, hasKey, nil
-		}
-
-		v, hk, hv := values.GetOK(name)
-		if !hv {
-			return nil, false, hk, nil
-		}
-		d, c, e := p.readFormattedSliceFieldValue(v[len(v)-1], target)
-		return d, c, hk, e
-	}
-
-	vv, hk, _ := values.GetOK(name)
-	return vv, false, hk, nil
-}
-
 func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams, consumer runtime.Consumer, target reflect.Value) error {
 	// fmt.Println("binding", p.name, "as", p.Type())
 	switch p.parameter.In {
@@ -266,6 +187,85 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 	default:
 		return errors.New(http.StatusInternalServerError, fmt.Sprintf("invalid parameter location %q", p.parameter.In))
 	}
+}
+
+func (p *untypedParamBinder) typeForSchema(tpe, format string, items *spec.Items) reflect.Type {
+	switch tpe {
+	case "boolean":
+		return reflect.TypeOf(true)
+
+	case typeString:
+		if tt, ok := p.formats.GetType(format); ok {
+			return tt
+		}
+		return reflect.TypeOf("")
+
+	case "integer":
+		switch format {
+		case "int8":
+			return reflect.TypeOf(int8(0))
+		case "int16":
+			return reflect.TypeOf(int16(0))
+		case "int32":
+			return reflect.TypeOf(int32(0))
+		case "int64":
+			return reflect.TypeOf(int64(0))
+		default:
+			return reflect.TypeOf(int64(0))
+		}
+
+	case "number":
+		switch format {
+		case "float":
+			return reflect.TypeOf(float32(0))
+		case "double":
+			return reflect.TypeOf(float64(0))
+		}
+
+	case typeArray:
+		if items == nil {
+			return nil
+		}
+		itemsType := p.typeForSchema(items.Type, items.Format, items.Items)
+		if itemsType == nil {
+			return nil
+		}
+		return reflect.MakeSlice(reflect.SliceOf(itemsType), 0, 0).Type()
+
+	case "file":
+		return reflect.TypeOf(&runtime.File{}).Elem()
+
+	case "object":
+		return reflect.TypeOf(map[string]interface{}{})
+	}
+	return nil
+}
+
+func (p *untypedParamBinder) allowsMulti() bool {
+	return p.parameter.In == "query" || p.parameter.In == "formData"
+}
+
+func (p *untypedParamBinder) readValue(values runtime.Gettable, target reflect.Value) ([]string, bool, bool, error) {
+	name, in, cf, tpe := p.parameter.Name, p.parameter.In, p.parameter.CollectionFormat, p.parameter.Type
+	if tpe == typeArray {
+		if cf == "multi" {
+			if !p.allowsMulti() {
+				return nil, false, false, errors.InvalidCollectionFormat(name, in, cf)
+			}
+			vv, hasKey, _ := values.GetOK(name)
+			return vv, false, hasKey, nil
+		}
+
+		v, hk, hv := values.GetOK(name)
+		if !hv {
+			return nil, false, hk, nil
+		}
+		d, c, e := p.readFormattedSliceFieldValue(v[len(v)-1], target)
+		return d, c, hk, e
+	}
+
+	vv, hk, _ := values.GetOK(name)
+	return vv, false, hk, nil
 }
 
 func (p *untypedParamBinder) bindValue(data []string, hasKey bool, target reflect.Value) error {

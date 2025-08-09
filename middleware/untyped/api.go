@@ -34,6 +34,22 @@ const (
 	mediumPreallocatedSlots = 30
 )
 
+// API represents an untyped mux for a swagger spec
+type API struct {
+	spec            *loads.Document
+	analyzer        *analysis.Spec
+	DefaultProduces string
+	DefaultConsumes string
+	consumers       map[string]runtime.Consumer
+	producers       map[string]runtime.Producer
+	authenticators  map[string]runtime.Authenticator
+	authorizer      runtime.Authorizer
+	operations      map[string]map[string]runtime.OperationHandler
+	ServeError      func(http.ResponseWriter, *http.Request, error)
+	Models          map[string]func() any
+	formats         strfmt.Registry
+}
+
 // NewAPI creates the default untyped API
 func NewAPI(spec *loads.Document) *API {
 	var an *analysis.Spec
@@ -48,26 +64,11 @@ func NewAPI(spec *loads.Document) *API {
 		authenticators: make(map[string]runtime.Authenticator),
 		operations:     make(map[string]map[string]runtime.OperationHandler),
 		ServeError:     errors.ServeError,
-		Models:         make(map[string]func() interface{}),
+		Models:         make(map[string]func() any),
 		formats:        strfmt.NewFormats(),
 	}
-	return api.WithJSONDefaults()
-}
 
-// API represents an untyped mux for a swagger spec
-type API struct {
-	spec            *loads.Document
-	analyzer        *analysis.Spec
-	DefaultProduces string
-	DefaultConsumes string
-	consumers       map[string]runtime.Consumer
-	producers       map[string]runtime.Producer
-	authenticators  map[string]runtime.Authenticator
-	authorizer      runtime.Authorizer
-	operations      map[string]map[string]runtime.OperationHandler
-	ServeError      func(http.ResponseWriter, *http.Request, error)
-	Models          map[string]func() interface{}
-	formats         strfmt.Registry
+	return api.WithJSONDefaults()
 }
 
 // WithJSONDefaults loads the json defaults for this api

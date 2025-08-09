@@ -31,7 +31,7 @@ const (
 )
 
 // HttpAuthenticator is a function that authenticates a HTTP request
-func HttpAuthenticator(handler func(*http.Request) (bool, interface{}, error)) runtime.Authenticator { //nolint:revive,stylecheck
+func HttpAuthenticator(handler func(*http.Request) (bool, interface{}, error)) runtime.Authenticator { //nolint:revive
 	return runtime.AuthenticatorFunc(func(params interface{}) (bool, interface{}, error) {
 		if request, ok := params.(*http.Request); ok {
 			return handler(request)

@@ -130,7 +130,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_Canary(t *testing.T) {
@@ -176,7 +176,7 @@ func TestRuntime_Canary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 type tasks struct {
@@ -228,7 +228,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, tasks{}, res)
 	actual := res.(tasks)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_TextCanary(t *testing.T) {
@@ -270,7 +270,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, "", res)
 	actual := res.(string)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_CSVCanary(t *testing.T) {
@@ -315,7 +315,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, bytes.Buffer{}, res)
 	actual := res.(bytes.Buffer)
-	assert.EqualValues(t, result, actual.String())
+	assert.Equal(t, result, actual.String())
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -373,7 +373,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_CustomCookieJar(t *testing.T) {
@@ -484,7 +484,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_PickConsumer(t *testing.T) {
@@ -536,7 +536,7 @@ func TestRuntime_PickConsumer(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_ContentTypeCanary(t *testing.T) {
@@ -589,7 +589,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_ChunkedResponse(t *testing.T) {
@@ -644,7 +644,7 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_DebugValue(t *testing.T) {
@@ -894,7 +894,7 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
 	actual := res.([]task)
-	assert.EqualValues(t, result, actual)
+	assert.Equal(t, result, actual)
 }
 
 func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates the total lines of code, which is misleading
@@ -1274,7 +1274,7 @@ func assertResult(result []task) func(testing.TB, interface{}) {
 		assert.IsType(t, []task{}, res)
 		actual, ok := res.([]task)
 		require.True(t, ok)
-		assert.EqualValues(t, result, actual)
+		assert.Equal(t, result, actual)
 	}
 }
 

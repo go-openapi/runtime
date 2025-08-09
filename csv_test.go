@@ -609,7 +609,8 @@ func (r *csvEmptyReader) Read(_ []byte) (int, error) {
 
 type readerFromDummy struct {
 	err error
-	b   bytes.Buffer
+
+	b bytes.Buffer
 }
 
 func (r *readerFromDummy) ReadFrom(rdr io.Reader) (int64, error) {
@@ -629,8 +630,9 @@ func (w *writerToDummy) WriteTo(writer io.Writer) (int64, error) {
 }
 
 type csvWriterDummy struct {
-	err error
 	*csv.Writer
+
+	err error
 }
 
 func (w *csvWriterDummy) Write(record []string) error {

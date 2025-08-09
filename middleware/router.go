@@ -22,18 +22,16 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-openapi/runtime/logger"
-	"github.com/go-openapi/runtime/security"
-	"github.com/go-openapi/swag"
-
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/logger"
+	"github.com/go-openapi/runtime/middleware/denco"
+	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-
-	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/runtime/middleware/denco"
+	"github.com/go-openapi/swag"
 )
 
 // RouteParam is a object to capture route params in a framework agnostic way.
@@ -336,6 +334,7 @@ type routeEntry struct {
 // MatchedRoute represents the route that was matched in this request
 type MatchedRoute struct {
 	routeEntry
+
 	Params        RouteParams
 	Consumer      runtime.Consumer
 	Producer      runtime.Producer
@@ -490,6 +489,20 @@ func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Oper
 	}
 }
 
+func (d *defaultRouteBuilder) Build() *defaultRouter {
+	routers := make(map[string]*denco.Router)
+	for method, records := range d.records {
+		router := denco.New()
+		_ = router.Build(records)
+		routers[method] = router
+	}
+	return &defaultRouter{
+		spec:      d.spec,
+		routers:   routers,
+		debugLogf: d.debugLogf,
+	}
+}
+
 func (d *defaultRouteBuilder) buildAuthenticators(operation *spec.Operation) RouteAuthenticators {
 	requirements := d.analyzer.SecurityRequirementsFor(operation)
 	auths := make([]RouteAuthenticator, 0, len(requirements))
@@ -515,18 +528,4 @@ func (d *defaultRouteBuilder) buildAuthenticators(operation *spec.Operation) Rou
 		})
 	}
 	return auths
-}
-
-func (d *defaultRouteBuilder) Build() *defaultRouter {
-	routers := make(map[string]*denco.Router)
-	for method, records := range d.records {
-		router := denco.New()
-		_ = router.Build(records)
-		routers[method] = router
-	}
-	return &defaultRouter{
-		spec:      d.spec,
-		routers:   routers,
-		debugLogf: d.debugLogf,
-	}
 }

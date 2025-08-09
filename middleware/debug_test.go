@@ -16,6 +16,7 @@ import (
 
 type customLogger struct {
 	logger.StandardLogger
+
 	lg *log.Logger
 }
 

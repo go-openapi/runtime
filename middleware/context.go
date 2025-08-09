@@ -218,7 +218,7 @@ func NewRoutableContext(spec *loads.Document, routableAPI RoutableAPI, routes Ro
 // If a nil Router is provided, the DefaultRouter (denco-based) will be used.
 func NewRoutableContextWithAnalyzedSpec(spec *loads.Document, an *analysis.Spec, routableAPI RoutableAPI, routes Router) *Context {
 	// Either there are no spec doc and analysis, or both of them.
-	if !((spec == nil && an == nil) || (spec != nil && an != nil)) {
+	if (spec != nil || an != nil) && (spec == nil || an == nil) {
 		panic(errors.New(http.StatusInternalServerError, "routable context requires either both spec doc and analysis, or none of them"))
 	}
 
@@ -677,6 +677,15 @@ func (c *Context) APIHandler(builder Builder, opts ...UIOption) http.Handler {
 	return Spec(specPath, c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(b)), specOpts...)
 }
 
+// RoutesHandler returns a handler to serve the API, just the routes and the contract defined in the swagger spec
+func (c *Context) RoutesHandler(builder Builder) http.Handler {
+	b := builder
+	if b == nil {
+		b = PassthroughBuilder
+	}
+	return NewRouter(c, b(NewOperationExecutor(c)))
+}
+
 func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []SpecOption) {
 	var title string
 	sp := c.spec.Spec()
@@ -706,15 +715,6 @@ func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []Spec
 	}
 
 	return pth, uiOpts, []SpecOption{WithSpecDocument(doc)}
-}
-
-// RoutesHandler returns a handler to serve the API, just the routes and the contract defined in the swagger spec
-func (c *Context) RoutesHandler(builder Builder) http.Handler {
-	b := builder
-	if b == nil {
-		b = PassthroughBuilder
-	}
-	return NewRouter(c, b(NewOperationExecutor(c)))
 }
 
 func cantFindProducer(format string) string {

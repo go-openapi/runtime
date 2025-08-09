@@ -257,7 +257,7 @@ func TestExtractCompositParameters(t *testing.T) {
 	}
 	for _, tc := range cases {
 		names, values := decodeCompositParams(tc.name, tc.value, tc.pattern, nil, nil)
-		assert.EqualValues(t, tc.names, names)
-		assert.EqualValues(t, tc.values, values)
+		assert.Equal(t, tc.names, names)
+		assert.Equal(t, tc.values, values)
 	}
 }

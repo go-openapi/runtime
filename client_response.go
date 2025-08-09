@@ -20,7 +20,8 @@ import (
 	"io"
 )
 
-// A ClientResponse represents a client response
+// A ClientResponse represents a client response.
+//
 // This bridges between responses obtained from different transports
 type ClientResponse interface {
 	Code() int
@@ -44,6 +45,13 @@ type ClientResponseReader interface {
 	ReadResponse(ClientResponse, Consumer) (interface{}, error)
 }
 
+// APIError wraps an error model and captures the status code
+type APIError struct {
+	OperationName string
+	Response      interface{}
+	Code          int
+}
+
 // NewAPIError creates a new API error
 func NewAPIError(opName string, payload interface{}, code int) *APIError {
 	return &APIError{
@@ -51,13 +59,6 @@ func NewAPIError(opName string, payload interface{}, code int) *APIError {
 		Response:      payload,
 		Code:          code,
 	}
-}
-
-// APIError wraps an error model and captures the status code
-type APIError struct {
-	OperationName string
-	Response      interface{}
-	Code          int
 }
 
 func (o *APIError) Error() string {
