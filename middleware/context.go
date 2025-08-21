@@ -307,6 +307,9 @@ type contentTypeValue struct {
 
 // BasePath returns the base path for this API
 func (c *Context) BasePath() string {
+	if c.spec != nil {
+		return ""
+	}
 	return c.spec.BasePath()
 }
 
