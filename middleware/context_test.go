@@ -437,7 +437,7 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 	p, reqWithCtx, err = ctx.Authorize(request, ri)
 	require.Error(t, err)
 	ae, ok := err.(apierrors.Error)
-	assert.True(t, ok)
+	require.Truef(t, ok, "expected an apierrors.Error, but got %T", err)
 	assert.Equal(t, http.StatusForbidden, int(ae.Code()))
 	assert.Nil(t, p)
 	assert.Nil(t, reqWithCtx)

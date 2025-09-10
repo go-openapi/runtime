@@ -185,7 +185,7 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		target.Set(reflect.Indirect(newValue))
 		return nil
 	default:
-		return errors.New(http.StatusInternalServerError, fmt.Sprintf("invalid parameter location %q", p.parameter.In))
+		return fmt.Errorf("%d: invalid parameter location %q", http.StatusInternalServerError, p.parameter.In)
 	}
 }
 

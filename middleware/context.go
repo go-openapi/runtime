@@ -219,7 +219,7 @@ func NewRoutableContext(spec *loads.Document, routableAPI RoutableAPI, routes Ro
 func NewRoutableContextWithAnalyzedSpec(spec *loads.Document, an *analysis.Spec, routableAPI RoutableAPI, routes Router) *Context {
 	// Either there are no spec doc and analysis, or both of them.
 	if (spec != nil || an != nil) && (spec == nil || an == nil) {
-		panic(errors.New(http.StatusInternalServerError, "routable context requires either both spec doc and analysis, or none of them"))
+		panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, "routable context requires either both spec doc and analysis, or none of them"))
 	}
 
 	return &Context{
@@ -486,7 +486,7 @@ func (c *Context) Authorize(request *http.Request, route *MatchedRoute) (interfa
 				return nil, nil, err
 			}
 
-			return nil, nil, errors.New(http.StatusForbidden, err.Error())
+			return nil, nil, errors.New(http.StatusForbidden, "%v", err)
 		}
 	}
 
@@ -552,7 +552,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 			prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 			pr, ok := prods[c.api.DefaultProduces()]
 			if !ok {
-				panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
+				panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, cantFindProducer(format)))
 			}
 			prod = pr
 		}
@@ -585,7 +585,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		producers := c.api.ProducersFor(normalizeOffers(offers))
 		prod, ok := producers[format]
 		if !ok {
-			panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
+			panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, cantFindProducer(format)))
 		}
 		if err := prod.Produce(rw, data); err != nil {
 			panic(err) // let the recovery middleware deal with this
@@ -606,7 +606,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 				prods := c.api.ProducersFor(normalizeOffers([]string{c.api.DefaultProduces()}))
 				pr, ok := prods[c.api.DefaultProduces()]
 				if !ok {
-					panic(errors.New(http.StatusInternalServerError, cantFindProducer(format)))
+					panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, cantFindProducer(format)))
 				}
 				prod = pr
 			}
@@ -617,7 +617,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 		return
 	}
 
-	c.api.ServeErrorFor(route.Operation.ID)(rw, r, errors.New(http.StatusInternalServerError, "can't produce response"))
+	c.api.ServeErrorFor(route.Operation.ID)(rw, r, fmt.Errorf("%d: %s", http.StatusInternalServerError, "can't produce response"))
 }
 
 // APIHandlerSwaggerUI returns a handler to serve the API.
