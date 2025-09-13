@@ -23,7 +23,7 @@ import (
 
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/stringutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -279,8 +279,8 @@ func TestSliceConversion(t *testing.T) {
 		assert.Empty(t, tags)
 	}
 
-	assert.Nil(t, swag.SplitByFormat("yada", "multi"))
-	assert.Nil(t, swag.SplitByFormat("", ""))
+	assert.Nil(t, stringutils.SplitByFormat("yada", "multi"))
+	assert.Nil(t, stringutils.SplitByFormat("", ""))
 
 	categoriesField := val.FieldByName("Categories")
 	binder := &untypedParamBinder{

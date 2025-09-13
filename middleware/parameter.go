@@ -24,12 +24,12 @@ import (
 	"strconv"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/conv"
+	"github.com/go-openapi/swag/stringutils"
 	"github.com/go-openapi/validate"
-
-	"github.com/go-openapi/runtime"
 )
 
 const defaultMaxMemory = 32 << 20
@@ -331,7 +331,7 @@ func (p *untypedParamBinder) setFieldValue(target reflect.Value, defaultValue in
 			}
 			return nil
 		}
-		b, err := swag.ConvertBool(data)
+		b, err := conv.ConvertBool(data)
 		if err != nil {
 			return err
 		}
@@ -455,7 +455,7 @@ func (p *untypedParamBinder) readFormattedSliceFieldValue(data string, target re
 		return nil, true, nil
 	}
 
-	return swag.SplitByFormat(data, p.parameter.CollectionFormat), false, nil
+	return stringutils.SplitByFormat(data, p.parameter.CollectionFormat), false, nil
 }
 
 func (p *untypedParamBinder) setSliceFieldValue(target reflect.Value, defaultValue interface{}, data []string, hasKey bool) error {

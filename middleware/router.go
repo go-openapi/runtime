@@ -31,7 +31,7 @@ import (
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/stringutils"
 )
 
 // RouteParam is a object to capture route params in a framework agnostic way.
@@ -460,11 +460,11 @@ func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Oper
 		parameters := d.analyzer.ParamsFor(method, strings.TrimPrefix(path, bp))
 
 		// add API defaults if not part of the spec
-		if defConsumes := d.api.DefaultConsumes(); defConsumes != "" && !swag.ContainsStringsCI(consumes, defConsumes) {
+		if defConsumes := d.api.DefaultConsumes(); defConsumes != "" && !stringutils.ContainsStringsCI(consumes, defConsumes) {
 			consumes = append(consumes, defConsumes)
 		}
 
-		if defProduces := d.api.DefaultProduces(); defProduces != "" && !swag.ContainsStringsCI(produces, defProduces) {
+		if defProduces := d.api.DefaultProduces(); defProduces != "" && !stringutils.ContainsStringsCI(produces, defProduces) {
 			produces = append(produces, defProduces)
 		}
 
