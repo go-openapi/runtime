@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/swag/stringutils"
 )
 
 // CanHaveBody returns true if this method can have a body
@@ -145,5 +145,5 @@ func ReadSingleValue(values Gettable, name string) string {
 // ReadCollectionValue reads a collection value from a string data source
 func ReadCollectionValue(values Gettable, name, collectionFormat string) []string {
 	v := ReadSingleValue(values, name)
-	return swag.SplitByFormat(v, collectionFormat)
+	return stringutils.SplitByFormat(v, collectionFormat)
 }
