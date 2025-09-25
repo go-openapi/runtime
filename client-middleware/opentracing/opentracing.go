@@ -1,4 +1,4 @@
-package client
+package opentracing
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func newOpenTracingTransport(transport runtime.ClientTransport, host string, opt
 	}
 }
 
-func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, error) {
+func (t *tracingTransport) Submit(op *runtime.ClientOperation) (any, error) {
 	if op.Context == nil {
 		return t.transport.Submit(op)
 	}
@@ -47,7 +47,7 @@ func (t *tracingTransport) Submit(op *runtime.ClientOperation) (interface{}, err
 		return params.WriteToRequest(req, reg)
 	})
 
-	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+	op.Reader = runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 		if span != nil {
 			code := response.Code()
 			ext.HTTPStatusCode.Set(span, uint16(code)) //nolint:gosec // safe to convert regular HTTP codes, no adverse impact other than a garbled trace when converting a code larger than 65535

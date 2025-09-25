@@ -1,4 +1,4 @@
-package client
+package opentracing
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -39,10 +40,10 @@ type mockRuntime struct {
 	req runtime.TestClientRequest
 }
 
-func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (interface{}, error) {
+func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (any, error) {
 	_ = operation.Params.WriteToRequest(&m.req, nil)
 	_, _ = operation.Reader.ReadResponse(&tres{}, nil)
-	return map[string]interface{}{}, nil
+	return map[string]any{}, nil
 }
 
 func testOperation(ctx context.Context) *runtime.ClientOperation {
@@ -52,14 +53,14 @@ func testOperation(ctx context.Context) *runtime.ClientOperation {
 		PathPattern:        "/kubernetes-clusters/{cluster_id}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{schemeHTTPS},
-		Reader: runtime.ClientResponseReaderFunc(func(runtime.ClientResponse, runtime.Consumer) (interface{}, error) {
+		Schemes:            []string{"https"},
+		Reader: runtime.ClientResponseReaderFunc(func(runtime.ClientResponse, runtime.Consumer) (any, error) {
 			return nil, nil
 		}),
 		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
-		AuthInfo: PassThroughAuth,
+		AuthInfo: client.PassThroughAuth,
 		Context:  ctx,
 	}
 }
@@ -107,7 +108,7 @@ func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktr
 	if expectedSpans == 1 {
 		span := tracer.FinishedSpans()[0]
 		assert.Equal(t, "getCluster", span.OperationName)
-		assert.Equal(t, map[string]interface{}{
+		assert.Equal(t, map[string]any{
 			"component":        "go-openapi",
 			"http.method":      "GET",
 			"http.path":        "/kubernetes-clusters/{cluster_id}",
