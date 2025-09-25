@@ -15,9 +15,10 @@ linters:
     - gocognit
     - godot
     - godox
+    - gomoddirectives # moved to mono-repo, multi-modules, so replace directives are needed
     - gosmopolitan
     - inamedparam
-    - intrange # disabled while < go1.22
+    #- intrange # disabled while < go1.22
     - ireturn
     - lll
     - musttag

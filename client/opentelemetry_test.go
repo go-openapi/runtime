@@ -118,7 +118,7 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 
 	span := spans[0]
 	assert.Equal(t, "getCluster", span.Name)
-	assert.Equal(t, "go-openapi", span.InstrumentationLibrary.Name)
+	assert.Equal(t, "go-openapi", span.InstrumentationScope.Name)
 	assert.Equal(t, codes.Error, span.Status.Code)
 	assert.Equal(t, []attribute.KeyValue{
 		attribute.String("net.peer.name", "remote_host"),
