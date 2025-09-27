@@ -11,7 +11,7 @@ The runtime component for use in code generation or as untyped usage.
 
 ## Release notes
 
-### v0.29.0 [draft, unpublished]
+### v0.29.0
 
 **New with this release**:
 
