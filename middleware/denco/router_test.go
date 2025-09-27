@@ -266,7 +266,7 @@ func TestRouter_Lookup(t *testing.T) {
 func TestRouter_Lookup_withManyRoutes(t *testing.T) {
 	n := 1000
 	records := make([]denco.Record, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		records[i] = denco.Record{Key: "/" + randomString(rand.Intn(50)+10), Value: fmt.Sprintf("route%d", i)} //#nosec
 	}
 	router := denco.New()

@@ -106,7 +106,7 @@ func benchmarkRouterLookupStatic(b *testing.B, n int) {
 	}
 	record := pickTestRecord(records)
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if r, _, _ := router.Lookup(record.Key); r != record.Value {
 			b.Fail()
 		}
@@ -120,7 +120,7 @@ func benchmarkRouterLookupSingleParam(b *testing.B, records []denco.Record) {
 	}
 	record := pickTestRecord(records)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, _, found := router.Lookup(record.Key); !found {
 			b.Fail()
 		}
@@ -128,7 +128,7 @@ func benchmarkRouterLookupSingleParam(b *testing.B, records []denco.Record) {
 }
 
 func benchmarkRouterBuild(b *testing.B, records []denco.Record) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		router := denco.New()
 		if err := router.Build(records); err != nil {
 			b.Fatal(err)
@@ -138,7 +138,7 @@ func benchmarkRouterBuild(b *testing.B, records []denco.Record) {
 
 func makeTestStaticRecords(n int) []denco.Record {
 	records := make([]denco.Record, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		records[i] = denco.NewRecord("/"+randomString(50), fmt.Sprintf("testroute%d", i))
 	}
 	return records
@@ -167,7 +167,7 @@ func pickTestRecord(records []denco.Record) denco.Record {
 func randomString(n int) string {
 	const srcStrings = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/"
 	var buf bytes.Buffer
-	for i := 0; i < n; i++ {
+	for range n {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(srcStrings)-1)))
 		if err != nil {
 			panic(err)

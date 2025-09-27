@@ -85,7 +85,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 	errCC := make(chan error)
 	var res interface{}
 
-	for j := 0; j < 6; j++ {
+	for range 6 {
 		go func() {
 			resC := make(chan interface{})
 			errC := make(chan error)
@@ -93,7 +93,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 			go func() {
 				var resp interface{}
 				var errp error
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					resp, errp = rt.Submit(&runtime.ClientOperation{
 						ID:          "getTasks",
 						Method:      http.MethodGet,

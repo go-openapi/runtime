@@ -47,7 +47,7 @@ func init() {
 	// token      = 1*<any CHAR except CTLs or separators>
 	// qdtext     = <any TEXT except <">>
 
-	for c := 0; c < 256; c++ {
+	for c := range 256 {
 		var t octetType
 		isCtl := c <= asciiMaxControlChar || c == asciiMaxChar
 		isChar := 0 <= c && c <= asciiMaxChar
@@ -97,7 +97,7 @@ func ParseList(header http.Header, key string) []string {
 		end := 0
 		escape := false
 		quote := false
-		for i := 0; i < len(s); i++ {
+		for i := range len(s) {
 			b := s[i]
 			switch {
 			case escape:
