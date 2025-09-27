@@ -62,7 +62,7 @@ func (rt *Router) Lookup(path string) (data interface{}, params Params, found bo
 	if !found {
 		return nil, nil, false
 	}
-	for i := 0; i < len(params); i++ {
+	for i := range params {
 		params[i].Name = nd.paramNames[i]
 	}
 	return nd.data, params, true
@@ -194,7 +194,7 @@ const (
 
 func (da *doubleArray) lookup(path string, params []Param, idx int) (*node, []Param, bool) {
 	indices := make([]uint64, 0, 1)
-	for i := 0; i < len(path); i++ {
+	for i := range len(path) {
 		if da.bc[idx].IsAnyParam() {
 			indices = append(indices, (uint64(i)<<indexOffset)|(uint64(idx)&indexMask)) //nolint:gosec // integer conversion is okay
 		}

@@ -431,7 +431,7 @@ func (p *untypedParamBinder) tryUnmarshaler(target reflect.Value, defaultValue i
 		return false, nil
 	}
 	// When a type implements encoding.TextUnmarshaler we'll use that instead of reflecting some more
-	if reflect.PtrTo(target.Type()).Implements(textUnmarshalType) {
+	if reflect.PointerTo(target.Type()).Implements(textUnmarshalType) {
 		if defaultValue != nil && len(data) == 0 {
 			target.Set(reflect.ValueOf(defaultValue))
 			return true, nil
@@ -479,7 +479,7 @@ func (p *untypedParamBinder) setSliceFieldValue(target reflect.Value, defaultVal
 
 	value := reflect.MakeSlice(reflect.SliceOf(target.Type().Elem()), sz, sz)
 
-	for i := 0; i < sz; i++ {
+	for i := range sz {
 		if err := p.setFieldValue(value.Index(i), nil, data[i], hasKey); err != nil {
 			return err
 		}

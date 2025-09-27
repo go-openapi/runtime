@@ -171,7 +171,7 @@ func TestValidateContentType(t *testing.T) {
 			require.NoError(t, err, "input: %q", v.hdr)
 		} else {
 			require.Error(t, err, "input: %q", v.hdr)
-			assert.IsType(t, &errors.Validation{}, err, "input: %q", v.hdr)
+			assert.IsTypef(t, &errors.Validation{}, err, "input: %q", v.hdr) //nolint: testifylint // ErrorAs doesn't work and ErrorIs doesn't fit
 			require.EqualErrorf(t, err, v.err.Error(), "input: %q", v.hdr)
 			assert.EqualValues(t, http.StatusUnsupportedMediaType, err.(*errors.Validation).Code())
 		}

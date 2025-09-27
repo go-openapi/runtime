@@ -52,7 +52,7 @@ func TestParseContentType(t *testing.T) {
 			require.NoError(t, err, "input: %q, err: %v", v.hdr, err)
 		} else {
 			require.Error(t, err, "input: %q", v.hdr)
-			assert.IsType(t, &errors.ParseError{}, err, "input: %q", v.hdr)
+			assert.IsTypef(t, &errors.ParseError{}, err, "input: %q", v.hdr) //nolint: testifylint // ErrorAs doesn't work and ErrorIs doesn't fit
 			assert.Equal(t, v.err.Error(), err.Error(), "input: %q", v.hdr)
 		}
 		assert.Equal(t, v.mt, ct, "input: %q", v.hdr)

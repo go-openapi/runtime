@@ -145,7 +145,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		var dest bytes.Buffer
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
@@ -158,7 +158,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		var dest binaryUnmarshalDummyZeroAlloc
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
@@ -170,7 +170,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		var dest string
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
@@ -182,7 +182,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		var dest []byte
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
@@ -195,7 +195,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ResetTimer()
 		type aliasedString string
 		var dest aliasedString
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
@@ -208,7 +208,7 @@ func BenchmarkByteStreamConsumer(b *testing.B) {
 		b.ResetTimer()
 		type binarySlice []byte
 		var dest binarySlice
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			err = consumer.Consume(input, &dest)
 			if err != nil {
 				b.Fatal(err)
