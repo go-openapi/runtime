@@ -53,26 +53,67 @@ func TestResponseReaderFunc(t *testing.T) {
 	assert.Equal(t, 490, actual.Code)
 }
 
+type errResponse struct {
+	A int    `json:"a"`
+	B string `json:"b"`
+}
+
 func TestResponseReaderFuncError(t *testing.T) {
-	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
-		_, _ = io.ReadAll(r.Body())
-		return nil, NewAPIError("fake", errors.New("writer closed"), 490)
+	t.Parallel()
+
+	t.Run("with API error as string", func(t *testing.T) {
+		reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
+			_, _ = io.ReadAll(r.Body())
+
+			return nil, NewAPIError("fake", errors.New("writer closed"), 490)
+		})
+
+		_, err := reader.ReadResponse(response{}, nil)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "'writer closed'")
 	})
-	_, err := reader.ReadResponse(response{}, nil)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "writer closed")
 
-	reader = func(r ClientResponse, _ Consumer) (any, error) {
-		_, _ = io.ReadAll(r.Body())
-		err := &fs.PathError{
-			Op:   "write",
-			Path: "path/to/fake",
-			Err:  fs.ErrClosed,
-		}
-		return nil, NewAPIError("fake", err, 200)
-	}
-	_, err = reader.ReadResponse(response{}, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file already closed")
+	t.Run("with API error as complex error", func(t *testing.T) {
+		reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
+			_, _ = io.ReadAll(r.Body())
+			err := &fs.PathError{
+				Op:   "write",
+				Path: "path/to/fake",
+				Err:  fs.ErrClosed,
+			}
 
+			return nil, NewAPIError("fake", err, 200)
+		})
+
+		_, err := reader.ReadResponse(response{}, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "file already closed")
+	})
+
+	t.Run("with API error requiring escaping", func(t *testing.T) {
+		reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
+			_, _ = io.ReadAll(r.Body())
+			return nil, NewAPIError("fake", errors.New(`writer is \"terminated\" and 'closed'`), 490)
+		})
+
+		_, err := reader.ReadResponse(response{}, nil)
+		require.Error(t, err)
+		require.ErrorContains(t, err, `'writer is \\"terminated\\" and \'closed\''`)
+	})
+
+	t.Run("with API error as JSON", func(t *testing.T) {
+		reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
+			_, _ = io.ReadAll(r.Body())
+			obj := &errResponse{ // does not implement error
+				A: 555,
+				B: "closed",
+			}
+
+			return nil, NewAPIError("fake", obj, 200)
+		})
+
+		_, err := reader.ReadResponse(response{}, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `{"a":555,"b":"closed"}`)
+	})
 }
