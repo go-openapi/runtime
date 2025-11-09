@@ -6,7 +6,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func TestLogger(t *testing.T) {

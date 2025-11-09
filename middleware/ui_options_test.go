@@ -6,7 +6,7 @@ package middleware
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func TestConvertOptions(t *testing.T) {

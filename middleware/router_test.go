@@ -15,8 +15,8 @@ import (
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
 	"github.com/go-openapi/runtime/middleware/untyped"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/assert"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func terminator(rw http.ResponseWriter, _ *http.Request) {
