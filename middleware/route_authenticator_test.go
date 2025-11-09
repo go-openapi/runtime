@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package middleware
 
 import (
@@ -14,27 +17,27 @@ import (
 type countAuthenticator struct {
 	count     int
 	applies   bool
-	principal interface{}
+	principal any
 	err       error
 }
 
-func (c *countAuthenticator) Authenticate(_ interface{}) (bool, interface{}, error) {
+func (c *countAuthenticator) Authenticate(_ any) (bool, any, error) {
 	c.count++
 	return c.applies, c.principal, c.err
 }
 
-func newCountAuthenticator(applies bool, principal interface{}, err error) *countAuthenticator {
+func newCountAuthenticator(applies bool, principal any, err error) *countAuthenticator {
 	return &countAuthenticator{applies: applies, principal: principal, err: err}
 }
 
 var (
-	successAuth = runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
+	successAuth = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		return true, "the user", nil
 	})
-	failAuth = runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
+	failAuth = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		return true, nil, errors.New("unauthenticated")
 	})
-	noApplyAuth = runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
+	noApplyAuth = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		return false, nil, nil
 	})
 )
@@ -135,11 +138,11 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 	require.Equal(t, 2, authorizer.count)
 
 	var count int
-	successA := runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
+	successA := runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		count++
 		return true, "the user", nil
 	})
-	failA := runtime.AuthenticatorFunc(func(_ interface{}) (bool, interface{}, error) {
+	failA := runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		count++
 		return true, nil, errors.New("unauthenticated")
 	})

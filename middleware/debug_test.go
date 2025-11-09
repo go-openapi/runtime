@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package middleware
 
 import (
@@ -20,7 +23,7 @@ type customLogger struct {
 	lg *log.Logger
 }
 
-func (l customLogger) Debugf(format string, args ...interface{}) {
+func (l customLogger) Debugf(format string, args ...any) {
 	l.lg.Printf(format, args...)
 }
 

@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package middleware
 
@@ -62,7 +51,7 @@ func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
 	}
 }
 
-func requiredError(param *spec.Parameter, data interface{}) *errors.Validation {
+func requiredError(param *spec.Parameter, data any) *errors.Validation {
 	return errors.Required(param.Name, param.In, data)
 }
 
@@ -135,8 +124,8 @@ func TestRequiredValidation(t *testing.T) {
 	// validateRequiredAllowEmptyTest(t, dateParam, reflect.ValueOf(strfmt.DateTime{}))
 
 	sliceParam := spec.QueryParam("tags").CollectionOf(stringItems, "").AsRequired()
-	validateRequiredTest(t, sliceParam, reflect.MakeSlice(reflect.TypeOf([]string{}), 0, 0))
-	validateRequiredAllowEmptyTest(t, sliceParam, reflect.MakeSlice(reflect.TypeOf([]string{}), 0, 0))
+	validateRequiredTest(t, sliceParam, reflect.MakeSlice(reflect.TypeFor[[]string](), 0, 0))
+	validateRequiredAllowEmptyTest(t, sliceParam, reflect.MakeSlice(reflect.TypeFor[[]string](), 0, 0))
 }
 
 func TestInvalidCollectionFormat(t *testing.T) {
@@ -151,7 +140,7 @@ func TestInvalidCollectionFormat(t *testing.T) {
 	testCollectionFormat(t, invalidCf2, false)
 }
 
-func invalidTypeError(param *spec.Parameter, data interface{}) *errors.Validation {
+func invalidTypeError(param *spec.Parameter, data any) *errors.Validation {
 	tpe := param.Type
 	if param.Format != "" {
 		tpe = param.Format
@@ -208,7 +197,7 @@ func TestTypeValidation(t *testing.T) {
 
 		// fails for overflow
 		str3 := strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
-		v3 := reflect.TypeOf(float32(0))
+		v3 := reflect.TypeFor[float32]()
 		value = reflect.New(v3).Elem()
 		binder = np(floatParam)
 		err = binder.bindValue([]string{str3}, true, value)
@@ -225,7 +214,7 @@ func TestTypeValidation(t *testing.T) {
 
 		// fails for overflow
 		str4 := "9" + strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
-		v4 := reflect.TypeOf(float64(0))
+		v4 := reflect.TypeFor[float64]()
 		value = reflect.New(v4).Elem()
 		binder = np(doubleParam)
 		err = binder.bindValue([]string{str4}, true, value)

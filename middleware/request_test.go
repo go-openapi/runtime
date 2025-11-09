@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package middleware
 
@@ -40,7 +29,7 @@ const (
 type stubConsumer struct {
 }
 
-func (s *stubConsumer) Consume(_ io.Reader, _ interface{}) error {
+func (s *stubConsumer) Consume(_ io.Reader, _ any) error {
 	return nil
 }
 
@@ -87,7 +76,7 @@ func parametersForAllTypes(fmt string) map[string]spec.Parameter {
 	friendParam := spec.BodyParam("friend", friendSchema)
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
-	requestIDParam.Extensions = spec.Extensions(map[string]interface{}{})
+	requestIDParam.Extensions = spec.Extensions(map[string]any{})
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
@@ -126,7 +115,7 @@ func parametersForJSONRequestParams(fmt string) map[string]spec.Parameter {
 	friendParam := spec.BodyParam("friend", friendSchema)
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
-	requestIDParam.Extensions = spec.Extensions(map[string]interface{}{})
+	requestIDParam.Extensions = spec.Extensions(map[string]any{})
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
@@ -152,7 +141,7 @@ func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 	friendParam := spec.BodyParam("friend", spec.ArrayProperty(friendSchema))
 
 	requestIDParam := spec.HeaderParam("X-Request-Id").Typed("integer", "int64")
-	requestIDParam.Extensions = spec.Extensions(map[string]interface{}{})
+	requestIDParam.Extensions = spec.Extensions(map[string]any{})
 	requestIDParam.Extensions.Add("go-name", "RequestID")
 
 	items := new(spec.Items)
@@ -171,7 +160,7 @@ func parametersForJSONRequestSliceParams(fmt string) map[string]spec.Parameter {
 func TestRequestBindingDefaultValue(t *testing.T) {
 	confirmed := true
 	name := "thomas"
-	friend := map[string]interface{}{"name": "toby", "age": float64(32)}
+	friend := map[string]any{"name": "toby", "age": float64(32)}
 	id, age, score, factor := int64(7575), int32(348), float32(5.309), float64(37.403)
 	requestID := 19394858
 	tags := []string{"one", "two", "three"}
@@ -181,7 +170,7 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	delivered := strfmt.DateTime(dt2)
 	uri, err := url.Parse(testURL)
 	require.NoError(t, err)
-	defaults := map[string]interface{}{
+	defaults := map[string]any{
 		"id":           id,
 		"age":          age,
 		"score":        score,
@@ -207,7 +196,7 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	binder := NewUntypedRequestBinder(op3, new(spec.Swagger), strfmt.Default)
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	err = binder.Bind(req, RouteParams(nil), runtime.JSONConsumer(), &data)
 	require.NoError(t, err)
 	assert.Equal(t, defaults["id"], data["id"])

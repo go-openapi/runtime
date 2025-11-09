@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package client
 
 import (
@@ -159,7 +162,7 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				if e := consumer.Consume(response.Body(), &received); e != nil {
 					return nil, e

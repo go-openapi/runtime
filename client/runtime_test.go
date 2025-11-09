@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package client
 
@@ -81,17 +70,17 @@ func TestRuntime_Concurrent(t *testing.T) {
 	require.NoError(t, err)
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
-	resCC := make(chan interface{})
+	resCC := make(chan any)
 	errCC := make(chan error)
-	var res interface{}
+	var res any
 
 	for range 6 {
 		go func() {
-			resC := make(chan interface{})
+			resC := make(chan any)
 			errC := make(chan error)
 
 			go func() {
-				var resp interface{}
+				var resp any
 				var errp error
 				for range 3 {
 					resp, errp = rt.Submit(&runtime.ClientOperation{
@@ -99,7 +88,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 						Method:      http.MethodGet,
 						PathPattern: "/",
 						Params:      rwrtr,
-						Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+						Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 							if response.Code() == http.StatusOK {
 								var res []task
 								if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -161,7 +150,7 @@ func TestRuntime_Canary(t *testing.T) {
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -213,7 +202,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res tasks
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -255,7 +244,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res string
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -300,7 +289,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res bytes.Buffer
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -358,7 +347,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		PathPattern: "/",
 		Schemes:     []string{"ws", "wss", schemeHTTPS},
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -420,9 +409,9 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 			PathPattern: "/",
 			Params:      rwrtr,
 			AuthInfo:    authInfo,
-			Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+			Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (any, error) {
 				if response.Code() == http.StatusOK {
-					return map[string]interface{}{}, nil
+					return map[string]any{}, nil
 				}
 				return nil, errors.New("generic error")
 			}),
@@ -468,7 +457,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:     "getTasks",
 		Params: rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -520,7 +509,7 @@ func TestRuntime_PickConsumer(t *testing.T) {
 		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -573,7 +562,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 		PathPattern: "/",
 		Schemes:     []string{schemeHTTP},
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -628,7 +617,7 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		PathPattern: "/",
 		Schemes:     []string{schemeHTTP},
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -731,8 +720,8 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 		Params: runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		}),
-		Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
-			return map[string]interface{}{}, nil
+		Reader: runtime.ClientResponseReaderFunc(func(_ runtime.ClientResponse, _ runtime.Consumer) (any, error) {
+			return map[string]any{}, nil
 		}),
 	})
 	require.NoError(t, err)
@@ -768,12 +757,12 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 		Method:      http.MethodGet,
 		PathPattern: "/api/tasks/",
 		Params:      rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, _ runtime.Consumer) (any, error) {
 			if redirected {
 				return nil, errors.New("expected Submit to preserve trailing slashes - this caused a redirect")
 			}
 			if response.Code() == http.StatusOK {
-				return map[string]interface{}{}, nil
+				return map[string]any{}, nil
 			}
 			return nil, errors.New("generic error")
 		}),
@@ -806,7 +795,7 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []byte
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -829,7 +818,7 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		Schemes:            []string{schemeHTTP},
 		ConsumesMediaTypes: []string{"application/octet-stream"},
 		Params:             rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []byte
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -879,7 +868,7 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	res, err := rt.Submit(&runtime.ClientOperation{
 		ID:     "getTasks",
 		Params: rwrtr,
-		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
 				var res []task
 				if e := consumer.Consume(response.Body(), &res); e != nil {
@@ -923,7 +912,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 		})
 	}
 
-	requestReader := runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+	requestReader := runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 		if response.Code() != http.StatusOK {
 			return nil, errors.New("generic error")
 		}
@@ -1269,8 +1258,8 @@ func testDefaultsInTransport(t *testing.T, value string) http.RoundTripper {
 	})
 }
 
-func assertResult(result []task) func(testing.TB, interface{}) {
-	return func(t testing.TB, res interface{}) {
+func assertResult(result []task) func(testing.TB, any) {
+	return func(t testing.TB, res any) {
 		assert.IsType(t, []task{}, res)
 		actual, ok := res.([]task)
 		require.True(t, ok)

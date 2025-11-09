@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package petstore
 
@@ -52,7 +41,7 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterConsumer("application/x-yaml", yamlpc.YAMLConsumer())
 	api.RegisterProducer("application/x-yaml", yamlpc.YAMLProducer())
 
-	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (interface{}, error) {
+	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (any, error) {
 		switch {
 		case username == apiPrincipal && password == apiPrincipal:
 			return apiPrincipal, nil
@@ -64,13 +53,13 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 			return nil, errors.Unauthenticated("basic")
 		}
 	}))
-	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (interface{}, error) {
+	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (any, error) {
 		if token == "token123" {
 			return apiPrincipal, nil
 		}
 		return nil, errors.Unauthenticated("token")
 	}))
-	api.RegisterAuthorizer(runtime.AuthorizerFunc(func(r *http.Request, user interface{}) error {
+	api.RegisterAuthorizer(runtime.AuthorizerFunc(func(r *http.Request, user any) error {
 		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && user.(string) != apiPrincipal {
 			if user.(string) == apiUser {
 				return errors.CompositeValidationError(errors.New(errors.InvalidTypeCode, "unauthorized"))
@@ -85,9 +74,9 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterOperation("delete", "/pets/{id}", new(stubOperationHandler))
 	api.RegisterOperation("get", "/pets/{id}", new(stubOperationHandler))
 
-	api.Models["pet"] = func() interface{} { return new(Pet) }
-	api.Models["newPet"] = func() interface{} { return new(Pet) }
-	api.Models["tag"] = func() interface{} { return new(Tag) }
+	api.Models["pet"] = func() any { return new(Pet) }
+	api.Models["newPet"] = func() any { return new(Pet) }
+	api.Models["tag"] = func() any { return new(Tag) }
 
 	return spec, api
 }
@@ -107,13 +96,13 @@ func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterConsumer("application/x-yaml", yamlpc.YAMLConsumer())
 	api.RegisterProducer("application/x-yaml", yamlpc.YAMLProducer())
 
-	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (interface{}, error) {
+	api.RegisterAuth("basic", security.BasicAuth(func(username, password string) (any, error) {
 		if username == apiPrincipal && password == apiPrincipal {
 			return apiPrincipal, nil
 		}
 		return nil, errors.Unauthenticated("basic")
 	}))
-	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (interface{}, error) {
+	api.RegisterAuth("apiKey", security.APIKeyAuth("X-API-KEY", "header", func(token string) (any, error) {
 		if token == "token123" {
 			return apiPrincipal, nil
 		}
@@ -125,9 +114,9 @@ func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	api.RegisterOperation("delete", "/pets/{id}", new(stubOperationHandler))
 	api.RegisterOperation("get", "/pets/{id}", new(stubOperationHandler))
 
-	api.Models["pet"] = func() interface{} { return new(Pet) }
-	api.Models["newPet"] = func() interface{} { return new(Pet) }
-	api.Models["tag"] = func() interface{} { return new(Tag) }
+	api.Models["pet"] = func() any { return new(Pet) }
+	api.Models["newPet"] = func() any { return new(Pet) }
+	api.Models["tag"] = func() any { return new(Tag) }
 
 	return spec, api
 }
@@ -150,24 +139,24 @@ type Pet struct {
 type stubConsumer struct {
 }
 
-func (s *stubConsumer) Consume(_ io.Reader, _ interface{}) error {
+func (s *stubConsumer) Consume(_ io.Reader, _ any) error {
 	return nil
 }
 
 type stubProducer struct {
 }
 
-func (s *stubProducer) Produce(_ io.Writer, _ interface{}) error {
+func (s *stubProducer) Produce(_ io.Writer, _ any) error {
 	return nil
 }
 
 type stubOperationHandler struct {
 }
 
-func (s *stubOperationHandler) ParameterModel() interface{} {
+func (s *stubOperationHandler) ParameterModel() any {
 	return nil
 }
 
-func (s *stubOperationHandler) Handle(_ interface{}) (interface{}, error) {
-	return map[string]interface{}{}, nil
+func (s *stubOperationHandler) Handle(_ any) (any, error) {
+	return map[string]any{}, nil
 }

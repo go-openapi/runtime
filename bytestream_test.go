@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package runtime
 
 import (
@@ -62,7 +65,7 @@ func TestByteStreamConsumer(t *testing.T) {
 	})
 
 	t.Run("can consume as an interface with underlying type []byte", func(t *testing.T) {
-		var dest interface{} = []byte{}
+		var dest any = []byte{}
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
 		asBytes, ok := dest.([]byte)
 		require.True(t, ok)
@@ -70,7 +73,7 @@ func TestByteStreamConsumer(t *testing.T) {
 	})
 
 	t.Run("can consume as an interface with underlying type string", func(t *testing.T) {
-		var dest interface{} = "x"
+		var dest any = "x"
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
 		asString, ok := dest.(string)
 		require.True(t, ok)
@@ -274,7 +277,7 @@ func TestByteStreamProducer(t *testing.T) {
 
 	t.Run("can produce from an interface with underlying type string", func(t *testing.T) {
 		var w bytes.Buffer
-		var data interface{} = expected
+		var data any = expected
 		require.NoError(t, producer.Produce(&w, data))
 		assert.Equal(t, expected, w.String())
 	})
@@ -289,7 +292,7 @@ func TestByteStreamProducer(t *testing.T) {
 
 	t.Run("can produce from an interface with underling type []byte", func(t *testing.T) {
 		var w bytes.Buffer
-		var data interface{} = []byte(expected)
+		var data any = []byte(expected)
 		require.NoError(t, producer.Produce(&w, data))
 		assert.Equal(t, expected, w.String())
 	})
