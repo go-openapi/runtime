@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/go-openapi/testify/v2/assert"
 )
 
 func TestRequestWriterFunc(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/go-openapi/spec"
+	"github.com/go-openapi/testify/v2/assert"
+	"github.com/go-openapi/testify/v2/require"
 	"github.com/go-openapi/validate"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestValidateFile(t *testing.T) {

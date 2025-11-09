@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/go-openapi/runtime"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/assert"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func TestSimplePetstoreSpec(t *testing.T) {

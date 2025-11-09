@@ -17,7 +17,7 @@ import (
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/runtime/yamlpc"
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 const (

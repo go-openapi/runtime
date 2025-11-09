@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/go-openapi/testify/v2/assert"
 
 	"github.com/go-openapi/runtime"
 )

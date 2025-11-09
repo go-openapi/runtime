@@ -6,6 +6,7 @@ package opentracing
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/client"
+
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

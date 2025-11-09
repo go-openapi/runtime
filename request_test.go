@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/require"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/go-openapi/testify/v2/assert"
 )
 
 type eofReader struct{}
@@ -165,8 +165,8 @@ func TestJSONRequest(t *testing.T) {
 	req, err := JSONRequest(http.MethodGet, "/swagger.json", nil)
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodGet, req.Method)
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderContentType)) //nolint:testifylint
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderAccept))      //nolint:testifylint
+	assert.Equal(t, JSONMime, req.Header.Get(HeaderContentType))
+	assert.Equal(t, JSONMime, req.Header.Get(HeaderAccept))
 
 	req, err = JSONRequest(http.MethodGet, "%2", nil)
 	require.Error(t, err)

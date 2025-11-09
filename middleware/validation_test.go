@@ -14,8 +14,8 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/go-openapi/testify/v2/assert"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func newTestValidation(ctx *Context, next http.Handler) http.Handler {
@@ -160,7 +160,7 @@ func TestValidateContentType(t *testing.T) {
 			require.NoError(t, err, "input: %q", v.hdr)
 		} else {
 			require.Error(t, err, "input: %q", v.hdr)
-			assert.IsTypef(t, &errors.Validation{}, err, "input: %q", v.hdr) //nolint: testifylint // ErrorAs doesn't work and ErrorIs doesn't fit
+			assert.IsTypef(t, &errors.Validation{}, err, "input: %q", v.hdr)
 			require.EqualErrorf(t, err, v.err.Error(), "input: %q", v.hdr)
 			assert.EqualValues(t, http.StatusUnsupportedMediaType, err.(*errors.Validation).Code())
 		}
