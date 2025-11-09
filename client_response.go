@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // A ClientResponse represents a client response.
@@ -50,13 +51,17 @@ func NewAPIError(opName string, payload any, code int) *APIError {
 	}
 }
 
+// sanitizer ensures that single quotes are escaped
+var sanitizer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+
 func (o *APIError) Error() string {
 	var resp []byte
 	if err, ok := o.Response.(error); ok {
-		resp = []byte("'" + err.Error() + "'")
+		resp = []byte("'" + sanitizer.Replace(err.Error()) + "'")
 	} else {
 		resp, _ = json.Marshal(o.Response)
 	}
+
 	return fmt.Sprintf("%s (status %d): %s", o.OperationName, o.Code, resp)
 }
 
