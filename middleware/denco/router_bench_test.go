@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package denco_test
 
 import (
@@ -146,7 +149,7 @@ func makeTestStaticRecords(n int) []denco.Record {
 
 func makeTestSingleParamRecords(n int) []denco.Record {
 	records := make([]denco.Record, n)
-	for i := 0; i < len(records); i++ {
+	for i := range records {
 		records[i] = denco.NewRecord(fmt.Sprintf("/user%d/:name", i), fmt.Sprintf("testroute%d", i))
 	}
 	return records
@@ -154,7 +157,7 @@ func makeTestSingleParamRecords(n int) []denco.Record {
 
 func makeTestSingle2ParamRecords(n int) []denco.Record {
 	records := make([]denco.Record, n)
-	for i := 0; i < len(records); i++ {
+	for i := range records {
 		records[i] = denco.NewRecord(fmt.Sprintf("/user%d/:name/comment/:id", i), fmt.Sprintf("testroute%d", i))
 	}
 	return records

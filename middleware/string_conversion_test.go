@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package middleware
 
@@ -64,7 +53,7 @@ type SomeOperationParams struct {
 	Categories  unmarshallerSlice
 }
 
-func FloatParamTest(t *testing.T, _, pName, _ string, val reflect.Value, defVal, expectedDef interface{}, actual func() interface{}) {
+func FloatParamTest(t *testing.T, _, pName, _ string, val reflect.Value, defVal, expectedDef any, actual func() any) {
 	fld := val.FieldByName(pName)
 	binder := &untypedParamBinder{
 		parameter: spec.QueryParam(pName).Typed("number", "double").WithDefault(defVal),
@@ -83,7 +72,7 @@ func FloatParamTest(t *testing.T, _, pName, _ string, val reflect.Value, defVal,
 	require.Error(t, err)
 }
 
-func IntParamTest(t *testing.T, pName string, val reflect.Value, defVal, expectedDef interface{}, actual func() interface{}) {
+func IntParamTest(t *testing.T, pName string, val reflect.Value, defVal, expectedDef any, actual func() any) {
 	fld := val.FieldByName(pName)
 
 	binder := &untypedParamBinder{
@@ -121,31 +110,31 @@ func TestParamBinding(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "some-name", actual.Name)
 
-	IntParamTest(t, "ID", val, 1, 1, func() interface{} { return actual.ID })
-	IntParamTest(t, "ID", val, nil, 0, func() interface{} { return actual.ID })
-	IntParamTest(t, "Age", val, 1, 1, func() interface{} { return actual.Age })
-	IntParamTest(t, "Age", val, nil, 0, func() interface{} { return actual.Age })
-	IntParamTest(t, "Visits", val, 1, 1, func() interface{} { return actual.Visits })
-	IntParamTest(t, "Visits", val, nil, 0, func() interface{} { return actual.Visits })
-	IntParamTest(t, "Count", val, 1, 1, func() interface{} { return actual.Count })
-	IntParamTest(t, "Count", val, nil, 0, func() interface{} { return actual.Count })
-	IntParamTest(t, "Seq", val, 1, 1, func() interface{} { return actual.Seq })
-	IntParamTest(t, "Seq", val, nil, 0, func() interface{} { return actual.Seq })
-	IntParamTest(t, "UID", val, uint64(1), 1, func() interface{} { return actual.UID })
-	IntParamTest(t, "UID", val, uint64(0), 0, func() interface{} { return actual.UID })
-	IntParamTest(t, "UAge", val, uint(1), 1, func() interface{} { return actual.UAge })
-	IntParamTest(t, "UAge", val, nil, 0, func() interface{} { return actual.UAge })
-	IntParamTest(t, "UVisits", val, uint32(1), 1, func() interface{} { return actual.UVisits })
-	IntParamTest(t, "UVisits", val, nil, 0, func() interface{} { return actual.UVisits })
-	IntParamTest(t, "UCount", val, uint16(1), 1, func() interface{} { return actual.UCount })
-	IntParamTest(t, "UCount", val, nil, 0, func() interface{} { return actual.UCount })
-	IntParamTest(t, "USeq", val, uint8(1), 1, func() interface{} { return actual.USeq })
-	IntParamTest(t, "USeq", val, nil, 0, func() interface{} { return actual.USeq })
+	IntParamTest(t, "ID", val, 1, 1, func() any { return actual.ID })
+	IntParamTest(t, "ID", val, nil, 0, func() any { return actual.ID })
+	IntParamTest(t, "Age", val, 1, 1, func() any { return actual.Age })
+	IntParamTest(t, "Age", val, nil, 0, func() any { return actual.Age })
+	IntParamTest(t, "Visits", val, 1, 1, func() any { return actual.Visits })
+	IntParamTest(t, "Visits", val, nil, 0, func() any { return actual.Visits })
+	IntParamTest(t, "Count", val, 1, 1, func() any { return actual.Count })
+	IntParamTest(t, "Count", val, nil, 0, func() any { return actual.Count })
+	IntParamTest(t, "Seq", val, 1, 1, func() any { return actual.Seq })
+	IntParamTest(t, "Seq", val, nil, 0, func() any { return actual.Seq })
+	IntParamTest(t, "UID", val, uint64(1), 1, func() any { return actual.UID })
+	IntParamTest(t, "UID", val, uint64(0), 0, func() any { return actual.UID })
+	IntParamTest(t, "UAge", val, uint(1), 1, func() any { return actual.UAge })
+	IntParamTest(t, "UAge", val, nil, 0, func() any { return actual.UAge })
+	IntParamTest(t, "UVisits", val, uint32(1), 1, func() any { return actual.UVisits })
+	IntParamTest(t, "UVisits", val, nil, 0, func() any { return actual.UVisits })
+	IntParamTest(t, "UCount", val, uint16(1), 1, func() any { return actual.UCount })
+	IntParamTest(t, "UCount", val, nil, 0, func() any { return actual.UCount })
+	IntParamTest(t, "USeq", val, uint8(1), 1, func() any { return actual.USeq })
+	IntParamTest(t, "USeq", val, nil, 0, func() any { return actual.USeq })
 
-	FloatParamTest(t, "score", "Score", "float", val, 1.0, 1, func() interface{} { return actual.Score })
-	FloatParamTest(t, "score", "Score", "float", val, nil, 0, func() interface{} { return actual.Score })
-	FloatParamTest(t, "rate", "Rate", "double", val, 1.0, 1, func() interface{} { return actual.Rate })
-	FloatParamTest(t, "rate", "Rate", "double", val, nil, 0, func() interface{} { return actual.Rate })
+	FloatParamTest(t, "score", "Score", "float", val, 1.0, 1, func() any { return actual.Score })
+	FloatParamTest(t, "score", "Score", "float", val, nil, 0, func() any { return actual.Score })
+	FloatParamTest(t, "rate", "Rate", "double", val, 1.0, 1, func() any { return actual.Rate })
+	FloatParamTest(t, "rate", "Rate", "double", val, nil, 0, func() any { return actual.Rate })
 
 	pName = "Confirmed"
 	confirmedField := val.FieldByName(pName)

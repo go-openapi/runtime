@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package denco_test
 
 import (
@@ -11,7 +14,7 @@ func TestNextSeparator(t *testing.T) {
 	for _, testcase := range []struct {
 		path     string
 		start    int
-		expected interface{}
+		expected any
 	}{
 		{"/path/to/route", 0, 0},
 		{"/path/to/route", 1, 5},

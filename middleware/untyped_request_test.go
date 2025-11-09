@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package middleware
 
@@ -41,7 +30,7 @@ func TestUntypedFormPost(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.EqualValues(t, 32, data["age"])
@@ -50,7 +39,7 @@ func TestUntypedFormPost(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
@@ -71,7 +60,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.NotNil(t, data["file"])
@@ -87,13 +76,13 @@ func TestUntypedFileUpload(t *testing.T) {
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application(")
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	body = bytes.NewBuffer(nil)
@@ -109,7 +98,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
@@ -118,7 +107,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	_, err = req.MultipartReader()
 	require.NoError(t, err)
 
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 
 	writer = multipart.NewWriter(body)
@@ -129,7 +118,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.Error(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 }
 
@@ -145,7 +134,7 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 
@@ -162,7 +151,7 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	require.NoError(t, writer.Close())
 
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
 	assert.Equal(t, "the-name", data["name"])
 	assert.NotNil(t, data["file"])
@@ -179,7 +168,7 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 
 	confirmed := true
 	name := "thomas"
-	friend := map[string]interface{}{"name": "toby", "age": json.Number("32")}
+	friend := map[string]any{"name": "toby", "age": json.Number("32")}
 	id, age, score, factor := int64(7575), int32(348), float32(5.309), float64(37.403)
 	requestID := 19394858
 	tags := []string{"one", "two", "three"}
@@ -206,7 +195,7 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Request-Id", "19394858")
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	err = binder.Bind(req, RouteParams([]RouteParam{{"id", "7575"}}), runtime.JSONConsumer(), &data)
 	require.NoError(t, err)
 	assert.Equal(t, id, data["id"])

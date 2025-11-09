@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package security
 
 import (
@@ -34,7 +37,7 @@ const (
 )
 
 func TestBearerAuth(t *testing.T) {
-	bearerAuth := ScopedTokenAuthentication(func(token string, _ []string) (interface{}, error) {
+	bearerAuth := ScopedTokenAuthentication(func(token string, _ []string) (any, error) {
 		if token == validToken {
 			return principal, nil
 		}
@@ -90,7 +93,7 @@ func TestBearerAuth(t *testing.T) {
 }
 
 func TestBearerAuthCtx(t *testing.T) {
-	bearerAuthCtx := ScopedTokenAuthenticationCtx(func(ctx context.Context, token string, _ []string) (context.Context, interface{}, error) {
+	bearerAuthCtx := ScopedTokenAuthenticationCtx(func(ctx context.Context, token string, _ []string) (context.Context, any, error) {
 		if token == validToken {
 			return context.WithValue(ctx, extra, extraWisdom), principal, nil
 		}

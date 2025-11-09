@@ -1,16 +1,5 @@
-// Copyright 2015 go-swagger maintainers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
 
 package runtime
 
@@ -49,7 +38,7 @@ func TestResponseReaderFunc(t *testing.T) {
 		Header, Message, Body string
 		Code                  int
 	}
-	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (interface{}, error) {
+	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
 		b, _ := io.ReadAll(r.Body())
 		actual.Body = string(b)
 		actual.Code = r.Code()
@@ -65,7 +54,7 @@ func TestResponseReaderFunc(t *testing.T) {
 }
 
 func TestResponseReaderFuncError(t *testing.T) {
-	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (interface{}, error) {
+	reader := ClientResponseReaderFunc(func(r ClientResponse, _ Consumer) (any, error) {
 		_, _ = io.ReadAll(r.Body())
 		return nil, NewAPIError("fake", errors.New("writer closed"), 490)
 	})
@@ -73,7 +62,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorContains(t, err, "writer closed")
 
-	reader = func(r ClientResponse, _ Consumer) (interface{}, error) {
+	reader = func(r ClientResponse, _ Consumer) (any, error) {
 		_, _ = io.ReadAll(r.Body())
 		err := &fs.PathError{
 			Op:   "write",

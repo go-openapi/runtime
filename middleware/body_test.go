@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package middleware
 
 import (
@@ -46,7 +49,7 @@ func TestBindRequest_BodyValidation(t *testing.T) {
 
 	err = ctx.BindValidRequest(req, ri, rbn(func(r *http.Request, _ *MatchedRoute) error {
 		defer r.Body.Close()
-		var data interface{}
+		var data any
 		e := runtime.JSONConsumer().Consume(r.Body, &data)
 		_ = data
 		return e
@@ -87,7 +90,7 @@ func TestBindRequest_DeleteNoBody(t *testing.T) {
 
 	err = ctx.BindValidRequest(req, ri, rbn(func(r *http.Request, _ *MatchedRoute) error {
 		defer r.Body.Close()
-		var data interface{}
+		var data any
 		e := runtime.JSONConsumer().Consume(r.Body, &data)
 		_ = data
 		return e

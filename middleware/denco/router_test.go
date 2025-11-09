@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
+// SPDX-License-Identifier: Apache-2.0
+
 package denco_test
 
 import (
@@ -178,7 +181,7 @@ var realURIs = []denco.Record{
 
 type testcase struct {
 	path   string
-	value  interface{}
+	value  any
 	params []denco.Param
 	found  bool
 }
