@@ -40,6 +40,7 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
 	assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
 
 	methods := strings.Split(recorder.Header().Get("Allow"), ",")
@@ -51,6 +52,7 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
+	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
 	assert.Equal(t, http.StatusNotFound, recorder.Code)
 
 	recorder = httptest.NewRecorder()
