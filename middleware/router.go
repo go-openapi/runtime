@@ -68,13 +68,17 @@ func NewRouter(ctx *Context, next http.Handler) http.Handler {
 			return
 		}
 
+		// Always use the default producer Content-Type for Method not
+		// allowed and Not found responses
+		produces := []string{ctx.api.DefaultProduces()}
+
 		// Not found, check if it exists in the other methods first
 		if others := ctx.AllowedMethods(r); len(others) > 0 {
-			ctx.Respond(rw, r, ctx.analyzer.RequiredProduces(), nil, errors.MethodNotAllowed(r.Method, others))
+			ctx.Respond(rw, r, produces, nil, errors.MethodNotAllowed(r.Method, others))
 			return
 		}
 
-		ctx.Respond(rw, r, ctx.analyzer.RequiredProduces(), nil, errors.NotFound("path %s was not found", r.URL.EscapedPath()))
+		ctx.Respond(rw, r, produces, nil, errors.NotFound("path %s was not found", r.URL.EscapedPath()))
 	})
 }
 
