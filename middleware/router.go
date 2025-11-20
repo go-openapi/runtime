@@ -65,6 +65,7 @@ func NewRouter(ctx *Context, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if _, rCtx, ok := ctx.RouteInfo(r); ok {
 			next.ServeHTTP(rw, rCtx)
+			*r = *rCtx
 			return
 		}
 
