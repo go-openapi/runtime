@@ -16,7 +16,7 @@ declare -a all_tags
 cd "${root}"
 echo "Tagging all modules in repo ${root##*/}..."
 
-while read module_location ; do
+while read -r module_location ; do
   relative_location=${module_location#"$root"/}
   relative_location=${relative_location#"$root"}
   module_dir=${relative_location%"/go.mod"}
@@ -31,5 +31,5 @@ while read module_location ; do
   git tag "${module_tag}"
 done < <(go list -f '{{.Dir}}' -m)
 
-echo "Pushing tags to ${remote}: ${all_tags[@]}"
-git push "${remote}" ${all_tags[@]}
+echo "Pushing tags to ${remote}: ${all_tags[*]}"
+git push "${remote}" "${all_tags[@]}"
