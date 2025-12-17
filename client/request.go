@@ -298,8 +298,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 	// if there is payload, use the producer to write the payload, and then
 	// set the header to the content-type appropriate for the payload produced
 	if r.payload != nil {
-		// TODO: infer most appropriate content type based on the producer used,
-		// and the `consumers` section of the spec/operation
+		// Enhancement proposal: https://github.com/go-openapi/runtime/issues/387
 		r.header.Set(runtime.HeaderContentType, mediaType)
 		if rdr, ok := r.payload.(io.ReadCloser); ok {
 			body = rdr

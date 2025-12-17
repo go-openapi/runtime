@@ -232,7 +232,7 @@ func New(host, basePath string, schemes []string) *Runtime {
 	var rt Runtime
 	rt.DefaultMediaType = runtime.JSONMime
 
-	// TODO: actually infer this stuff from the spec
+	// Enhancement proposal: https://github.com/go-openapi/runtime/issues/385
 	rt.Consumers = map[string]runtime.Consumer{
 		runtime.YAMLMime:    yamlpc.YAMLConsumer(),
 		runtime.JSONMime:    runtime.JSONConsumer(),
@@ -532,7 +532,7 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 	//	}
 	//}
 
-	// TODO: pick appropriate media type
+	// Enhancement proposal: https://github.com/go-openapi/runtime/issues/386
 	cmt := r.DefaultMediaType
 	for _, mediaType := range operation.ConsumesMediaTypes {
 		// Pick first non-empty media type
