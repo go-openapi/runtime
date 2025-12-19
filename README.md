@@ -1,10 +1,5 @@
 # runtime
 
-[![Slack Status](https://slackin.goswagger.io/badge.svg)](https://slackin.goswagger.io)
-[![license](http://img.shields.io/badge/license-Apache%20v2-orange.svg)](https://raw.githubusercontent.com/go-openapi/runtime/master/LICENSE) 
-[![Go Reference](https://pkg.go.dev/badge/github.com/go-openapi/runtime.svg)](https://pkg.go.dev/github.com/go-openapi/runtime)
-[![Go Report Card](https://goreportcard.com/badge/github.com/go-openapi/runtime)](https://goreportcard.com/report/github.com/go-openapi/runtime)
-
 <!-- Badges: status  -->
 [![Tests][test-badge]][test-url] [![Coverage][cov-badge]][cov-url] [![CI vuln scan][vuln-scan-badge]][vuln-scan-url] [![CodeQL][codeql-badge]][codeql-url]
 <!-- Badges: release & docker images  -->
@@ -77,35 +72,35 @@ on top of which it has been built.
 
 Maintainers can cut a new release by either:
 
-* running [this workflow](https://github.com/go-openapi/analysis/actions/workflows/bump-release.yml)
+* running [this workflow](https://github.com/go-openapi/runtime/actions/workflows/bump-release.yml)
 * or pushing a semver tag
   * signed tags are preferred
   * The tag message is prepended to release notes
 
 <!-- Badges: status  -->
-[test-badge]: https://github.com/go-openapi/analysis/actions/workflows/go-test.yml/badge.svg
-[test-url]: https://github.com/go-openapi/analysis/actions/workflows/go-test.yml
-[cov-badge]: https://codecov.io/gh/go-openapi/analysis/branch/master/graph/badge.svg
-[cov-url]: https://codecov.io/gh/go-openapi/analysis
-[vuln-scan-badge]: https://github.com/go-openapi/analysis/actions/workflows/scanner.yml/badge.svg
-[vuln-scan-url]: https://github.com/go-openapi/analysis/actions/workflows/scanner.yml
-[codeql-badge]: https://github.com/go-openapi/analysis/actions/workflows/codeql.yml/badge.svg
-[codeql-url]: https://github.com/go-openapi/analysis/actions/workflows/codeql.yml
+[test-badge]: https://github.com/go-openapi/runtime/actions/workflows/go-test.yml/badge.svg
+[test-url]: https://github.com/go-openapi/runtime/actions/workflows/go-test.yml
+[cov-badge]: https://codecov.io/gh/go-openapi/runtime/branch/master/graph/badge.svg
+[cov-url]: https://codecov.io/gh/go-openapi/runtime
+[vuln-scan-badge]: https://github.com/go-openapi/runtime/actions/workflows/scanner.yml/badge.svg
+[vuln-scan-url]: https://github.com/go-openapi/runtime/actions/workflows/scanner.yml
+[codeql-badge]: https://github.com/go-openapi/runtime/actions/workflows/codeql.yml/badge.svg
+[codeql-url]: https://github.com/go-openapi/runtime/actions/workflows/codeql.yml
 <!-- Badges: release & docker images  -->
-[release-badge]: https://badge.fury.io/gh/go-openapi%2Fanalysis.svg
-[release-url]: https://badge.fury.io/gh/go-openapi%2Fanalysis
-[gomod-badge]: https://badge.fury.io/go/github.com%2Fgo-openapi%2Fanalysis.svg
-[gomod-url]: https://badge.fury.io/go/github.com%2Fgo-openapi%2Fanalysis
+[release-badge]: https://badge.fury.io/gh/go-openapi%2Fruntime.svg
+[release-url]: https://badge.fury.io/gh/go-openapi%2Fruntime
+[gomod-badge]: https://badge.fury.io/go/github.com%2Fgo-openapi%2Fruntime.svg
+[gomod-url]: https://badge.fury.io/go/github.com%2Fgo-openapi%2Fruntime
 <!-- Badges: code quality  -->
-[gocard-badge]: https://goreportcard.com/badge/github.com/go-openapi/analysis
-[gocard-url]: https://goreportcard.com/report/github.com/go-openapi/analysis
-[codefactor-badge]: https://img.shields.io/codefactor/grade/github/go-openapi/analysis
-[codefactor-url]: https://www.codefactor.io/repository/github/go-openapi/analysis
+[gocard-badge]: https://goreportcard.com/badge/github.com/go-openapi/runtime
+[gocard-url]: https://goreportcard.com/report/github.com/go-openapi/runtime
+[codefactor-badge]: https://img.shields.io/codefactor/grade/github/go-openapi/runtime
+[codefactor-url]: https://www.codefactor.io/repository/github/go-openapi/runtime
 <!-- Badges: documentation & support -->
 [doc-badge]: https://img.shields.io/badge/doc-site-blue?link=https%3A%2F%2Fgoswagger.io%2Fgo-openapi%2F
 [doc-url]: https://goswagger.io/go-openapi
-[godoc-badge]: https://pkg.go.dev/badge/github.com/go-openapi/analysis
-[godoc-url]: http://pkg.go.dev/github.com/go-openapi/analysis
+[godoc-badge]: https://pkg.go.dev/badge/github.com/go-openapi/runtime
+[godoc-url]: http://pkg.go.dev/github.com/go-openapi/runtime
 [slack-logo]: https://a.slack-edge.com/e6a93c1/img/icons/favicon-32.png
 [slack-badge]: https://img.shields.io/badge/slack-blue?link=https%3A%2F%2Fgoswagger.slack.com%2Farchives%2FC04R30YM
 [slack-url]: https://goswagger.slack.com/archives/C04R30YMU
@@ -114,9 +109,9 @@ Maintainers can cut a new release by either:
 
 <!-- Badges: license & compliance -->
 [license-badge]: http://img.shields.io/badge/license-Apache%20v2-orange.svg
-[license-url]: https://github.com/go-openapi/analysis/?tab=Apache-2.0-1-ov-file#readme
+[license-url]: https://github.com/go-openapi/runtime/?tab=Apache-2.0-1-ov-file#readme
 <!-- Badges: others & stats -->
-[goversion-badge]: https://img.shields.io/github/go-mod/go-version/go-openapi/analysis
-[goversion-url]: https://github.com/go-openapi/analysis/blob/master/go.mod
-[top-badge]: https://img.shields.io/github/languages/top/go-openapi/analysis
-[commits-badge]: https://img.shields.io/github/commits-since/go-openapi/analysis/latest
+[goversion-badge]: https://img.shields.io/github/go-mod/go-version/go-openapi/runtime
+[goversion-url]: https://github.com/go-openapi/runtime/blob/master/go.mod
+[top-badge]: https://img.shields.io/github/languages/top/go-openapi/runtime
+[commits-badge]: https://img.shields.io/github/commits-since/go-openapi/runtime/latest
