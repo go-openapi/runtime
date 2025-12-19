@@ -2,7 +2,7 @@ module github.com/go-openapi/runtime
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/go-openapi/analysis v0.24.1
+	github.com/go-openapi/analysis v0.24.2
 	github.com/go-openapi/errors v0.22.5
 	github.com/go-openapi/loads v0.23.2
 	github.com/go-openapi/spec v0.22.2
@@ -29,7 +29,7 @@ require (
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonutils v0.25.4
 	github.com/go-openapi/swag/loading v0.25.4 // indirect
-	github.com/go-openapi/swag/mangling v0.25.1 // indirect
+	github.com/go-openapi/swag/mangling v0.25.4 // indirect
 	github.com/go-openapi/swag/stringutils v0.25.4
 	github.com/go-openapi/swag/typeutils v0.25.4 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
@@ -39,9 +39,9 @@ require (
 	go.mongodb.org/mongo-driver v1.17.6 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )
 
 go 1.24.0
