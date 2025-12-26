@@ -3,9 +3,9 @@ module github.com/go-openapi/runtime
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/go-openapi/analysis v0.24.2
-	github.com/go-openapi/errors v0.22.5
+	github.com/go-openapi/errors v0.22.6
 	github.com/go-openapi/loads v0.23.2
-	github.com/go-openapi/spec v0.22.2
+	github.com/go-openapi/spec v0.22.3
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/go-openapi/swag/fileutils v0.25.4
 	github.com/go-openapi/testify/enable/yaml/v2 v2.0.2
