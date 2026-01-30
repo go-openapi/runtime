@@ -8,8 +8,8 @@ require (
 	github.com/go-openapi/spec v0.22.3
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/go-openapi/swag/fileutils v0.25.4
-	github.com/go-openapi/testify/enable/yaml/v2 v2.1.8
-	github.com/go-openapi/testify/v2 v2.1.8
+	github.com/go-openapi/testify/enable/yaml/v2 v2.2.0
+	github.com/go-openapi/testify/v2 v2.2.0
 	github.com/go-openapi/validate v0.25.1
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/sdk v1.39.0
