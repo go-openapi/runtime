@@ -43,10 +43,10 @@ github.com/go-openapi/swag/typeutils v0.25.4 h1:1/fbZOUN472NTc39zpa+YGHn3jzHWhv4
 github.com/go-openapi/swag/typeutils v0.25.4/go.mod h1:Ou7g//Wx8tTLS9vG0UmzfCsjZjKhpjxayRKTHXf2pTE=
 github.com/go-openapi/swag/yamlutils v0.25.4 h1:6jdaeSItEUb7ioS9lFoCZ65Cne1/RZtPBZ9A56h92Sw=
 github.com/go-openapi/swag/yamlutils v0.25.4/go.mod h1:MNzq1ulQu+yd8Kl7wPOut/YHAAU/H6hL91fF+E2RFwc=
-github.com/go-openapi/testify/enable/yaml/v2 v2.2.0 h1:JX/XaTqb/GHkuadIfglX9Ytg55+NJwg7YUfN3+kBjww=
-github.com/go-openapi/testify/enable/yaml/v2 v2.2.0/go.mod h1:RhM6C4J+Vdf+D7+o26wMHD8u+iJr9dKTwmknQeMNdGw=
-github.com/go-openapi/testify/v2 v2.2.0 h1:84LnzAhv4STcZTy3b6a1xs4rnzpS5HUvl24KzKqaYJo=
-github.com/go-openapi/testify/v2 v2.2.0/go.mod h1:HCPmvFFnheKK2BuwSA0TbbdxJ3I16pjwMkYkP4Ywn54=
+github.com/go-openapi/testify/enable/yaml/v2 v2.3.0 h1:CZQFhycQSRlJGHqVoHcNoVwuE77ry//kMojNoQElps0=
+github.com/go-openapi/testify/enable/yaml/v2 v2.3.0/go.mod h1:mgGY/i3R/ppZvZXUAgTeWlDD+8wts5eZeLKHGVc4jeU=
+github.com/go-openapi/testify/v2 v2.3.0 h1:cZFOKhatfyVejoFNd8jqnHFosegN5vJZiPOTnkyT9hA=
+github.com/go-openapi/testify/v2 v2.3.0/go.mod h1:HCPmvFFnheKK2BuwSA0TbbdxJ3I16pjwMkYkP4Ywn54=
 github.com/go-openapi/validate v0.25.1 h1:sSACUI6Jcnbo5IWqbYHgjibrhhmt3vR6lCzKZnmAgBw=
 github.com/go-openapi/validate v0.25.1/go.mod h1:RMVyVFYte0gbSTaZ0N4KmTn6u/kClvAFp+mAVfS/DQc=
 github.com/go-viper/mapstructure/v2 v2.4.0 h1:EBsztssimR/CONLSZZ04E8qAkxNYq4Qp9LvH92wZUgs=
