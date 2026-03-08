@@ -1,7 +1,7 @@
 module github.com/go-openapi/runtime/client-middleware/opentracing
 
 require (
-	github.com/go-openapi/runtime v0.28.0
+	github.com/go-openapi/runtime v0.29.3
 	github.com/go-openapi/strfmt v0.26.0
 	github.com/go-openapi/testify/v2 v2.4.1
 	github.com/opentracing/opentracing-go v1.2.0
