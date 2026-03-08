@@ -62,6 +62,7 @@ on top of which it has been built.
 
 ## Other documentation
 
+* [FAQ](docs/FAQ.md)
 * [All-time contributors](./CONTRIBUTORS.md)
 * [Contributing guidelines](.github/CONTRIBUTING.md)
 * [Maintainers documentation](docs/MAINTAINERS.md)
