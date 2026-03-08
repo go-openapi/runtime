@@ -24,9 +24,9 @@ func TestBasicAuth(t *testing.T) {
 	req.Header = make(http.Header)
 	req.Header.Set(runtime.HeaderAuthorization, r.header.Get(runtime.HeaderAuthorization))
 	usr, pw, ok := req.BasicAuth()
-	require.True(t, ok)
-	assert.Equal(t, "someone", usr)
-	assert.Equal(t, "with a password", pw)
+	require.TrueT(t, ok)
+	assert.EqualT(t, "someone", usr)
+	assert.EqualT(t, "with a password", pw)
 }
 
 func TestAPIKeyAuth_Query(t *testing.T) {
@@ -36,7 +36,7 @@ func TestAPIKeyAuth_Query(t *testing.T) {
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "the-shared-key", r.query.Get("api_key"))
+	assert.EqualT(t, "the-shared-key", r.query.Get("api_key"))
 }
 
 func TestAPIKeyAuth_Header(t *testing.T) {
@@ -46,7 +46,7 @@ func TestAPIKeyAuth_Header(t *testing.T) {
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "the-shared-key", r.header.Get("X-Api-Token"))
+	assert.EqualT(t, "the-shared-key", r.header.Get("X-Api-Token"))
 }
 
 func TestBearerTokenAuth(t *testing.T) {
@@ -56,7 +56,7 @@ func TestBearerTokenAuth(t *testing.T) {
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "Bearer the-shared-token", r.header.Get(runtime.HeaderAuthorization))
+	assert.EqualT(t, "Bearer the-shared-token", r.header.Get(runtime.HeaderAuthorization))
 }
 
 func TestCompose(t *testing.T) {
@@ -66,6 +66,6 @@ func TestCompose(t *testing.T) {
 	err := writer.AuthenticateRequest(r, nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, "the-api-key", r.header.Get("X-Api-Key"))
-	assert.Equal(t, "the-secret-key", r.header.Get("X-Secret-Key"))
+	assert.EqualT(t, "the-api-key", r.header.Get("X-Api-Key"))
+	assert.EqualT(t, "the-secret-key", r.header.Get("X-Secret-Key"))
 }

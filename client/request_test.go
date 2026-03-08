@@ -37,9 +37,9 @@ func TestBuildRequest_SetHeaders(t *testing.T) {
 
 	// single value
 	_ = r.SetHeaderParam("X-Rate-Limit", "500")
-	assert.Equal(t, "500", r.header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "500", r.header.Get("X-Rate-Limit"))
 	_ = r.SetHeaderParam("X-Rate-Limit", "400")
-	assert.Equal(t, "400", r.header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "400", r.header.Get("X-Rate-Limit"))
 
 	// multi value
 	_ = r.SetHeaderParam("X-Accepts", "json", "xml", "yaml")
@@ -50,7 +50,7 @@ func TestBuildRequest_SetPath(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/?hello=world", nil)
 
 	_ = r.SetPathParam("id", "1345")
-	assert.Equal(t, "1345", r.pathParams["id"])
+	assert.EqualT(t, "1345", r.pathParams["id"])
 }
 
 func TestBuildRequest_SetQuery(t *testing.T) {
@@ -58,7 +58,7 @@ func TestBuildRequest_SetQuery(t *testing.T) {
 
 	// single value
 	_ = r.SetQueryParam("hello", "there")
-	assert.Equal(t, "there", r.query.Get("hello"))
+	assert.EqualT(t, "there", r.query.Get("hello"))
 
 	// multi value
 	_ = r.SetQueryParam("goodbye", "cruel", "world")
@@ -69,7 +69,7 @@ func TestBuildRequest_SetForm(t *testing.T) {
 	// non-multipart
 	r := newRequest(http.MethodPost, "/flats", nil)
 	_ = r.SetFormParam("hello", "world")
-	assert.Equal(t, "world", r.formFields.Get("hello"))
+	assert.EqualT(t, "world", r.formFields.Get("hello"))
 	_ = r.SetFormParam("goodbye", "cruel", "world")
 	assert.Equal(t, []string{"cruel", "world"}, r.formFields["goodbye"])
 }
@@ -89,16 +89,16 @@ func TestBuildRequest_SetFile(t *testing.T) {
 	err = r.SetFileParam("file", mustGetFile("./runtime.go"))
 	require.NoError(t, err)
 	fl, ok := r.fileFields["file"]
-	require.True(t, ok)
-	assert.Equal(t, "runtime.go", filepath.Base(fl[0].Name()))
+	require.TrueT(t, ok)
+	assert.EqualT(t, "runtime.go", filepath.Base(fl[0].Name()))
 
 	// success adds a file param with multiple files
 	err = r.SetFileParam("otherfiles", mustGetFile("./runtime.go"), mustGetFile("./request.go"))
 	require.NoError(t, err)
 	fl, ok = r.fileFields["otherfiles"]
-	require.True(t, ok)
-	assert.Equal(t, "runtime.go", filepath.Base(fl[0].Name()))
-	assert.Equal(t, "request.go", filepath.Base(fl[1].Name()))
+	require.TrueT(t, ok)
+	assert.EqualT(t, "runtime.go", filepath.Base(fl[0].Name()))
+	assert.EqualT(t, "request.go", filepath.Base(fl[1].Name()))
 }
 
 func mustGetFile(path string) *os.File {
@@ -131,9 +131,9 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 }
 
 func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
@@ -151,9 +151,9 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := json.Marshal(bd)
 	require.NoError(t, err)
 	actualBody, err := io.ReadAll(req.Body)
@@ -186,9 +186,9 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := json.Marshal(bd)
 	require.NoError(t, err)
 	actualBody, err := io.ReadAll(req.Body)
@@ -216,9 +216,9 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expectedBody, err := xml.Marshal(bd)
 	require.NoError(t, err)
 	actualBody, err := io.ReadAll(req.Body)
@@ -243,9 +243,9 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expectedBody := []byte(bd)
 	actualBody, err := io.ReadAll(req.Body)
 	require.NoError(t, err)
@@ -267,9 +267,9 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expected := []byte("something=some+value")
 	actual, _ := io.ReadAll(req.Body)
 	assert.Equal(t, expected, actual)
@@ -290,10 +290,10 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, runtime.URLencodedFormMime, req.Header.Get(runtime.HeaderContentType))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, runtime.URLencodedFormMime, req.Header.Get(runtime.HeaderContentType))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expected := []byte("something=some+value")
 	actual, _ := io.ReadAll(req.Body)
 	assert.Equal(t, expected, actual)
@@ -314,9 +314,9 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	assert.Condition(t, func() bool { return req.ContentLength > 0 },
 		"ContentLength must great than 0. got %d", req.ContentLength)
 	expected := []byte("something=some+value")
@@ -339,9 +339,9 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
 	expected2 := []byte("some value")
 	actual, err := io.ReadAll(req.Body)
@@ -350,9 +350,9 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 	assert.Len(t, actuallines, 6)
 	boundary := string(actuallines[0])
 	lastboundary := string(actuallines[4])
-	assert.True(t, strings.HasPrefix(boundary, "--"))
-	assert.True(t, strings.HasPrefix(lastboundary, "--") && strings.HasSuffix(lastboundary, "--"))
-	assert.Equal(t, lastboundary, boundary+"--")
+	assert.TrueT(t, strings.HasPrefix(boundary, "--"))
+	assert.TrueT(t, strings.HasPrefix(lastboundary, "--") && strings.HasSuffix(lastboundary, "--"))
+	assert.EqualT(t, lastboundary, boundary+"--")
 	assert.Equal(t, expected1, actuallines[1])
 	assert.Equal(t, expected2, actuallines[3])
 }
@@ -372,9 +372,9 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	expected1 := []byte("Content-Disposition: form-data; name=\"something\"")
 	expected2 := []byte("some value")
 	expected3 := []byte("another value")
@@ -384,9 +384,9 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	assert.Len(t, actuallines, 10)
 	boundary := string(actuallines[0])
 	lastboundary := string(actuallines[8])
-	assert.True(t, strings.HasPrefix(boundary, "--"))
-	assert.True(t, strings.HasPrefix(lastboundary, "--") && strings.HasSuffix(lastboundary, "--"))
-	assert.Equal(t, lastboundary, boundary+"--")
+	assert.TrueT(t, strings.HasPrefix(boundary, "--"))
+	assert.TrueT(t, strings.HasPrefix(lastboundary, "--") && strings.HasSuffix(lastboundary, "--"))
+	assert.EqualT(t, lastboundary, boundary+"--")
 	assert.Equal(t, expected1, actuallines[1])
 	assert.Equal(t, expected2, actuallines[3])
 	assert.Equal(t, actuallines[0], actuallines[4])
@@ -418,27 +418,27 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 
 	mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
 	require.NoError(t, err)
 
-	assert.Equal(t, runtime.MultipartFormMime, mediaType)
+	assert.EqualT(t, runtime.MultipartFormMime, mediaType)
 	boundary := params["boundary"]
 	mr := multipart.NewReader(req.Body, boundary)
 	defer req.Body.Close()
 	frm, err := mr.ReadForm(1 << 20)
 	require.NoError(t, err)
 
-	assert.Equal(t, "some value", frm.Value["something"][0])
+	assert.EqualT(t, "some value", frm.Value["something"][0])
 	fileverifier := func(name string, index int, filename string, content []byte) {
 		mpff := frm.File[name][index]
 		mpf, e := mpff.Open()
 		require.NoError(t, e)
 		defer mpf.Close()
-		assert.Equal(t, filename, mpff.Filename)
+		assert.EqualT(t, filename, mpff.Filename)
 		actual, e := io.ReadAll(mpf)
 		require.NoError(t, e)
 		assert.Equal(t, content, actual)
@@ -471,26 +471,26 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
 	require.NoError(t, err)
 
-	assert.Equal(t, runtime.URLencodedFormMime, mediaType)
+	assert.EqualT(t, runtime.URLencodedFormMime, mediaType)
 	boundary := params["boundary"]
 	mr := multipart.NewReader(req.Body, boundary)
 	defer req.Body.Close()
 	frm, err := mr.ReadForm(1 << 20)
 	require.NoError(t, err)
 
-	assert.Equal(t, "some value", frm.Value["something"][0])
+	assert.EqualT(t, "some value", frm.Value["something"][0])
 	fileverifier := func(name string, index int, filename string, content []byte) {
 		mpff := frm.File[name][index]
 		mpf, e := mpff.Open()
 		require.NoError(t, e)
 		defer mpf.Close()
-		assert.Equal(t, filename, mpff.Filename)
+		assert.EqualT(t, filename, mpff.Filename)
 		actual, e := io.ReadAll(mpf)
 		require.NoError(t, e)
 		assert.Equal(t, content, actual)
@@ -533,10 +533,10 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "/flats/1234/", req.URL.Path)
 	mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
 	require.NoError(t, err)
-	assert.Equal(t, runtime.MultipartFormMime, mediaType)
+	assert.EqualT(t, runtime.MultipartFormMime, mediaType)
 	boundary := params["boundary"]
 	mr := multipart.NewReader(req.Body, boundary)
 	defer req.Body.Close()
@@ -548,11 +548,11 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 		mpf, e := mpff.Open()
 		require.NoError(t, e)
 		defer mpf.Close()
-		assert.Equal(t, filename, mpff.Filename)
+		assert.EqualT(t, filename, mpff.Filename)
 		actual, e := io.ReadAll(mpf)
 		require.NoError(t, e)
 		assert.Equal(t, content, actual)
-		assert.Equal(t, mpff.Header.Get("Content-Type"), contentType)
+		assert.EqualT(t, mpff.Header.Get("Content-Type"), contentType)
 	}
 	fileverifier("file1", 0, "runtime.go", cont, "application/octet-stream")
 	fileverifier("file2", 0, "request.go", cont2, "text/plain; charset=utf-8")
@@ -571,9 +571,9 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/basepath/flats/1234/", req.URL.Path)
 }
 
 func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
@@ -590,11 +590,11 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "200", req.Header.Get("X-Rate-Limit"))
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/basepath/flats/1234/?*&^%/", req.URL.Path)
-	assert.Equal(t, "/basepath/flats/1234%2F%3F%2A&%5E%25/", req.URL.RawPath)
-	assert.Equal(t, req.URL.RawPath, req.URL.EscapedPath())
+	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/basepath/flats/1234/?*&^%/", req.URL.Path)
+	assert.EqualT(t, "/basepath/flats/1234%2F%3F%2A&%5E%25/", req.URL.RawPath)
+	assert.EqualT(t, req.URL.RawPath, req.URL.EscapedPath())
 }
 
 func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
@@ -610,9 +610,9 @@ func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "bar", req.URL.Query().Get("foo"))
-	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "bar", req.URL.Query().Get("foo"))
+	assert.EqualT(t, "/basepath/flats/1234/", req.URL.Path)
 }
 
 func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
@@ -628,9 +628,9 @@ func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "bar", req.URL.Query().Get("foo"))
-	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "bar", req.URL.Query().Get("foo"))
+	assert.EqualT(t, "/basepath/flats/1234/", req.URL.Path)
 }
 
 func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T) {
@@ -645,8 +645,8 @@ func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "world", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/basepath/flats/1234/", req.URL.Path)
 }
 
 func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testing.T) {
@@ -662,8 +662,8 @@ func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testin
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
-	assert.Equal(t, "there", req.URL.Query().Get("hello"))
-	assert.Equal(t, "/basepath/flats/1234/", req.URL.Path)
+	assert.EqualT(t, "there", req.URL.Query().Get("hello"))
+	assert.EqualT(t, "/basepath/flats/1234/", req.URL.Path)
 }
 
 type testReqFn func(*testing.T, *http.Request)
@@ -703,7 +703,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			require.NoError(t, e)
 
 			require.Len(t, bodyContent, int(req.ContentLength))
-			require.Equal(t, "\"test body\"\n", string(bodyContent))
+			require.EqualT(t, "\"test body\"\n", string(bodyContent))
 
 			// Read the body a second time before sending the request
 			body, e = req.GetBody()
@@ -711,7 +711,7 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 			bodyContent, e = io.ReadAll(io.Reader(body))
 			require.NoError(t, e)
 			require.Len(t, bodyContent, int(req.ContentLength))
-			require.Equal(t, "\"test body\"\n", string(bodyContent))
+			require.EqualT(t, "\"test body\"\n", string(bodyContent))
 		},
 	}
 
@@ -742,5 +742,5 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := res.(string)
-	require.Equal(t, "test result", actual)
+	require.EqualT(t, "test result", actual)
 }

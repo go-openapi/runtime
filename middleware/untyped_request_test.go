@@ -67,7 +67,7 @@ func TestUntypedFileUpload(t *testing.T) {
 	assert.IsType(t, runtime.File{}, data["file"])
 	file := data["file"].(runtime.File)
 	require.NotNil(t, file.Header)
-	assert.Equal(t, "plain-jane.txt", file.Header.Filename)
+	assert.EqualT(t, "plain-jane.txt", file.Header.Filename)
 
 	bb, err := io.ReadAll(file.Data)
 	require.NoError(t, err)
@@ -158,7 +158,7 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 	assert.IsType(t, runtime.File{}, data["file"])
 	file := data["file"].(runtime.File)
 	assert.NotNil(t, file.Header)
-	assert.Equal(t, "plain-jane.txt", file.Header.Filename)
+	assert.EqualT(t, "plain-jane.txt", file.Header.Filename)
 
 }
 

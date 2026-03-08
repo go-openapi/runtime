@@ -107,7 +107,7 @@ func doCheckWithContext(logger logger.Logger) func(*testing.T) {
 		request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 		require.NoError(t, err)
 		mw.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
 	}
 }
 

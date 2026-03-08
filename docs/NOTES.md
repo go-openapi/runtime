@@ -3,7 +3,7 @@
 **New with this release**:
 
 * upgraded to `go1.24` and modernized the code base accordingly
-* updated all dependencies, and removed an noticable indirect dependency (e.g. `mailru/easyjson`)
+* updated all dependencies, and removed an noticeable indirect dependency (e.g. `mailru/easyjson`)
 * **breaking change** no longer imports `opentracing-go` (#365).
     * the `WithOpentracing()` method now returns an opentelemetry transport
     * for users who can't transition to opentelemetry, the previous behavior

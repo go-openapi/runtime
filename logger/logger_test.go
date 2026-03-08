@@ -10,5 +10,5 @@ import (
 )
 
 func TestLogger(t *testing.T) {
-	require.False(t, DebugEnabled())
+	require.FalseT(t, DebugEnabled())
 }

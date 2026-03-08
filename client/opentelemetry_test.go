@@ -120,9 +120,9 @@ func assertOpenTelemetrySubmit(t *testing.T, operation *runtime.ClientOperation,
 	}
 
 	span := spans[0]
-	assert.Equal(t, "getCluster", span.Name)
-	assert.Equal(t, "go-openapi", span.InstrumentationScope.Name)
-	assert.Equal(t, codes.Error, span.Status.Code)
+	assert.EqualT(t, "getCluster", span.Name)
+	assert.EqualT(t, "go-openapi", span.InstrumentationScope.Name)
+	assert.EqualT(t, codes.Error, span.Status.Code)
 	assert.Equal(t, []attribute.KeyValue{
 		attribute.String("net.peer.name", "remote_host"),
 		attribute.String("http.route", "/kubernetes-clusters/{cluster_id}"),

@@ -27,7 +27,7 @@ func TestSecurityMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		mw.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+		assert.EqualT(t, http.StatusUnauthorized, recorder.Code)
 	})
 
 	t.Run("with wrong password", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestSecurityMiddleware(t *testing.T) {
 		request.SetBasicAuth("admin", "wrong")
 
 		mw.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+		assert.EqualT(t, http.StatusUnauthorized, recorder.Code)
 		assert.NotEmpty(t, recorder.Header().Get("WWW-Authenticate"))
 	})
 
@@ -48,7 +48,7 @@ func TestSecurityMiddleware(t *testing.T) {
 		request.SetBasicAuth("admin", "admin")
 
 		mw.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
 	})
 
 	t.Run("with unauthenticated path", func(t *testing.T) {
@@ -57,6 +57,6 @@ func TestSecurityMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		mw.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
 	})
 }

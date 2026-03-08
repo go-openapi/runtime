@@ -64,27 +64,27 @@ func TestUntypedAPIRegistrations(t *testing.T) {
 	assert.NotEmpty(t, api.authenticators)
 
 	_, ok := api.authenticators["basic"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	_, ok = api.consumers["application/yada"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	_, ok = api.producers["application/yada-2"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	_, ok = api.consumers["application/json"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	_, ok = api.producers["application/json"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	_, ok = api.operations["GET"]["/{someId}"]
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 
 	authorizer := api.Authorizer()
 	assert.NotNil(t, authorizer)
 
 	h, ok := api.OperationHandlerFor("get", "/{someId}")
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.NotNil(t, h)
 
 	_, ok = api.OperationHandlerFor("doesntExist", "/{someId}")
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 }
 
 func TestUntypedAppValidation(t *testing.T) {
@@ -190,28 +190,28 @@ func TestUntypedAppValidation(t *testing.T) {
 	api1 := NewAPI(spec)
 	err = api1.Validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [application/x-yaml] consumes registrations", err.Error())
+	assert.EqualT(t, "missing [application/x-yaml] consumes registrations", err.Error())
 
 	api1.RegisterConsumer("application/x-yaml", new(stubConsumer))
 	err = api1.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [application/x-yaml] produces registrations", err.Error())
+	assert.EqualT(t, "missing [application/x-yaml] produces registrations", err.Error())
 
 	api1.RegisterProducer("application/x-yaml", new(stubProducer))
 	err = api1.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [GET /] operation registrations", err.Error())
+	assert.EqualT(t, "missing [GET /] operation registrations", err.Error())
 
 	api1.RegisterOperation("get", "/", new(stubOperationHandler))
 	err = api1.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [apiKey, basic] auth scheme registrations", err.Error())
+	assert.EqualT(t, "missing [apiKey, basic] auth scheme registrations", err.Error())
 
 	api1.RegisterAuth("basic", stubAutenticator())
 	api1.RegisterAuth("apiKey", stubAutenticator())
 	err = api1.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [apiKey, basic] security definitions registrations", err.Error())
+	assert.EqualT(t, "missing [apiKey, basic] security definitions registrations", err.Error())
 
 	api3 := NewAPI(validSpec)
 	api3.RegisterConsumer("application/x-yaml", new(stubConsumer))
@@ -224,19 +224,19 @@ func TestUntypedAppValidation(t *testing.T) {
 	api3.RegisterConsumer("application/something", new(stubConsumer))
 	err = api3.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing from spec file [application/something] consumes", err.Error())
+	assert.EqualT(t, "missing from spec file [application/something] consumes", err.Error())
 
 	api2 := NewAPI(spec)
 	api2.RegisterConsumer("application/something", new(stubConsumer))
 	err = api2.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [application/x-yaml] consumes registrations\nmissing from spec file [application/something] consumes", err.Error())
+	assert.EqualT(t, "missing [application/x-yaml] consumes registrations\nmissing from spec file [application/something] consumes", err.Error())
 	api2.RegisterConsumer("application/x-yaml", new(stubConsumer))
 	delete(api2.consumers, "application/something")
 	api2.RegisterProducer("application/something", new(stubProducer))
 	err = api2.validate()
 	require.Error(t, err)
-	assert.Equal(t, "missing [application/x-yaml] produces registrations\nmissing from spec file [application/something] produces", err.Error())
+	assert.EqualT(t, "missing [application/x-yaml] produces registrations\nmissing from spec file [application/something] produces", err.Error())
 	delete(api2.producers, "application/something")
 	api2.RegisterProducer("application/x-yaml", new(stubProducer))
 
@@ -274,7 +274,7 @@ func TestUntypedAppValidation(t *testing.T) {
 		return true, nil, errors.Unauthenticated("authenticator")
 	})
 	ok, p, err := authenticator.Authenticate("hello")
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	require.NoError(t, err)
 	assert.Equal(t, "hello", p)
 }

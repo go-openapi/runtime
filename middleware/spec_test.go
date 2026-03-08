@@ -30,15 +30,15 @@ func TestServeSpecMiddleware(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
-			assert.Equal(t, http.StatusOK, recorder.Code)
+			assert.EqualT(t, http.StatusOK, recorder.Code)
 
 			responseHeaders := recorder.Result().Header
 			responseContentType := responseHeaders.Get("Content-Type")
-			assert.Equal(t, applicationJSON, responseContentType)
+			assert.EqualT(t, applicationJSON, responseContentType)
 
 			responseBody := recorder.Body
 			require.NotNil(t, responseBody)
-			require.JSONEq(t, string(spec.Raw()), responseBody.String())
+			require.JSONEqT(t, string(spec.Raw()), responseBody.String())
 		})
 
 		t.Run("returns 404 when no next handler", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestServeSpecMiddleware(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
-			assert.Equal(t, http.StatusNotFound, recorder.Code)
+			assert.EqualT(t, http.StatusNotFound, recorder.Code)
 		})
 
 		t.Run("forwards to next handler for other url", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestServeSpecMiddleware(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
-			assert.Equal(t, http.StatusOK, recorder.Code)
+			assert.EqualT(t, http.StatusOK, recorder.Code)
 		})
 	})
 
@@ -78,7 +78,7 @@ func TestServeSpecMiddleware(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
-			assert.Equal(t, http.StatusOK, recorder.Code)
+			assert.EqualT(t, http.StatusOK, recorder.Code)
 		})
 
 		t.Run("should not find spec there", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestServeSpecMiddleware(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
-			assert.Equal(t, http.StatusNotFound, recorder.Code)
+			assert.EqualT(t, http.StatusNotFound, recorder.Code)
 		})
 	})
 }

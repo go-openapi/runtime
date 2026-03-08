@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 )
 
-// PetStore20YAML yaml doc for swagger 2.0 pet store
+// PetStore20YAML [yaml] doc for swagger 2.0 pet store.
 const PetStore20YAML = `swagger: '2.0'
 info:
   version: '1.0.0'
@@ -164,7 +164,7 @@ definitions:
         type: string
 `
 
-// PetStore20 json doc for swagger 2.0 pet store
+// PetStore20 json doc for swagger 2.0 pet store.
 const PetStore20 = `{
   "swagger": "2.0",
   "info": {
@@ -444,7 +444,7 @@ const PetStore20 = `{
 }
 `
 
-// RootPetStore20 json doc for swagger 2.0 pet store at /
+// RootPetStore20 json doc for swagger 2.0 pet store at /.
 const RootPetStore20 = `{
   "swagger": "2.0",
   "info": {
@@ -717,13 +717,13 @@ const RootPetStore20 = `{
 }
 `
 
-// PetStoreJSONMessage json raw message for Petstore20
+// PetStoreJSONMessage json raw message for Petstore20.
 var PetStoreJSONMessage = json.RawMessage([]byte(PetStore20))
 
-// RootPetStoreJSONMessage json raw message for Petstore20
+// RootPetStoreJSONMessage json raw message for Petstore20.
 var RootPetStoreJSONMessage = json.RawMessage([]byte(RootPetStore20))
 
-// InvalidJSON invalid swagger 2.0 spec in JSON
+// InvalidJSON invalid swagger 2.0 spec in JSON.
 const InvalidJSON = `{
   "apiVersion": "1.0.0",
   "apis": [
@@ -790,5 +790,5 @@ const InvalidJSON = `{
 }
 `
 
-// InvalidJSONMessage json raw message for invalid json
+// InvalidJSONMessage json raw message for invalid json.
 var InvalidJSONMessage = json.RawMessage([]byte(InvalidJSON))

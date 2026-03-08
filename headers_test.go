@@ -42,9 +42,9 @@ func TestParseContentType(t *testing.T) {
 		} else {
 			require.Error(t, err, "input: %q", v.hdr)
 			assert.IsTypef(t, &errors.ParseError{}, err, "input: %q", v.hdr)
-			assert.Equal(t, v.err.Error(), err.Error(), "input: %q", v.hdr)
+			assert.EqualT(t, v.err.Error(), err.Error(), "input: %q", v.hdr)
 		}
-		assert.Equal(t, v.mt, ct, "input: %q", v.hdr)
-		assert.Equal(t, v.cs, cs, "input: %q", v.hdr)
+		assert.EqualT(t, v.mt, ct, "input: %q", v.hdr)
+		assert.EqualT(t, v.cs, cs, "input: %q", v.hdr)
 	}
 }

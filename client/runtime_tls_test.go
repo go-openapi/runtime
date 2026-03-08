@@ -42,7 +42,7 @@ func TestRuntimeTLSOptions(t *testing.T) {
 		require.NotNil(t, cfg)
 		assert.Len(t, cfg.Certificates, 1)
 		assert.NotNil(t, cfg.RootCAs)
-		assert.Equal(t, fixtures.Subject, cfg.ServerName)
+		assert.EqualT(t, fixtures.Subject, cfg.ServerName)
 	})
 
 	t.Run("with loaded TLS material", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestRuntimeTLSOptions(t *testing.T) {
 			cfg, err := TLSClientAuth(opts)
 			require.NoError(t, err)
 			require.NotNil(t, cfg)
-			assert.True(t, cfg.InsecureSkipVerify)
+			assert.TrueT(t, cfg.InsecureSkipVerify)
 			assert.NotNil(t, cfg.VerifyPeerCertificate)
 		})
 	})
@@ -179,7 +179,7 @@ func TestRuntimeManualCertificateValidation(t *testing.T) {
 	require.NotEmpty(t, resp)
 	assert.IsType(t, []task{}, resp)
 
-	assert.Truef(t, certVerifyCalled, "the client cert verification has not been called")
+	assert.TrueTf(t, certVerifyCalled, "the client cert verification has not been called")
 	assert.Equal(t, result, received)
 }
 
@@ -262,7 +262,7 @@ type (
 	}
 )
 
-// newTLSFixtures loads TLS material for testing
+// newTLSFixtures loads TLS material for testing.
 func newTLSFixtures(t testing.TB) *tlsFixtures {
 	const subject = "somewhere"
 

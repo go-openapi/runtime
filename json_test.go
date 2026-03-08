@@ -30,8 +30,8 @@ func TestJSONConsumer(t *testing.T) {
 	}
 	err := cons.Consume(bytes.NewBufferString(consProdJSON), &data)
 	require.NoError(t, err)
-	assert.Equal(t, "Somebody", data.Name)
-	assert.Equal(t, 1, data.ID)
+	assert.EqualT(t, "Somebody", data.Name)
+	assert.EqualT(t, 1, data.ID)
 
 	err = cons.Consume(new(eofRdr), &data)
 	require.Error(t, err)
@@ -47,5 +47,5 @@ func TestJSONProducer(t *testing.T) {
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
 	require.NoError(t, err)
-	assert.Equal(t, consProdJSON+"\n", rw.Body.String())
+	assert.EqualT(t, consProdJSON+"\n", rw.Body.String())
 }

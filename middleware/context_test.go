@@ -50,12 +50,12 @@ func assertAPIError(t *testing.T, wantCode int, err error) {
 	require.Error(t, err)
 
 	ce, ok := err.(*apierrors.CompositeError)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.NotEmpty(t, ce.Errors)
 
 	ae, ok := ce.Errors[0].(apierrors.Error)
-	assert.True(t, ok)
-	assert.Equal(t, wantCode, int(ae.Code()))
+	assert.TrueT(t, ok)
+	assert.EqualT(t, wantCode, int(ae.Code()))
 }
 
 func TestContentType_Issue264(t *testing.T) {
@@ -73,7 +73,7 @@ func TestContentType_Issue264(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 }
 
 func TestContentType_Issue172(t *testing.T) {
@@ -92,13 +92,13 @@ func TestContentType_Issue172(t *testing.T) {
 	request.Header.Add("Accept", "application/json+special")
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusNotAcceptable, recorder.Code)
+	assert.EqualT(t, http.StatusNotAcceptable, recorder.Code)
 
 	// acceptable as defined as default by the API (not explicit in the spec)
 	request.Header.Add("Accept", applicationJSON)
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 }
 
 func TestContentType_Issue174(t *testing.T) {
@@ -116,7 +116,7 @@ func TestContentType_Issue174(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 }
 
 const (
@@ -142,7 +142,7 @@ func TestServe(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
 	})
 
 	t.Run("should not find UI there", func(t *testing.T) {
@@ -151,7 +151,7 @@ func TestServe(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusNotFound, recorder.Code)
+		assert.EqualT(t, http.StatusNotFound, recorder.Code)
 	})
 
 	t.Run("should find UI here", func(t *testing.T) {
@@ -160,12 +160,12 @@ func TestServe(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		handler.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
 
 		htmlResponse := recorder.Body.String()
-		assert.Containsf(t, htmlResponse, "<title>Swagger Petstore</title>", "should default to the API's title")
-		assert.Containsf(t, htmlResponse, "<redoc", "should default to Redoc UI")
-		assert.Containsf(t, htmlResponse, "spec-url='/swagger.json'>", "should default to /swagger.json spec document")
+		assert.StringContainsTf(t, htmlResponse, "<title>Swagger Petstore</title>", "should default to the API's title")
+		assert.StringContainsTf(t, htmlResponse, "<redoc", "should default to Redoc UI")
+		assert.StringContainsTf(t, htmlResponse, "spec-url='/swagger.json'>", "should default to /swagger.json spec document")
 	})
 }
 
@@ -195,10 +195,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Containsf(t, htmlResponse, "<redoc", "should default to Redoc UI")
+				assert.StringContainsTf(t, htmlResponse, "<redoc", "should default to Redoc UI")
 			})
 
 			t.Run("should find spec", func(t *testing.T) {
@@ -207,7 +207,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 
@@ -220,10 +220,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Contains(t, htmlResponse, fmt.Sprintf("<redoc spec-url='%s'></redoc>", alternateSpecPath))
+				assert.StringContainsT(t, htmlResponse, fmt.Sprintf("<redoc spec-url='%s'></redoc>", alternateSpecPath))
 			})
 
 			t.Run("should find spec", func(t *testing.T) {
@@ -232,7 +232,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 	})
@@ -247,10 +247,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Contains(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(defaultSpecPath, `/`, `\/`)))
+				assert.StringContainsT(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(defaultSpecPath, `/`, `\/`)))
 			})
 
 			t.Run("should find spec", func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 
@@ -272,10 +272,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Contains(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(alternateSpecPath, `/`, `\/`)))
+				assert.StringContainsT(t, htmlResponse, fmt.Sprintf(`url: '%s',`, strings.ReplaceAll(alternateSpecPath, `/`, `\/`)))
 			})
 
 			t.Run("should find spec", func(t *testing.T) {
@@ -284,7 +284,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 	})
@@ -299,10 +299,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Contains(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", defaultSpecPath))
+				assert.StringContainsT(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", defaultSpecPath))
 			})
 
 			t.Run("should find spec", func(t *testing.T) {
@@ -311,7 +311,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 
@@ -324,10 +324,10 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 
 				htmlResponse := recorder.Body.String()
-				assert.Contains(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", alternateSpecPath))
+				assert.StringContainsT(t, htmlResponse, fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", alternateSpecPath))
 			})
 			t.Run("should find spec", func(t *testing.T) {
 				request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, alternateSpecURL, nil)
@@ -335,7 +335,7 @@ func TestServeWithUIs(t *testing.T) {
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(recorder, request)
-				assert.Equal(t, http.StatusOK, recorder.Code)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
 			})
 		})
 	})
@@ -351,7 +351,7 @@ func TestContextAuthorize(t *testing.T) {
 	request = request.WithContext(stdcontext.Background())
 
 	ri, reqWithCtx, ok := ctx.RouteInfo(request)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	require.NotNil(t, reqWithCtx)
 
 	request = reqWithCtx
@@ -383,7 +383,7 @@ func TestContextAuthorize(t *testing.T) {
 	request = reqWithCtx
 
 	v, ok = request.Context().Value(ctxSecurityPrincipal).(string)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.Equal(t, "admin", v)
 
 	// Once the request context contains the principal the authentication
@@ -405,7 +405,7 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 	request = request.WithContext(stdcontext.Background())
 
 	ri, reqWithCtx, ok := ctx.RouteInfo(request)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	require.NotNil(t, reqWithCtx)
 
 	request = reqWithCtx
@@ -426,8 +426,8 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 	p, reqWithCtx, err = ctx.Authorize(request, ri)
 	require.Error(t, err)
 	ae, ok := err.(apierrors.Error)
-	require.Truef(t, ok, "expected an apierrors.Error, but got %T", err)
-	assert.Equal(t, http.StatusForbidden, int(ae.Code()))
+	require.TrueTf(t, ok, "expected an apierrors.Error, but got %T", err)
+	assert.EqualT(t, http.StatusForbidden, int(ae.Code()))
 	assert.Nil(t, p)
 	assert.Nil(t, reqWithCtx)
 }
@@ -447,7 +447,7 @@ func TestContextNegotiateContentType(t *testing.T) {
 	ri, request, _ := ctx.RouteInfo(request)
 
 	res := NegotiateContentType(request, ri.Produces, "text/plain")
-	assert.Equal(t, ri.Produces[0], res)
+	assert.EqualT(t, ri.Produces[0], res)
 }
 
 func TestContextBindValidRequest(t *testing.T) {
@@ -517,7 +517,7 @@ func TestContextBindAndValidate(t *testing.T) {
 	require.Error(t, result)
 
 	v, ok := request.Context().Value(ctxBoundParams).(*validation)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.NotNil(t, v)
 
 	dd, rCtx, rr := ctx.BindAndValidate(request, ri)
@@ -541,12 +541,12 @@ func TestContextRender(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{"name": "hello"})
-	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.JSONEq(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
+	assert.EqualT(t, http.StatusOK, recorder.Code)
+	assert.JSONEqT(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, errors.New("this went wrong"))
-	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+	assert.EqualT(t, http.StatusInternalServerError, recorder.Code)
 
 	// recorder = httptest.NewRecorder()
 	// assert.Panics(t, func() { ctx.Respond(recorder, request, []string{ct}, ri, map[int]interface{}{1: "hello"}) })
@@ -565,12 +565,12 @@ func TestContextRender(t *testing.T) {
 
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, map[string]any{"name": "hello"})
-	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.JSONEq(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
+	assert.EqualT(t, http.StatusOK, recorder.Code)
+	assert.JSONEqT(t, "{\"name\":\"hello\"}\n", recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	ctx.Respond(recorder, request, []string{ct}, ri, errors.New("this went wrong"))
-	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+	assert.EqualT(t, http.StatusInternalServerError, recorder.Code)
 
 	// recorder = httptest.NewRecorder()
 	// assert.Panics(t, func() { ctx.Respond(recorder, request, []string{ct}, ri, map[int]interface{}{1: "hello"}) })
@@ -584,7 +584,7 @@ func TestContextRender(t *testing.T) {
 	require.NoError(t, err)
 	ri, request, _ = ctx.RouteInfo(request)
 	ctx.Respond(recorder, request, ri.Produces, ri, nil)
-	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.EqualT(t, http.StatusNoContent, recorder.Code)
 }
 
 func TestContextValidResponseFormat(t *testing.T) {
@@ -599,21 +599,21 @@ func TestContextValidResponseFormat(t *testing.T) {
 
 	// check there's nothing there
 	cached, ok := request.Context().Value(ctxResponseFormat).(string)
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 	assert.Empty(t, cached)
 
 	// trigger the parse
 	mt, request := ctx.ResponseFormat(request, []string{ct})
-	assert.Equal(t, ct, mt)
+	assert.EqualT(t, ct, mt)
 
 	// check it was cached
 	cached, ok = request.Context().Value(ctxResponseFormat).(string)
-	assert.True(t, ok)
-	assert.Equal(t, ct, cached)
+	assert.TrueT(t, ok)
+	assert.EqualT(t, ct, cached)
 
 	// check if the cast works and fetch from cache too
 	mt, _ = ctx.ResponseFormat(request, []string{ct})
-	assert.Equal(t, ct, mt)
+	assert.EqualT(t, ct, mt)
 }
 
 func TestContextInvalidResponseFormat(t *testing.T) {
@@ -629,7 +629,7 @@ func TestContextInvalidResponseFormat(t *testing.T) {
 
 	// check there's nothing there
 	cached, ok := request.Context().Value(ctxResponseFormat).(string)
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 	assert.Empty(t, cached)
 
 	// trigger the parse
@@ -638,7 +638,7 @@ func TestContextInvalidResponseFormat(t *testing.T) {
 
 	// check it was cached
 	cached, ok = request.Context().Value(ctxResponseFormat).(string)
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 	assert.Empty(t, cached)
 
 	// check if the cast works and fetch from cache too
@@ -660,7 +660,7 @@ func TestContextValidRoute(t *testing.T) {
 	assert.Nil(t, cached)
 
 	matched, rCtx, ok := ctx.RouteInfo(request)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.NotNil(t, matched)
 	assert.NotNil(t, rCtx)
 	assert.NotEqual(t, request, rCtx)
@@ -669,10 +669,10 @@ func TestContextValidRoute(t *testing.T) {
 
 	// check it was cached
 	_, ok = request.Context().Value(ctxMatchedRoute).(*MatchedRoute)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 
 	matched, rCtx, ok = ctx.RouteInfo(request)
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	assert.NotNil(t, matched)
 	assert.Equal(t, request, rCtx)
 }
@@ -690,7 +690,7 @@ func TestContextInvalidRoute(t *testing.T) {
 	assert.Nil(t, cached)
 
 	matched, rCtx, ok := ctx.RouteInfo(request)
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 	assert.Nil(t, matched)
 	assert.Nil(t, rCtx)
 
@@ -699,7 +699,7 @@ func TestContextInvalidRoute(t *testing.T) {
 	assert.Nil(t, cached)
 
 	matched, rCtx, ok = ctx.RouteInfo(request)
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 	assert.Nil(t, matched)
 	assert.Nil(t, rCtx)
 }
@@ -719,7 +719,7 @@ func TestContextValidContentType(t *testing.T) {
 	// trigger the parse
 	mt, _, rCtx, err := ctx.ContentType(request)
 	require.NoError(t, err)
-	assert.Equal(t, ct, mt)
+	assert.EqualT(t, ct, mt)
 	assert.NotNil(t, rCtx)
 	assert.NotEqual(t, request, rCtx)
 
@@ -732,7 +732,7 @@ func TestContextValidContentType(t *testing.T) {
 	// check if the cast works and fetch from cache too
 	mt, _, rCtx, err = ctx.ContentType(request)
 	require.NoError(t, err)
-	assert.Equal(t, ct, mt)
+	assert.EqualT(t, ct, mt)
 	assert.Equal(t, request, rCtx)
 }
 

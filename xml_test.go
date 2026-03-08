@@ -24,8 +24,8 @@ func TestXMLConsumer(t *testing.T) {
 	}
 	err := cons.Consume(bytes.NewBufferString(consProdXML), &data)
 	require.NoError(t, err)
-	assert.Equal(t, "Somebody", data.Name)
-	assert.Equal(t, 1, data.ID)
+	assert.EqualT(t, "Somebody", data.Name)
+	assert.EqualT(t, 1, data.ID)
 }
 
 func TestXMLProducer(t *testing.T) {
@@ -39,5 +39,5 @@ func TestXMLProducer(t *testing.T) {
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
 	require.NoError(t, err)
-	assert.Equal(t, consProdXML, rw.Body.String())
+	assert.EqualT(t, consProdXML, rw.Body.String())
 }

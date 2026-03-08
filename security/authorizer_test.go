@@ -29,7 +29,7 @@ func TestAuthenticator(t *testing.T) {
 		t.Run("authenticator should work on *http.Request", func(t *testing.T) {
 			isAuth, user, err := auth.Authenticate(r)
 			require.NoError(t, err)
-			assert.True(t, isAuth)
+			assert.TrueT(t, isAuth)
 			assert.Equal(t, "test", user)
 		})
 
@@ -38,14 +38,14 @@ func TestAuthenticator(t *testing.T) {
 
 			isAuth, user, err := auth.Authenticate(scoped)
 			require.NoError(t, err)
-			assert.True(t, isAuth)
+			assert.TrueT(t, isAuth)
 			assert.Equal(t, "test", user)
 		})
 
 		t.Run("authenticator should return false on other inputs", func(t *testing.T) {
 			isAuth, user, err := auth.Authenticate("")
 			require.NoError(t, err)
-			assert.False(t, isAuth)
+			assert.FalseT(t, isAuth)
 			assert.Empty(t, user)
 		})
 	})
@@ -58,14 +58,14 @@ func TestAuthenticator(t *testing.T) {
 
 			isAuth, user, err := auth.Authenticate(scoped)
 			require.NoError(t, err)
-			assert.True(t, isAuth)
+			assert.TrueT(t, isAuth)
 			assert.Equal(t, "test", user)
 		})
 
 		t.Run("authenticator should return false on other inputs", func(t *testing.T) {
 			isAuth, user, err := auth.Authenticate("")
 			require.NoError(t, err)
-			assert.False(t, isAuth)
+			assert.FalseT(t, isAuth)
 			assert.Empty(t, user)
 		})
 	})

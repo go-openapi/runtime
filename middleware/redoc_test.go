@@ -22,13 +22,13 @@ func TestRedocMiddleware(t *testing.T) {
 		require.NoError(t, err)
 		recorder := httptest.NewRecorder()
 		redoc.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-		assert.Equal(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
+		assert.EqualT(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
 		var o RedocOpts
 		o.EnsureDefaults()
-		assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
-		assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<redoc spec-url='%s'></redoc>", o.SpecURL))
-		assert.Contains(t, recorder.Body.String(), redocLatest)
+		assert.StringContainsT(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
+		assert.StringContainsT(t, recorder.Body.String(), fmt.Sprintf("<redoc spec-url='%s'></redoc>", o.SpecURL))
+		assert.StringContainsT(t, recorder.Body.String(), redocLatest)
 	})
 
 	t.Run("with alternate path and spec URL", func(t *testing.T) {
@@ -42,8 +42,8 @@ func TestRedocMiddleware(t *testing.T) {
 		require.NoError(t, err)
 		recorder := httptest.NewRecorder()
 		redoc.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-		assert.Contains(t, recorder.Body.String(), "<redoc spec-url='/ui/swagger.json'></redoc>")
+		assert.EqualT(t, http.StatusOK, recorder.Code)
+		assert.StringContainsT(t, recorder.Body.String(), "<redoc spec-url='/ui/swagger.json'></redoc>")
 	})
 
 	t.Run("with custom template", func(t *testing.T) {
@@ -86,8 +86,8 @@ func TestRedocMiddleware(t *testing.T) {
 		require.NoError(t, err)
 		recorder := httptest.NewRecorder()
 		redoc.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-		assert.Contains(t, recorder.Body.String(), "required-props-first=true")
+		assert.EqualT(t, http.StatusOK, recorder.Code)
+		assert.StringContainsT(t, recorder.Body.String(), "required-props-first=true")
 	})
 
 	t.Run("edge cases", func(t *testing.T) {

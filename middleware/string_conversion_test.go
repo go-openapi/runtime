@@ -104,11 +104,11 @@ func TestParamBinding(t *testing.T) {
 
 	err := binder.setFieldValue(fld, "some-name", "the name value", true)
 	require.NoError(t, err)
-	assert.Equal(t, "the name value", actual.Name)
+	assert.EqualT(t, "the name value", actual.Name)
 
 	err = binder.setFieldValue(fld, "some-name", "", true)
 	require.NoError(t, err)
-	assert.Equal(t, "some-name", actual.Name)
+	assert.EqualT(t, "some-name", actual.Name)
 
 	IntParamTest(t, "ID", val, 1, 1, func() any { return actual.ID })
 	IntParamTest(t, "ID", val, nil, 0, func() any { return actual.ID })
@@ -146,16 +146,16 @@ func TestParamBinding(t *testing.T) {
 	for _, tv := range evaluatesAsTrue {
 		err = binder.setFieldValue(confirmedField, true, tv, true)
 		require.NoError(t, err)
-		assert.True(t, actual.Confirmed)
+		assert.TrueT(t, actual.Confirmed)
 	}
 
 	err = binder.setFieldValue(confirmedField, true, "", true)
 	require.NoError(t, err)
-	assert.True(t, actual.Confirmed)
+	assert.TrueT(t, actual.Confirmed)
 
 	err = binder.setFieldValue(confirmedField, true, "0", true)
 	require.NoError(t, err)
-	assert.False(t, actual.Confirmed)
+	assert.FalseT(t, actual.Confirmed)
 
 	pName = "Timestamp"
 	timeField := val.FieldByName(pName)
@@ -280,10 +280,10 @@ func TestSliceConversion(t *testing.T) {
 	categories, custom, err := binder.readFormattedSliceFieldValue(cData, categoriesField)
 	require.NoError(t, err)
 	assert.EqualValues(t, sliced, actual.Categories)
-	assert.True(t, custom)
+	assert.TrueT(t, custom)
 	assert.Empty(t, categories)
 	categories, custom, err = binder.readFormattedSliceFieldValue("", categoriesField)
 	require.Error(t, err)
-	assert.True(t, custom)
+	assert.TrueT(t, custom)
 	assert.Empty(t, categories)
 }

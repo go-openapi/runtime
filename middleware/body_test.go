@@ -44,7 +44,7 @@ func TestBindRequest_BodyValidation(t *testing.T) {
 	req.Header.Set("Content-Type", runtime.JSONMime)
 
 	ri, rCtx, ok := ctx.RouteInfo(req)
-	require.True(t, ok)
+	require.TrueT(t, ok)
 	req = rCtx
 
 	err = ctx.BindValidRequest(req, ri, rbn(func(r *http.Request, _ *MatchedRoute) error {
@@ -69,7 +69,7 @@ func TestBindRequest_DeleteNoBody(t *testing.T) {
 
 	req.Header.Set("Accept", "*/*")
 	ri, rCtx, ok := ctx.RouteInfo(req)
-	require.True(t, ok)
+	require.TrueT(t, ok)
 	req = rCtx
 
 	err = ctx.BindValidRequest(req, ri, rbn(func(_ *http.Request, _ *MatchedRoute) error {
@@ -85,7 +85,7 @@ func TestBindRequest_DeleteNoBody(t *testing.T) {
 	req.ContentLength = 1
 
 	ri, rCtx, ok = ctx.RouteInfo(req)
-	require.True(t, ok)
+	require.TrueT(t, ok)
 	req = rCtx
 
 	err = ctx.BindValidRequest(req, ri, rbn(func(r *http.Request, _ *MatchedRoute) error {

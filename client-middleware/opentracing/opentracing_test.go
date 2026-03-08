@@ -110,7 +110,7 @@ func testSubmit(t *testing.T, operation *runtime.ClientOperation, tracer *mocktr
 
 	if expectedSpans == 1 {
 		span := tracer.FinishedSpans()[0]
-		assert.Equal(t, "getCluster", span.OperationName)
+		assert.EqualT(t, "getCluster", span.OperationName)
 		assert.Equal(t, map[string]any{
 			"component":        "go-openapi",
 			"http.method":      "GET",

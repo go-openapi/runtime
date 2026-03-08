@@ -22,11 +22,11 @@ func TestConvertOptions(t *testing.T) {
 			}
 			out := toCommonUIOptions(in)
 
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 
 		t.Run("from RapiDocOpts", func(t *testing.T) {
@@ -40,11 +40,11 @@ func TestConvertOptions(t *testing.T) {
 			}
 			out := toCommonUIOptions(in)
 
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 
 		t.Run("from SwaggerUIOpts", func(t *testing.T) {
@@ -58,11 +58,11 @@ func TestConvertOptions(t *testing.T) {
 			}
 			out := toCommonUIOptions(in)
 
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 	})
 
@@ -78,31 +78,31 @@ func TestConvertOptions(t *testing.T) {
 		t.Run("to RedocOpts", func(t *testing.T) {
 			var out RedocOpts
 			fromCommonToAnyOptions(in, &out)
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 
 		t.Run("to RapiDocOpts", func(t *testing.T) {
 			var out RapiDocOpts
 			fromCommonToAnyOptions(in, &out)
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 
 		t.Run("to SwaggerUIOpts", func(t *testing.T) {
 			var out SwaggerUIOpts
 			fromCommonToAnyOptions(in, &out)
-			require.Equal(t, "a", out.BasePath)
-			require.Equal(t, "b", out.Path)
-			require.Equal(t, "c", out.SpecURL)
-			require.Equal(t, "d", out.Template)
-			require.Equal(t, "e", out.Title)
+			require.EqualT(t, "a", out.BasePath)
+			require.EqualT(t, "b", out.Path)
+			require.EqualT(t, "c", out.SpecURL)
+			require.EqualT(t, "d", out.Template)
+			require.EqualT(t, "e", out.Title)
 		})
 	})
 }

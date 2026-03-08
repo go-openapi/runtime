@@ -281,7 +281,7 @@ func TestRouter_Lookup_withManyRoutes(t *testing.T) {
 		data, params, found := router.Lookup(r.Key)
 		assert.Equal(t, r.Value, data)
 		assert.Empty(t, params)
-		assert.True(t, found)
+		assert.TrueT(t, found)
 	}
 }
 
@@ -466,7 +466,7 @@ func TestRouter_Build_withoutSizeHint(t *testing.T) {
 		actual := r.SizeHint
 		expected := -1
 
-		assert.Equalf(t, expected, actual, `before Build; Router.SizeHint => (%[1]T=%#[1]v); want (%[2]T=%#[2]v)`, actual, expected)
+		assert.EqualTf(t, expected, actual, `before Build; Router.SizeHint => (%[1]T=%#[1]v); want (%[2]T=%#[2]v)`, actual, expected)
 		records := make([]denco.Record, len(v.keys))
 		for i, k := range v.keys {
 			records[i] = denco.Record{Key: k, Value: "value"}
@@ -474,7 +474,7 @@ func TestRouter_Build_withoutSizeHint(t *testing.T) {
 		require.NoError(t, r.Build(records))
 		actual = r.SizeHint
 		expected = v.sizeHint
-		assert.Equalf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
+		assert.EqualTf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
 	}
 }
 
@@ -500,7 +500,7 @@ func TestRouter_Build_withSizeHint(t *testing.T) {
 		require.NoError(t, r.Build(records))
 		actual := r.SizeHint
 		expected := v.expect
-		assert.Equalf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
+		assert.EqualTf(t, expected, actual, `Router.Build(%#v); Router.SizeHint => (%[2]T=%#[2]v); want (%[3]T=%#[3]v)`, records, actual, expected)
 	}
 }
 
@@ -519,6 +519,6 @@ func TestParams_Get(t *testing.T) {
 	} {
 		actual := params.Get(v.value)
 		expected := v.expected
-		assert.Equal(t, expected, actual, "Params.Get(%q) => %#v, want %#v", v.value, actual, expected)
+		assert.EqualT(t, expected, actual, "Params.Get(%q) => %#v, want %#v", v.value, actual, expected)
 	}
 }
