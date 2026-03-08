@@ -18,15 +18,15 @@ func TestValidateFile(t *testing.T) {
 
 	result := validator.Validate("str")
 	require.Len(t, result.Errors, 1)
-	assert.Equal(
+	assert.EqualT(
 		t,
 		`f in formData must be of type file: "string"`,
 		result.Errors[0].Error(),
 	)
 
 	result = validator.Validate(&File{})
-	assert.True(t, result.IsValid())
+	assert.TrueT(t, result.IsValid())
 
 	result = validator.Validate(File{})
-	assert.True(t, result.IsValid())
+	assert.TrueT(t, result.IsValid())
 }

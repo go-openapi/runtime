@@ -259,7 +259,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, "", res)
 	actual := res.(string)
-	assert.Equal(t, result, actual)
+	assert.EqualT(t, result, actual)
 }
 
 func TestRuntime_CSVCanary(t *testing.T) {
@@ -304,7 +304,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 	require.NoError(t, err)
 	assert.IsType(t, bytes.Buffer{}, res)
 	actual := res.(bytes.Buffer)
-	assert.Equal(t, result, actual.String())
+	assert.EqualT(t, result, actual.String())
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -327,8 +327,8 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		if req.URL.Scheme != schemeHTTPS {
 			return nil, errors.New("this was not a https request")
 		}
-		assert.Equal(t, "localhost:3245", req.Host)
-		assert.Equal(t, "localhost:3245", req.URL.Host)
+		assert.EqualT(t, "localhost:3245", req.Host)
+		assert.EqualT(t, "localhost:3245", req.URL.Host)
 
 		var resp http.Response
 		resp.StatusCode = http.StatusOK
@@ -641,7 +641,7 @@ func TestRuntime_DebugValue(t *testing.T) {
 		t.Setenv("DEBUG", "")
 
 		runtime := New("", "/", []string{schemeHTTPS})
-		assert.False(t, runtime.Debug)
+		assert.FalseT(t, runtime.Debug)
 	})
 
 	t.Run("non-Empty DEBUG means Debug is True", func(t *testing.T) {
@@ -649,28 +649,28 @@ func TestRuntime_DebugValue(t *testing.T) {
 			t.Setenv("DEBUG", "1")
 
 			runtime := New("", "/", []string{schemeHTTPS})
-			assert.True(t, runtime.Debug)
+			assert.TrueT(t, runtime.Debug)
 		})
 
 		t.Run("with boolean value true", func(t *testing.T) {
 			t.Setenv("DEBUG", "true")
 
 			runtime := New("", "/", []string{schemeHTTPS})
-			assert.True(t, runtime.Debug)
+			assert.TrueT(t, runtime.Debug)
 		})
 
 		t.Run("with boolean value false", func(t *testing.T) {
 			t.Setenv("DEBUG", "false")
 
 			runtime := New("", "/", []string{schemeHTTPS})
-			assert.False(t, runtime.Debug)
+			assert.FalseT(t, runtime.Debug)
 		})
 
 		t.Run("with string value ", func(t *testing.T) {
 			t.Setenv("DEBUG", "foo")
 
 			runtime := New("", "/", []string{schemeHTTPS})
-			assert.True(t, runtime.Debug)
+			assert.TrueT(t, runtime.Debug)
 		})
 	})
 }
@@ -678,7 +678,7 @@ func TestRuntime_DebugValue(t *testing.T) {
 func TestRuntime_OverrideScheme(t *testing.T) {
 	runtime := New("", "/", []string{schemeHTTPS})
 	sch := runtime.pickScheme([]string{schemeHTTP})
-	assert.Equal(t, schemeHTTPS, sch)
+	assert.EqualT(t, schemeHTTPS, sch)
 }
 
 func TestRuntime_OverrideClient(t *testing.T) {
@@ -687,7 +687,7 @@ func TestRuntime_OverrideClient(t *testing.T) {
 	var i int
 	runtime.clientOnce.Do(func() { i++ })
 	assert.Equal(t, client, runtime.client)
-	assert.Equal(t, 0, i)
+	assert.EqualT(t, 0, i)
 }
 
 type overrideRoundTripper struct {
@@ -708,7 +708,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 	var i int
 	rt.clientOnce.Do(func() { i++ })
 	assert.Equal(t, client, rt.client)
-	assert.Equal(t, 0, i)
+	assert.EqualT(t, 0, i)
 
 	client2 := new(http.Client)
 	var transport = &overrideRoundTripper{}
@@ -725,7 +725,7 @@ func TestRuntime_OverrideClientOperation(t *testing.T) {
 		}),
 	})
 	require.NoError(t, err)
-	assert.True(t, transport.overridden)
+	assert.TrueT(t, transport.overridden)
 }
 
 func TestRuntime_PreserveTrailingSlash(t *testing.T) {
@@ -807,7 +807,7 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 		}),
 	})
 	require.Error(t, err)
-	assert.Equal(t, `no consumer: "application/x-task"`, err.Error())
+	assert.EqualT(t, `no consumer: "application/x-task"`, err.Error())
 
 	// add the fallback consumer
 	rt.Consumers["*/*"] = rt.Consumers[runtime.DefaultMime]
@@ -1225,12 +1225,12 @@ func testContextTransport(t *testing.T, hasTimeout, expectSigned bool, value str
 		ctx := req.Context()
 
 		t.Run("request context should propagate value", func(t *testing.T) {
-			assert.Equal(t, expectSigned, isContextSigned(ctx, value), "expected the request context to inherit values")
+			assert.EqualT(t, expectSigned, isContextSigned(ctx, value), "expected the request context to inherit values")
 		})
 
 		t.Run(fmt.Sprintf("request context should have a deadline %t", hasTimeout), func(t *testing.T) {
 			_, hasDeadline := ctx.Deadline()
-			assert.Equalf(t, hasTimeout, hasDeadline, "expected request context to have a deadline")
+			assert.EqualTf(t, hasTimeout, hasDeadline, "expected request context to have a deadline")
 		})
 
 		return http.DefaultTransport.RoundTrip(req)
@@ -1243,15 +1243,15 @@ func testDefaultsInTransport(t *testing.T, value string) http.RoundTripper {
 		ctx := req.Context()
 
 		t.Run("request context should propagate value", func(t *testing.T) {
-			assert.True(t, isContextSigned(ctx, value), "expected the request context to inherit values")
+			assert.TrueT(t, isContextSigned(ctx, value), "expected the request context to inherit values")
 		})
 
 		t.Run("request context should have a default deadline", func(t *testing.T) {
 			deadline, hasDeadline := ctx.Deadline()
-			assert.True(t, hasDeadline, "expected request context to have a deadline")
+			assert.TrueT(t, hasDeadline, "expected request context to have a deadline")
 
 			remainingDuration := time.Until(deadline).Seconds()
-			assert.InDeltaf(t, DefaultTimeout.Seconds(), remainingDuration, 1.0, "expected timeout to be set to DefaultTimeout")
+			assert.InDeltaTf(t, DefaultTimeout.Seconds(), remainingDuration, 1.0, "expected timeout to be set to DefaultTimeout")
 		})
 
 		return http.DefaultTransport.RoundTrip(req)
@@ -1262,7 +1262,7 @@ func assertResult(result []task) func(testing.TB, any) {
 	return func(t testing.TB, res any) {
 		assert.IsType(t, []task{}, res)
 		actual, ok := res.([]task)
-		require.True(t, ok)
+		require.TrueT(t, ok)
 		assert.Equal(t, result, actual)
 	}
 }

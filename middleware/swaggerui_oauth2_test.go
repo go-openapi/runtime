@@ -23,14 +23,14 @@ func TestSwaggerUIOAuth2CallbackMiddleware(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		doc.ServeHTTP(recorder, req)
-		require.Equal(t, http.StatusOK, recorder.Code)
-		assert.Equal(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
+		require.EqualT(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
 
 		var o SwaggerUIOpts
 		o.EnsureDefaultsOauth2()
 		htmlResponse := recorder.Body.String()
-		assert.Contains(t, htmlResponse, fmt.Sprintf("<title>%s</title>", o.Title))
-		assert.Contains(t, htmlResponse, `oauth2.auth.schema.get("flow") === "accessCode"`)
+		assert.StringContainsT(t, htmlResponse, fmt.Sprintf("<title>%s</title>", o.Title))
+		assert.StringContainsT(t, htmlResponse, `oauth2.auth.schema.get("flow") === "accessCode"`)
 	})
 
 	t.Run("edge cases", func(t *testing.T) {

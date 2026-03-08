@@ -18,6 +18,6 @@ func TestErrorResponder(t *testing.T) {
 	rec := httptest.NewRecorder()
 	resp.WriteResponse(rec, runtime.JSONProducer())
 
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	require.JSONEq(t, "{\"message\":\"this is the error body\"}\n", rec.Body.String())
+	require.EqualT(t, http.StatusBadRequest, rec.Code)
+	require.JSONEqT(t, "{\"message\":\"this is the error body\"}\n", rec.Body.String())
 }

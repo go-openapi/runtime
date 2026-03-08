@@ -210,7 +210,7 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	assert.Equal(t, age, data["age"])
 	assert.InDelta(t, factor, data["factor"], 1e-6)
 	assert.InDelta(t, score, data["score"], 1e-6)
-	assert.Equal(t, "hello", string(data["picture"].(strfmt.Base64)))
+	assert.EqualT(t, "hello", string(data["picture"].(strfmt.Base64)))
 }
 
 func TestRequestBindingForInvalid(t *testing.T) {
@@ -345,7 +345,7 @@ func TestRequestBindingForValid(t *testing.T) {
 	if data2.Friend == nil {
 		t.Fatal("friend is nil")
 	}
-	assert.Equal(t, *expected2.Friend, *data2.Friend)
+	assert.EqualT(t, *expected2.Friend, *data2.Friend)
 	assert.Equal(t, expected2.Tags, data2.Tags)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`[{"name":"toby","age":32}]`))
@@ -391,8 +391,8 @@ func TestFormUpload(t *testing.T) {
 	data := formRequest{}
 	res := binder.Bind(req, nil, runtime.JSONConsumer(), &data)
 	require.NoError(t, res)
-	assert.Equal(t, "the-name", data.Name)
-	assert.Equal(t, 32, data.Age)
+	assert.EqualT(t, "the-name", data.Name)
+	assert.EqualT(t, 32, data.Age)
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, urlStr, bytes.NewBufferString(`name=%3&age=32`))
 	require.NoError(t, err)
@@ -436,10 +436,10 @@ func TestBindingFileUpload(t *testing.T) {
 
 	data := fileRequest{}
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data.Name)
+	assert.EqualT(t, "the-name", data.Name)
 	assert.NotNil(t, data.File)
 	assert.NotNil(t, data.File.Header)
-	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
+	assert.EqualT(t, "plain-jane.txt", data.File.Header.Filename)
 
 	bb, err := io.ReadAll(data.File.Data)
 	require.NoError(t, err)
@@ -517,7 +517,7 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 
 	data := fileRequest{}
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data.Name)
+	assert.EqualT(t, "the-name", data.Name)
 	assert.Nil(t, data.File.Data)
 	assert.Nil(t, data.File.Header)
 
@@ -536,10 +536,10 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 
 	data = fileRequest{}
 	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
-	assert.Equal(t, "the-name", data.Name)
+	assert.EqualT(t, "the-name", data.Name)
 	assert.NotNil(t, data.File)
 	assert.NotNil(t, data.File.Header)
-	assert.Equal(t, "plain-jane.txt", data.File.Header.Filename)
+	assert.EqualT(t, "plain-jane.txt", data.File.Header.Filename)
 
 	bb, err := io.ReadAll(data.File.Data)
 	require.NoError(t, err)

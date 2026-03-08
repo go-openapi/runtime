@@ -17,16 +17,16 @@ func TestGetOK(t *testing.T) {
 
 	v, hasKey, hasValue := values.GetOK("key1")
 	require.Equal(t, []string{"value1"}, v)
-	require.True(t, hasKey)
-	require.True(t, hasValue)
+	require.TrueT(t, hasKey)
+	require.TrueT(t, hasValue)
 
 	v, hasKey, hasValue = values.GetOK("key2")
 	require.Equal(t, []string{}, v)
-	require.True(t, hasKey)
-	require.False(t, hasValue)
+	require.TrueT(t, hasKey)
+	require.FalseT(t, hasValue)
 
 	v, hasKey, hasValue = values.GetOK("key3")
 	require.Nil(t, v)
-	require.False(t, hasKey)
-	require.False(t, hasValue)
+	require.FalseT(t, hasKey)
+	require.FalseT(t, hasValue)
 }

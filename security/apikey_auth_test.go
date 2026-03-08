@@ -39,7 +39,7 @@ func TestApiKeyAuth(t *testing.T) {
 			require.NoError(t, err)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Equal(t, principal, usr)
 			require.NoError(t, err)
 		})
@@ -49,7 +49,7 @@ func TestApiKeyAuth(t *testing.T) {
 			require.NoError(t, err)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Nil(t, usr)
 			require.Error(t, err)
 		})
@@ -61,7 +61,7 @@ func TestApiKeyAuth(t *testing.T) {
 			req.Header.Set(apiKeyHeader, validToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.False(t, ok)
+			assert.FalseT(t, ok)
 			assert.Nil(t, usr)
 			require.NoError(t, err)
 		})
@@ -76,7 +76,7 @@ func TestApiKeyAuth(t *testing.T) {
 			req.Header.Set(apiKeyHeader, validToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Equal(t, principal, usr)
 			require.NoError(t, err)
 		})
@@ -87,7 +87,7 @@ func TestApiKeyAuth(t *testing.T) {
 			req.Header.Set(apiKeyHeader, invalidToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Nil(t, usr)
 			require.Error(t, err)
 		})
@@ -98,7 +98,7 @@ func TestApiKeyAuth(t *testing.T) {
 			require.NoError(t, err)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.False(t, ok)
+			assert.FalseT(t, ok)
 			assert.Nil(t, usr)
 			require.NoError(t, err)
 		})
@@ -125,7 +125,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s?%s=%s", authPath, apiKeyParam, validToken), nil)
 			require.NoError(t, err)
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Equal(t, principal, usr)
 			require.NoError(t, err)
 
@@ -138,7 +138,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s?%s=%s", authPath, apiKeyParam, invalidToken), nil)
 			require.NoError(t, err)
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Nil(t, usr)
 			require.Error(t, err)
 
@@ -153,7 +153,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			req.Header.Set(apiKeyHeader, validToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.False(t, ok)
+			assert.FalseT(t, ok)
 			assert.Nil(t, usr)
 			require.NoError(t, err)
 
@@ -172,7 +172,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			req.Header.Set(apiKeyHeader, validToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Equal(t, principal, usr)
 			require.NoError(t, err)
 
@@ -187,7 +187,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			req.Header.Set(apiKeyHeader, invalidToken)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.True(t, ok)
+			assert.TrueT(t, ok)
 			assert.Nil(t, usr)
 			require.Error(t, err)
 
@@ -201,7 +201,7 @@ func TestApiKeyAuthCtx(t *testing.T) {
 			require.NoError(t, err)
 
 			ok, usr, err := ta.Authenticate(req)
-			assert.False(t, ok)
+			assert.FalseT(t, ok)
 			assert.Nil(t, usr)
 			require.NoError(t, err)
 

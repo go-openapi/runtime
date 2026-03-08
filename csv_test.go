@@ -50,7 +50,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, buf.String())
+		assert.EqualT(t, csvFixture, buf.String())
 	})
 
 	t.Run("can consume as a CSVReader", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, dest.b.String())
+		assert.EqualT(t, csvFixture, dest.b.String())
 	})
 
 	t.Run("can consume as a ReaderFrom", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, dest.b.String())
+		assert.EqualT(t, csvFixture, dest.b.String())
 	})
 
 	t.Run("can consume as a BinaryUnmarshaler", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, dest.str)
+		assert.EqualT(t, csvFixture, dest.str)
 	})
 
 	t.Run("can consume as a *[][]string", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, string(dest))
+		assert.EqualT(t, csvFixture, string(dest))
 	})
 
 	t.Run("can consume as an alias to *[]byte", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, string(dest))
+		assert.EqualT(t, csvFixture, string(dest))
 	})
 
 	t.Run("can consume as a *string", func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, dest)
+		assert.EqualT(t, csvFixture, dest)
 	})
 
 	t.Run("can consume as an alias to *string", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestCSVConsumer(t *testing.T) {
 
 		err := consumer.Consume(reader, &dest)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, string(dest))
+		assert.EqualT(t, csvFixture, string(dest))
 	})
 
 	t.Run("can consume from an empty reader", func(t *testing.T) {
@@ -281,7 +281,7 @@ func TestCSVConsumerWithOptions(t *testing.T) {
 
 			err := consumer.Consume(reader, &dest)
 			require.NoError(t, err)
-			assert.Equal(t, csvFixture, dest.String())
+			assert.EqualT(t, csvFixture, dest.String())
 		})
 	})
 
@@ -307,7 +307,7 @@ func TestCSVConsumerWithOptions(t *testing.T) {
 
 			err := consumer.Consume(reader, &dest)
 			require.NoError(t, err)
-			assert.Equal(t, semiColonFixture, dest.String())
+			assert.EqualT(t, semiColonFixture, dest.String())
 		})
 	})
 
@@ -387,7 +387,7 @@ func TestCSVConsumerWithOptions(t *testing.T) {
 			r := &closingReader{b: bytes.NewBufferString(csvFixture)}
 
 			require.NoError(t, closingConsumer.Consume(r, &dest))
-			assert.Equal(t, csvFixture, dest.String())
+			assert.EqualT(t, csvFixture, dest.String())
 			assert.EqualValues(t, 1, r.calledClose)
 		})
 
@@ -397,7 +397,7 @@ func TestCSVConsumerWithOptions(t *testing.T) {
 			r := &closingReader{b: bytes.NewBufferString(csvFixture)}
 
 			require.NoError(t, nonClosingConsumer.Consume(r, &dest))
-			assert.Equal(t, csvFixture, dest.String())
+			assert.EqualT(t, csvFixture, dest.String())
 			assert.EqualValues(t, 0, r.calledClose)
 		})
 	})
@@ -413,7 +413,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from CSVReader", func(t *testing.T) {
@@ -424,7 +424,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from Reader", func(t *testing.T) {
@@ -433,7 +433,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from WriterTo", func(t *testing.T) {
@@ -445,7 +445,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from BinaryMarshaler", func(t *testing.T) {
@@ -454,7 +454,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from [][]string", func(t *testing.T) {
@@ -463,7 +463,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from alias to [][]string", func(t *testing.T) {
@@ -473,7 +473,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.String())
+		assert.EqualT(t, csvFixture, writer.String())
 	})
 
 	t.Run("can produce CSV from []byte", func(t *testing.T) {
@@ -482,7 +482,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.Body.String())
+		assert.EqualT(t, csvFixture, writer.Body.String())
 	})
 
 	t.Run("can produce CSV from alias to []byte", func(t *testing.T) {
@@ -492,7 +492,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.Body.String())
+		assert.EqualT(t, csvFixture, writer.Body.String())
 	})
 
 	t.Run("can produce CSV from string", func(t *testing.T) {
@@ -501,7 +501,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.Body.String())
+		assert.EqualT(t, csvFixture, writer.Body.String())
 	})
 
 	t.Run("can produce CSV from alias to string", func(t *testing.T) {
@@ -511,7 +511,7 @@ func TestCSVProducer(t *testing.T) {
 
 		err := producer.Produce(writer, data)
 		require.NoError(t, err)
-		assert.Equal(t, csvFixture, writer.Body.String())
+		assert.EqualT(t, csvFixture, writer.Body.String())
 	})
 
 	t.Run("always close data reader whenever possible", func(t *testing.T) {
@@ -520,7 +520,7 @@ func TestCSVProducer(t *testing.T) {
 		data := &closingReader{b: bytes.NewBufferString(csvFixture)}
 
 		require.NoError(t, nonClosingProducer.Produce(r, data))
-		assert.Equal(t, csvFixture, r.String())
+		assert.EqualT(t, csvFixture, r.String())
 		assert.EqualValuesf(t, 0, r.calledClose, "expected the input reader NOT to be closed")
 		assert.EqualValuesf(t, 1, data.calledClose, "expected the data reader to be closed")
 	})
@@ -567,7 +567,7 @@ func TestCSVProducerWithOptions(t *testing.T) {
 			data := bytes.NewBufferString(csvFixture)
 
 			require.NoError(t, closingProducer.Produce(r, data))
-			assert.Equal(t, csvFixture, r.String())
+			assert.EqualT(t, csvFixture, r.String())
 			assert.EqualValues(t, 1, r.calledClose)
 		})
 
@@ -577,7 +577,7 @@ func TestCSVProducerWithOptions(t *testing.T) {
 			data := bytes.NewBufferString(csvFixture)
 
 			require.NoError(t, nonClosingProducer.Produce(r, data))
-			assert.Equal(t, csvFixture, r.String())
+			assert.EqualT(t, csvFixture, r.String())
 			assert.EqualValues(t, 0, r.calledClose)
 		})
 	})

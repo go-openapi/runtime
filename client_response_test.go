@@ -47,10 +47,10 @@ func TestResponseReaderFunc(t *testing.T) {
 		return actual, nil
 	})
 	_, _ = reader.ReadResponse(response{}, nil)
-	assert.Equal(t, "the content", actual.Body)
-	assert.Equal(t, "the message", actual.Message)
-	assert.Equal(t, "the header", actual.Header)
-	assert.Equal(t, 490, actual.Code)
+	assert.EqualT(t, "the content", actual.Body)
+	assert.EqualT(t, "the message", actual.Message)
+	assert.EqualT(t, "the header", actual.Header)
+	assert.EqualT(t, 490, actual.Code)
 }
 
 type errResponse struct {
@@ -87,7 +87,7 @@ func TestResponseReaderFuncError(t *testing.T) {
 
 		_, err := reader.ReadResponse(response{}, nil)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "file already closed")
+		assert.StringContainsT(t, err.Error(), "file already closed")
 	})
 
 	t.Run("with API error requiring escaping", func(t *testing.T) {
@@ -114,6 +114,6 @@ func TestResponseReaderFuncError(t *testing.T) {
 
 		_, err := reader.ReadResponse(response{}, nil)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `{"a":555,"b":"closed"}`)
+		assert.StringContainsT(t, err.Error(), `{"a":555,"b":"closed"}`)
 	})
 }

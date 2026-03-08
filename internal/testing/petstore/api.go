@@ -26,7 +26,7 @@ const (
 	otherUser    = "anyother"
 )
 
-// NewAPI registers a stub api for the pet store
+// NewAPI registers a stub api for the pet store.
 func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	spec, err := loads.Analyzed(testingutil.PetStoreJSONMessage, "")
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	return spec, api
 }
 
-// NewRootAPI registers a stub api for the pet store
+// NewRootAPI registers a stub api for the pet store.
 func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	spec, err := loads.Analyzed(testingutil.RootPetStoreJSONMessage, "")
 	require.NoError(t, err)
@@ -121,13 +121,13 @@ func NewRootAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 	return spec, api
 }
 
-// Tag the tag model
+// Tag the tag model.
 type Tag struct {
 	ID   int64
 	Name string
 }
 
-// Pet the pet model
+// Pet the pet model.
 type Pet struct {
 	ID        int64
 	Name      string

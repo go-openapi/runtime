@@ -22,13 +22,13 @@ func TestRapiDocMiddleware(t *testing.T) {
 		require.NoError(t, err)
 		recorder := httptest.NewRecorder()
 		rapidoc.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code)
-		assert.Equal(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
+		assert.EqualT(t, http.StatusOK, recorder.Code)
+		assert.EqualT(t, "text/html; charset=utf-8", recorder.Header().Get(contentTypeHeader))
 		var o RapiDocOpts
 		o.EnsureDefaults()
-		assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
-		assert.Contains(t, recorder.Body.String(), fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", o.SpecURL))
-		assert.Contains(t, recorder.Body.String(), rapidocLatest)
+		assert.StringContainsT(t, recorder.Body.String(), fmt.Sprintf("<title>%s</title>", o.Title))
+		assert.StringContainsT(t, recorder.Body.String(), fmt.Sprintf("<rapi-doc spec-url=%q></rapi-doc>", o.SpecURL))
+		assert.StringContainsT(t, recorder.Body.String(), rapidocLatest)
 	})
 
 	t.Run("edge cases", func(t *testing.T) {

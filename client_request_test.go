@@ -19,6 +19,6 @@ func TestRequestWriterFunc(t *testing.T) {
 
 	tr := new(TestClientRequest)
 	_ = hand.WriteToRequest(tr, nil)
-	assert.Equal(t, "blahblah", tr.Headers.Get("Blah"))
-	assert.Equal(t, "Adriana", tr.Body.(struct{ Name string }).Name)
+	assert.EqualT(t, "blahblah", tr.Headers.Get("Blah"))
+	assert.EqualT(t, "Adriana", tr.Body.(struct{ Name string }).Name)
 }

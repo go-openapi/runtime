@@ -51,10 +51,10 @@ func TestDrainingReadCloser(t *testing.T) {
 	_, err := ts.Read(buf)
 	require.NoError(t, err)
 	require.NoError(t, ts.Close())
-	assert.Equal(t, "There", string(buf))
-	assert.Equal(t, " are many things to do", disc.String())
-	assert.Equal(t, 3, rdr.readCalled)
-	assert.Equal(t, 1, rdr.closeCalled)
+	assert.EqualT(t, "There", string(buf))
+	assert.EqualT(t, " are many things to do", disc.String())
+	assert.EqualT(t, 3, rdr.readCalled)
+	assert.EqualT(t, 1, rdr.closeCalled)
 }
 
 func TestDrainingReadCloser_SeenEOF(t *testing.T) {
@@ -71,8 +71,8 @@ func TestDrainingReadCloser_SeenEOF(t *testing.T) {
 	_, err = ts.Read(nil)
 	require.ErrorIs(t, err, io.EOF)
 	require.NoError(t, ts.Close())
-	assert.Equal(t, "There", string(buf))
+	assert.EqualT(t, "There", string(buf))
 	assert.Empty(t, disc.String())
-	assert.Equal(t, 2, rdr.readCalled)
-	assert.Equal(t, 1, rdr.closeCalled)
+	assert.EqualT(t, 2, rdr.readCalled)
+	assert.EqualT(t, 1, rdr.closeCalled)
 }

@@ -50,7 +50,7 @@ func TestContentTypeValidation(t *testing.T) {
 	request, _ := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets", nil)
 	request.Header.Add("Accept", "*/*")
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
@@ -59,8 +59,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, http.StatusBadRequest, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
@@ -69,8 +69,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, http.StatusUnsupportedMediaType, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", strings.NewReader(`{"name":"dog"}`))
@@ -79,8 +79,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.TransferEncoding = []string{"chunked"}
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusUnsupportedMediaType, recorder.Code)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, http.StatusUnsupportedMediaType, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
@@ -88,8 +88,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.Header.Add("Content-Type", "text/html")
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 406, recorder.Code)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, 406, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 
 	// client sends data with unsupported mime
 	recorder = httptest.NewRecorder()
@@ -99,8 +99,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 415, recorder.Code) // Unsupported media type
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, 415, recorder.Code) // Unsupported media type
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 
 	// client sends a body of data with no mime: breaks
 	recorder = httptest.NewRecorder()
@@ -109,8 +109,8 @@ func TestContentTypeValidation(t *testing.T) {
 	request.ContentLength = 1
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 415, recorder.Code)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, 415, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
 }
 
 func TestResponseFormatValidation(t *testing.T) {
@@ -125,7 +125,7 @@ func TestResponseFormatValidation(t *testing.T) {
 	request.Header.Set(runtime.HeaderAccept, "application/x-yaml")
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, 200, recorder.Code, recorder.Body.String())
+	assert.EqualT(t, 200, recorder.Code, recorder.Body.String())
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", bytes.NewBufferString(`name: Dog`))
@@ -133,7 +133,7 @@ func TestResponseFormatValidation(t *testing.T) {
 	request.Header.Set(runtime.HeaderAccept, "application/sml")
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusNotAcceptable, recorder.Code)
+	assert.EqualT(t, http.StatusNotAcceptable, recorder.Code)
 }
 
 func TestValidateContentType(t *testing.T) {

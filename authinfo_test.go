@@ -20,5 +20,5 @@ func TestAuthInfoWriter(t *testing.T) {
 
 	tr := new(TestClientRequest)
 	require.NoError(t, hand.AuthenticateRequest(tr, nil))
-	assert.Equal(t, bearerToken, tr.Headers.Get(HeaderAuthorization))
+	assert.EqualT(t, bearerToken, tr.Headers.Get(HeaderAuthorization))
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/go-openapi/runtime/middleware/untyped"
 )
 
-// NewPetstore creates a new petstore api handler
+// NewPetstore creates a new petstore api handler.
 func NewPetstore() (http.Handler, error) {
 	spec, err := loads.Analyzed(json.RawMessage([]byte(swaggerJSON)), "")
 	if err != nil {
@@ -56,13 +56,13 @@ var getPetByID = runtime.OperationHandlerFunc(func(data any) (any, error) {
 	return petByID(id)
 })
 
-// Tag the tag model
+// Tag the tag model.
 type Tag struct {
 	ID   int64
 	Name string
 }
 
-// Pet the pet model
+// Pet the pet model.
 type Pet struct {
 	ID        int64    `json:"id"`
 	Name      string   `json:"name"`

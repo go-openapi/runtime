@@ -19,7 +19,7 @@ import (
 )
 
 func testHandlerFunc(w http.ResponseWriter, r *http.Request, params denco.Params) {
-	fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params)
+	fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params) //nolint:gosec // test handler, no XSS risk
 }
 
 func TestMux(t *testing.T) {
@@ -68,8 +68,8 @@ func TestMux(t *testing.T) {
 		actual := string(body)
 		expected := v.expected
 
-		assert.Equalf(t, v.status, res.StatusCode, "for method %s in path %s", v.method, v.path)
-		assert.Equalf(t, expected, actual, "for method %s in path %s", v.method, v.path)
+		assert.EqualTf(t, v.status, res.StatusCode, "for method %s in path %s", v.method, v.path)
+		assert.EqualTf(t, expected, actual, "for method %s in path %s", v.method, v.path)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestNotFound(t *testing.T) {
 	}()
 	denco.NotFound = func(w http.ResponseWriter, r *http.Request, params denco.Params) {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params)
+		fmt.Fprintf(w, "method: %s, path: %s, params: %v", r.Method, r.URL.Path, params) //nolint:gosec // test handler, no XSS risk
 	}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
@@ -101,6 +101,6 @@ func TestNotFound(t *testing.T) {
 	actual := string(body)
 	expected := "method: GET, path: /, params: []"
 
-	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
-	assert.Equal(t, expected, actual)
+	assert.EqualT(t, http.StatusServiceUnavailable, res.StatusCode)
+	assert.EqualT(t, expected, actual)
 }

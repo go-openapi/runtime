@@ -23,61 +23,61 @@ func TestByteStreamConsumer(t *testing.T) {
 	t.Run("can consume as a ReaderFrom", func(t *testing.T) {
 		var dest = &readerFromDummy{}
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), dest))
-		assert.Equal(t, expected, dest.b.String())
+		assert.EqualT(t, expected, dest.b.String())
 	})
 
 	t.Run("can consume as a Writer", func(t *testing.T) {
 		dest := &closingWriter{}
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), dest))
-		assert.Equal(t, expected, dest.String())
+		assert.EqualT(t, expected, dest.String())
 	})
 
 	t.Run("can consume as a string", func(t *testing.T) {
 		var dest string
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
-		assert.Equal(t, expected, dest)
+		assert.EqualT(t, expected, dest)
 	})
 
 	t.Run("can consume as a binary unmarshaler", func(t *testing.T) {
 		var dest binaryUnmarshalDummy
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
-		assert.Equal(t, expected, dest.str)
+		assert.EqualT(t, expected, dest.str)
 	})
 
 	t.Run("can consume as a binary slice", func(t *testing.T) {
 		var dest []byte
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
-		assert.Equal(t, expected, string(dest))
+		assert.EqualT(t, expected, string(dest))
 	})
 
 	t.Run("can consume as a type, with underlying as a binary slice", func(t *testing.T) {
 		type binarySlice []byte
 		var dest binarySlice
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
-		assert.Equal(t, expected, string(dest))
+		assert.EqualT(t, expected, string(dest))
 	})
 
 	t.Run("can consume as a type, with underlying as a string", func(t *testing.T) {
 		type aliasedString string
 		var dest aliasedString
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
-		assert.Equal(t, expected, string(dest))
+		assert.EqualT(t, expected, string(dest))
 	})
 
 	t.Run("can consume as an interface with underlying type []byte", func(t *testing.T) {
 		var dest any = []byte{}
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
 		asBytes, ok := dest.([]byte)
-		require.True(t, ok)
-		assert.Equal(t, expected, string(asBytes))
+		require.TrueT(t, ok)
+		assert.EqualT(t, expected, string(asBytes))
 	})
 
 	t.Run("can consume as an interface with underlying type string", func(t *testing.T) {
 		var dest any = "x"
 		require.NoError(t, consumer.Consume(bytes.NewBufferString(expected), &dest))
 		asString, ok := dest.(string)
-		require.True(t, ok)
-		assert.Equal(t, expected, asString)
+		require.TrueT(t, ok)
+		assert.EqualT(t, expected, asString)
 	})
 
 	t.Run("with CloseStream option", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestByteStreamConsumer(t *testing.T) {
 			r := &closingReader{b: bytes.NewBufferString(expected)}
 
 			require.NoError(t, closingConsumer.Consume(r, &dest))
-			assert.Equal(t, expected, dest.String())
+			assert.EqualT(t, expected, dest.String())
 			assert.EqualValues(t, 1, r.calledClose)
 		})
 
@@ -97,7 +97,7 @@ func TestByteStreamConsumer(t *testing.T) {
 			r := &closingReader{b: bytes.NewBufferString(expected)}
 
 			require.NoError(t, nonClosingConsumer.Consume(r, &dest))
-			assert.Equal(t, expected, dest.String())
+			assert.EqualT(t, expected, dest.String())
 			assert.EqualValues(t, 0, r.calledClose)
 		})
 	})
@@ -229,42 +229,42 @@ func TestByteStreamProducer(t *testing.T) {
 		var w bytes.Buffer
 		var data io.WriterTo = bytes.NewBufferString(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from a Reader", func(t *testing.T) {
 		var w bytes.Buffer
 		var data io.Reader = bytes.NewBufferString(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from a binary marshaler", func(t *testing.T) {
 		var w bytes.Buffer
 		data := &binaryMarshalDummy{str: expected}
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from a string", func(t *testing.T) {
 		var w bytes.Buffer
 		data := expected
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from a []byte", func(t *testing.T) {
 		var w bytes.Buffer
 		data := []byte(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from an error", func(t *testing.T) {
 		var w bytes.Buffer
 		data := errors.New(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from an aliased string", func(t *testing.T) {
@@ -272,14 +272,14 @@ func TestByteStreamProducer(t *testing.T) {
 		type aliasedString string
 		var data aliasedString = expected
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from an interface with underlying type string", func(t *testing.T) {
 		var w bytes.Buffer
 		var data any = expected
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from an aliased []byte", func(t *testing.T) {
@@ -287,14 +287,14 @@ func TestByteStreamProducer(t *testing.T) {
 		type binarySlice []byte
 		var data binarySlice = []byte(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce from an interface with underling type []byte", func(t *testing.T) {
 		var w bytes.Buffer
 		var data any = []byte(expected)
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, expected, w.String())
+		assert.EqualT(t, expected, w.String())
 	})
 
 	t.Run("can produce JSON from an arbitrary struct", func(t *testing.T) {
@@ -304,7 +304,7 @@ func TestByteStreamProducer(t *testing.T) {
 		}
 		data := dummy{Message: expected}
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
+		assert.EqualT(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
 	})
 
 	t.Run("can produce JSON from a pointer to an arbitrary struct", func(t *testing.T) {
@@ -314,14 +314,14 @@ func TestByteStreamProducer(t *testing.T) {
 		}
 		data := dummy{Message: expected}
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
+		assert.EqualT(t, fmt.Sprintf(`{"message":%q}`, expected), w.String())
 	})
 
 	t.Run("can produce JSON from an arbitrary slice", func(t *testing.T) {
 		var w bytes.Buffer
 		data := []string{expected}
 		require.NoError(t, producer.Produce(&w, data))
-		assert.Equal(t, fmt.Sprintf(`[%q]`, expected), w.String())
+		assert.EqualT(t, fmt.Sprintf(`[%q]`, expected), w.String())
 	})
 
 	t.Run("with CloseStream option", func(t *testing.T) {
@@ -331,7 +331,7 @@ func TestByteStreamProducer(t *testing.T) {
 			data := bytes.NewBufferString(expected)
 
 			require.NoError(t, closingProducer.Produce(w, data))
-			assert.Equal(t, expected, w.String())
+			assert.EqualT(t, expected, w.String())
 			assert.EqualValues(t, 1, w.calledClose)
 		})
 
@@ -341,7 +341,7 @@ func TestByteStreamProducer(t *testing.T) {
 			data := bytes.NewBufferString(expected)
 
 			require.NoError(t, nonClosingProducer.Produce(w, data))
-			assert.Equal(t, expected, w.String())
+			assert.EqualT(t, expected, w.String())
 			assert.EqualValues(t, 0, w.calledClose)
 		})
 
@@ -351,7 +351,7 @@ func TestByteStreamProducer(t *testing.T) {
 			data := &closingReader{b: bytes.NewBufferString(expected)}
 
 			require.NoError(t, nonClosingProducer.Produce(w, data))
-			assert.Equal(t, expected, w.String())
+			assert.EqualT(t, expected, w.String())
 			assert.EqualValuesf(t, 0, w.calledClose, "expected the input reader NOT to be closed")
 			assert.EqualValuesf(t, 1, data.calledClose, "expected the data reader to be closed")
 		})

@@ -24,8 +24,8 @@ func TestYAMLConsumer(t *testing.T) {
 	}
 	err := cons.Consume(bytes.NewBufferString(consProdYAML), &data)
 	require.NoError(t, err)
-	assert.Equal(t, "Somebody", data.Name)
-	assert.Equal(t, 1, data.ID)
+	assert.EqualT(t, "Somebody", data.Name)
+	assert.EqualT(t, 1, data.ID)
 }
 
 func TestYAMLProducer(t *testing.T) {
@@ -38,7 +38,7 @@ func TestYAMLProducer(t *testing.T) {
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, data)
 	require.NoError(t, err)
-	assert.YAMLEq(t, consProdYAML, rw.Body.String())
+	assert.YAMLEqT(t, consProdYAML, rw.Body.String())
 }
 
 type failReaderWriter struct {
@@ -88,10 +88,10 @@ attributes:
 		cons.Consume(bytes.NewBufferString(yamlDoc), &data),
 	)
 
-	assert.Equal(t, "fred", data.Name)
-	assert.Equal(t, 123, data.ID)
-	assert.InDelta(t, 12.3, data.Attributes.Height, 1e-9)
-	assert.Equal(t, uint64(45), data.Attributes.Weight)
+	assert.EqualT(t, "fred", data.Name)
+	assert.EqualT(t, 123, data.ID)
+	assert.InDeltaT(t, 12.3, data.Attributes.Height, 1e-9)
+	assert.EqualT(t, uint64(45), data.Attributes.Weight)
 	assert.Len(t, data.Attributes.List, 2)
-	assert.Equal(t, "a", data.Attributes.List[0])
+	assert.EqualT(t, "a", data.Attributes.List[0])
 }

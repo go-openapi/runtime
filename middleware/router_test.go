@@ -33,34 +33,34 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodDelete, "/api/pets", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
-	assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, http.StatusMethodNotAllowed, recorder.Code)
 
 	methods := strings.Split(recorder.Header().Get("Allow"), ",")
 	sort.Strings(methods)
-	assert.Equal(t, "GET,POST", strings.Join(methods, ","))
+	assert.EqualT(t, "GET,POST", strings.Join(methods, ","))
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/nopets", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
-	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.EqualT(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.EqualT(t, http.StatusNotFound, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/pets", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.EqualT(t, http.StatusNotFound, recorder.Code)
 
 	spec, api = petstore.NewRootAPI(t)
 	context = NewContext(spec, api, nil)
@@ -71,25 +71,25 @@ func TestRouterMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodDelete, "/pets", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
+	assert.EqualT(t, http.StatusMethodNotAllowed, recorder.Code)
 
 	methods = strings.Split(recorder.Header().Get("Allow"), ",")
 	sort.Strings(methods)
-	assert.Equal(t, "GET,POST", strings.Join(methods, ","))
+	assert.EqualT(t, "GET,POST", strings.Join(methods, ","))
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/nopets", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusNotFound, recorder.Code)
+	assert.EqualT(t, http.StatusNotFound, recorder.Code)
 }
 
 func TestRouterBuilder(t *testing.T) {
@@ -116,22 +116,22 @@ func TestRouterBuilder(t *testing.T) {
 	assert.Empty(t, builder.records[http.MethodPut])
 
 	rec := postRecords[0]
-	assert.Equal(t, "/pets", rec.Key)
+	assert.EqualT(t, "/pets", rec.Key)
 	val := rec.Value.(*routeEntry)
 	assert.Len(t, val.Consumers, 2)
 	assert.Len(t, val.Producers, 2)
 	assert.Len(t, val.Consumes, 2)
 	assert.Len(t, val.Produces, 2)
 
-	assert.Contains(t, val.Consumers, "application/json")
-	assert.Contains(t, val.Producers, "application/x-yaml")
-	assert.Contains(t, val.Consumes, "application/json")
-	assert.Contains(t, val.Produces, "application/x-yaml")
+	assert.MapContainsT(t, val.Consumers, "application/json")
+	assert.MapContainsT(t, val.Producers, "application/x-yaml")
+	assert.SliceContainsT(t, val.Consumes, "application/json")
+	assert.SliceContainsT(t, val.Produces, "application/x-yaml")
 
 	assert.Len(t, val.Parameters, 1)
 
 	recG := getRecords[0]
-	assert.Equal(t, "/pets", recG.Key)
+	assert.EqualT(t, "/pets", recG.Key)
 	valG := recG.Value.(*routeEntry)
 	assert.Len(t, valG.Consumers, 2)
 	assert.Len(t, valG.Producers, 4)
@@ -152,7 +152,7 @@ func TestRouterCanonicalBasePath(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 }
 
 func TestRouter_EscapedPath(t *testing.T) {
@@ -166,18 +166,18 @@ func TestRouter_EscapedPath(t *testing.T) {
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "/api/pets/abc%2Fdef", nil)
 	require.NoError(t, err)
 
 	mw.ServeHTTP(recorder, request)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.EqualT(t, http.StatusOK, recorder.Code)
 	ri, _, _ := context.RouteInfo(request)
 	require.NotNil(t, ri)
 	require.NotNil(t, ri.Params)
-	assert.Equal(t, "abc/def", ri.Params.Get("id"))
+	assert.EqualT(t, "abc/def", ri.Params.Get("id"))
 }
 
 func TestRouterStruct(t *testing.T) {
@@ -188,16 +188,16 @@ func TestRouterStruct(t *testing.T) {
 	assert.Len(t, methods, 2)
 
 	entry, ok := router.Lookup("delete", "/api/pets/{id}")
-	assert.True(t, ok)
+	assert.TrueT(t, ok)
 	require.NotNil(t, entry)
 	assert.Len(t, entry.Params, 1)
-	assert.Equal(t, "id", entry.Params[0].Name)
+	assert.EqualT(t, "id", entry.Params[0].Name)
 
 	_, ok = router.Lookup("delete", "/pets")
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 
 	_, ok = router.Lookup("post", "/no-pets")
-	assert.False(t, ok)
+	assert.FalseT(t, ok)
 }
 
 func petAPIRouterBuilder(spec *loads.Document, api *untyped.API, analyzed *analysis.Spec) *defaultRouteBuilder {
@@ -230,7 +230,7 @@ func TestPathConverter(t *testing.T) {
 
 	for _, tc := range cases {
 		actual := pathConverter.ReplaceAllString(tc.swagger, ":$1")
-		assert.Equal(t, tc.denco, actual, "expected swagger path %s to match %s but got %s", tc.swagger, tc.denco, actual)
+		assert.EqualT(t, tc.denco, actual, "expected swagger path %s to match %s but got %s", tc.swagger, tc.denco, actual)
 	}
 }
 

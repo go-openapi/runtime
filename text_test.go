@@ -23,14 +23,14 @@ func TestTextConsumer(t *testing.T) {
 	var str string
 	err1 := cons.Consume(bytes.NewBufferString(consProdText), &str)
 	require.NoError(t, err1)
-	assert.Equal(t, consProdText, str)
+	assert.EqualT(t, consProdText, str)
 
 	var tu textUnmarshalDummy
 
 	// can consume as a TextUnmarshaler
 	err3 := cons.Consume(bytes.NewBufferString(consProdText), &tu)
 	require.NoError(t, err3)
-	assert.Equal(t, consProdText, tu.str)
+	assert.EqualT(t, consProdText, tu.str)
 
 	// text unmarshal objects can return an error as well, this will be propagated
 	require.NoError(t, cons.Consume(bytes.NewBuffer(nil), &tu))
@@ -71,11 +71,11 @@ func TestTextProducer(t *testing.T) {
 	rw := httptest.NewRecorder()
 	err := prod.Produce(rw, consProdText)
 	require.NoError(t, err)
-	assert.Equal(t, consProdText, rw.Body.String())
+	assert.EqualT(t, consProdText, rw.Body.String())
 	rw2 := httptest.NewRecorder()
 	err2 := prod.Produce(rw2, &consProdText)
 	require.NoError(t, err2)
-	assert.Equal(t, consProdText, rw2.Body.String())
+	assert.EqualT(t, consProdText, rw2.Body.String())
 
 	// should always work with type aliases
 	// as an alias is sometimes given by generated go-swagger code
@@ -84,11 +84,11 @@ func TestTextProducer(t *testing.T) {
 	rw3 := httptest.NewRecorder()
 	err3 := prod.Produce(rw3, aliasProdText)
 	require.NoError(t, err3)
-	assert.Equal(t, consProdText, rw3.Body.String())
+	assert.EqualT(t, consProdText, rw3.Body.String())
 	rw4 := httptest.NewRecorder()
 	err4 := prod.Produce(rw4, &aliasProdText)
 	require.NoError(t, err4)
-	assert.Equal(t, consProdText, rw4.Body.String())
+	assert.EqualT(t, consProdText, rw4.Body.String())
 
 	const answer = "42"
 
@@ -96,33 +96,33 @@ func TestTextProducer(t *testing.T) {
 	rw5 := httptest.NewRecorder()
 	err5 := prod.Produce(rw5, &stringerDummy{answer})
 	require.NoError(t, err5)
-	assert.Equal(t, answer, rw5.Body.String())
+	assert.EqualT(t, answer, rw5.Body.String())
 
 	// Should always work with objects implementing TextMarshaler interface
 	rw6 := httptest.NewRecorder()
 	err6 := prod.Produce(rw6, &textMarshalDummy{answer})
 	require.NoError(t, err6)
-	assert.Equal(t, answer, rw6.Body.String())
+	assert.EqualT(t, answer, rw6.Body.String())
 
 	rw10 := httptest.NewRecorder()
 	err10 := prod.Produce(rw10, errors.New(answer))
 	require.NoError(t, err10)
-	assert.Equal(t, answer, rw10.Body.String())
+	assert.EqualT(t, answer, rw10.Body.String())
 
 	rw11 := httptest.NewRecorder()
 	err11 := prod.Produce(rw11, Error{Message: answer})
 	require.NoError(t, err11)
-	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, answer), rw11.Body.String())
+	assert.EqualT(t, fmt.Sprintf(`{"message":%q}`, answer), rw11.Body.String())
 
 	rw12 := httptest.NewRecorder()
 	err12 := prod.Produce(rw12, &Error{Message: answer})
 	require.NoError(t, err12)
-	assert.Equal(t, fmt.Sprintf(`{"message":%q}`, answer), rw12.Body.String())
+	assert.EqualT(t, fmt.Sprintf(`{"message":%q}`, answer), rw12.Body.String())
 
 	rw13 := httptest.NewRecorder()
 	err13 := prod.Produce(rw13, []string{answer})
 	require.NoError(t, err13)
-	assert.Equal(t, fmt.Sprintf(`[%q]`, answer), rw13.Body.String())
+	assert.EqualT(t, fmt.Sprintf(`[%q]`, answer), rw13.Body.String())
 
 	// should not work with anything that's not (indirectly) a string
 	rw7 := httptest.NewRecorder()

@@ -25,8 +25,8 @@ func TestSimplePetstoreSpec(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.JSONEq(t, swaggerJSON, rw.Body.String())
+	assert.EqualT(t, http.StatusOK, rw.Code)
+	assert.JSONEqT(t, swaggerJSON, rw.Body.String())
 }
 
 func TestSimplePetstoreAllPets(t *testing.T) {
@@ -39,8 +39,8 @@ func TestSimplePetstoreAllPets(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.JSONEq(t, "[{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"},{\"id\":2,\"name\":\"Cat\",\"status\":\"pending\"}]\n", rw.Body.String())
+	assert.EqualT(t, http.StatusOK, rw.Code)
+	assert.JSONEqT(t, "[{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"},{\"id\":2,\"name\":\"Cat\",\"status\":\"pending\"}]\n", rw.Body.String())
 }
 
 func TestSimplePetstorePetByID(t *testing.T) {
@@ -53,8 +53,8 @@ func TestSimplePetstorePetByID(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.JSONEq(t, "{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"}\n", rw.Body.String())
+	assert.EqualT(t, http.StatusOK, rw.Code)
+	assert.JSONEqT(t, "{\"id\":1,\"name\":\"Dog\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreAddPet(t *testing.T) {
@@ -67,8 +67,8 @@ func TestSimplePetstoreAddPet(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
-	assert.JSONEq(t, "{\"id\":3,\"name\":\"Fish\",\"status\":\"available\"}\n", rw.Body.String())
+	assert.EqualT(t, http.StatusOK, rw.Code)
+	assert.JSONEqT(t, "{\"id\":3,\"name\":\"Fish\",\"status\":\"available\"}\n", rw.Body.String())
 }
 
 func TestSimplePetstoreDeletePet(t *testing.T) {
@@ -81,7 +81,7 @@ func TestSimplePetstoreDeletePet(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusNoContent, rw.Code)
+	assert.EqualT(t, http.StatusNoContent, rw.Code)
 	assert.Empty(t, rw.Body.String())
 
 	r, err = runtime.JSONRequest(http.MethodGet, "/api/pets/1", nil)
@@ -89,6 +89,6 @@ func TestSimplePetstoreDeletePet(t *testing.T) {
 	r = r.WithContext(context.Background())
 	rw = httptest.NewRecorder()
 	handler.ServeHTTP(rw, r)
-	assert.Equal(t, http.StatusNotFound, rw.Code)
-	assert.JSONEq(t, "{\"code\":404,\"message\":\"not found: pet 1\"}", rw.Body.String())
+	assert.EqualT(t, http.StatusNotFound, rw.Code)
+	assert.JSONEqT(t, "{\"code\":404,\"message\":\"not found: pet 1\"}", rw.Body.String())
 }

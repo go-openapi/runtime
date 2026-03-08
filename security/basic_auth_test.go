@@ -44,7 +44,7 @@ func TestBasicAuth(t *testing.T) {
 
 		ok, usr, err := ba.Authenticate(req)
 		require.NoError(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Equal(t, principal, usr)
 	})
 
@@ -55,11 +55,11 @@ func TestBasicAuth(t *testing.T) {
 
 		ok, usr, err := ba.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
 
 		assert.NotEmpty(t, FailedBasicAuth(req))
-		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
+		assert.EqualT(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 
 	t.Run("with missing basic auth", func(t *testing.T) {
@@ -68,17 +68,17 @@ func TestBasicAuth(t *testing.T) {
 
 		ok, usr, err := ba.Authenticate(req)
 		require.NoError(t, err)
-		assert.False(t, ok)
+		assert.FalseT(t, ok)
 		assert.Nil(t, usr)
 
 		assert.NotEmpty(t, FailedBasicAuth(req))
-		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
+		assert.EqualT(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 
 	t.Run("basic auth without request", func(*testing.T) {
 		ok, usr, err := ba.Authenticate("token")
 		require.NoError(t, err)
-		assert.False(t, ok)
+		assert.FalseT(t, ok)
 		assert.Nil(t, usr)
 	})
 
@@ -91,9 +91,9 @@ func TestBasicAuth(t *testing.T) {
 
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
-		assert.Equal(t, "realm", FailedBasicAuth(req))
+		assert.EqualT(t, "realm", FailedBasicAuth(req))
 	})
 
 	t.Run("with empty realm, invalid basic auth", func(t *testing.T) {
@@ -105,9 +105,9 @@ func TestBasicAuth(t *testing.T) {
 
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
-		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
+		assert.EqualT(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 }
 
@@ -128,7 +128,7 @@ func TestBasicAuthCtx(t *testing.T) {
 		req.SetBasicAuth(principal, testPassword)
 		ok, usr, err := ba.Authenticate(req)
 		require.NoError(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Equal(t, principal, usr)
 
 		assert.Equal(t, wisdom, req.Context().Value(original))
@@ -143,7 +143,7 @@ func TestBasicAuthCtx(t *testing.T) {
 
 		ok, usr, err := ba.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
 
 		assert.Equal(t, wisdom, req.Context().Value(original))
@@ -157,7 +157,7 @@ func TestBasicAuthCtx(t *testing.T) {
 
 		ok, usr, err := ba.Authenticate(req)
 		require.NoError(t, err)
-		assert.False(t, ok)
+		assert.FalseT(t, ok)
 		assert.Nil(t, usr)
 
 		assert.Equal(t, wisdom, req.Context().Value(original))
@@ -168,7 +168,7 @@ func TestBasicAuthCtx(t *testing.T) {
 	t.Run("basic auth without request", func(*testing.T) {
 		ok, usr, err := ba.Authenticate("token")
 		require.NoError(t, err)
-		assert.False(t, ok)
+		assert.FalseT(t, ok)
 		assert.Nil(t, usr)
 	})
 
@@ -181,9 +181,9 @@ func TestBasicAuthCtx(t *testing.T) {
 
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
-		assert.Equal(t, "realm", FailedBasicAuth(req))
+		assert.EqualT(t, "realm", FailedBasicAuth(req))
 	})
 
 	t.Run("with empty realm, invalid basic auth", func(t *testing.T) {
@@ -195,8 +195,8 @@ func TestBasicAuthCtx(t *testing.T) {
 
 		ok, usr, err := br.Authenticate(req)
 		require.Error(t, err)
-		assert.True(t, ok)
+		assert.TrueT(t, ok)
 		assert.Empty(t, usr)
-		assert.Equal(t, DefaultRealmName, FailedBasicAuth(req))
+		assert.EqualT(t, DefaultRealmName, FailedBasicAuth(req))
 	})
 }

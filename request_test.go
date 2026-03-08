@@ -87,20 +87,20 @@ func TestPeekingReader(t *testing.T) {
 	pr2 := newPeekingReader(closeReader(bytes.NewReader(exp2)))
 	peeked, err := pr2.underlying.Peek(1)
 	require.NoError(t, err)
-	require.Equal(t, "a", string(peeked))
+	require.EqualT(t, "a", string(peeked))
 	b2, err := io.ReadAll(pr2)
 	require.NoError(t, err)
-	assert.Equal(t, string(exp2), string(b2))
+	assert.EqualT(t, string(exp2), string(b2))
 
 	// passes close call through to original reader
 	cr := closeReader(closeReader(bytes.NewReader(exp2)))
 	pr3 := newPeekingReader(cr)
 	require.NoError(t, pr3.Close())
-	require.Equal(t, 1, cr.closed)
+	require.EqualT(t, 1, cr.closed)
 
 	// returns false when the stream is empty
 	pr4 := newPeekingReader(closeReader(&eofReader{}))
-	require.False(t, pr4.HasContent())
+	require.FalseT(t, pr4.HasContent())
 
 	// returns true when the stream has content
 	rdr := closeReader(strings.NewReader("hello"))
@@ -110,22 +110,22 @@ func TestPeekingReader(t *testing.T) {
 	}
 	pr.underlying = cbr
 
-	require.True(t, pr.HasContent())
-	require.Equal(t, 1, cbr.buffereds)
-	require.Equal(t, 1, cbr.peeks)
-	require.Equal(t, 0, cbr.reads)
-	require.True(t, pr.HasContent())
-	require.Equal(t, 2, cbr.buffereds)
-	require.Equal(t, 1, cbr.peeks)
-	require.Equal(t, 0, cbr.reads)
+	require.TrueT(t, pr.HasContent())
+	require.EqualT(t, 1, cbr.buffereds)
+	require.EqualT(t, 1, cbr.peeks)
+	require.EqualT(t, 0, cbr.reads)
+	require.TrueT(t, pr.HasContent())
+	require.EqualT(t, 2, cbr.buffereds)
+	require.EqualT(t, 1, cbr.peeks)
+	require.EqualT(t, 0, cbr.reads)
 
 	b, err := io.ReadAll(pr)
 	require.NoError(t, err)
-	require.Equal(t, "hello", string(b))
-	require.Equal(t, 2, cbr.buffereds)
-	require.Equal(t, 1, cbr.peeks)
-	require.Equal(t, 2, cbr.reads)
-	require.Equal(t, 0, cbr.br.Buffered())
+	require.EqualT(t, "hello", string(b))
+	require.EqualT(t, 2, cbr.buffereds)
+	require.EqualT(t, 1, cbr.peeks)
+	require.EqualT(t, 2, cbr.reads)
+	require.EqualT(t, 0, cbr.br.Buffered())
 
 	t.Run("closing a closed peekingReader", func(t *testing.T) {
 		const content = "content"
@@ -164,9 +164,9 @@ func TestPeekingReader(t *testing.T) {
 func TestJSONRequest(t *testing.T) {
 	req, err := JSONRequest(http.MethodGet, "/swagger.json", nil)
 	require.NoError(t, err)
-	assert.Equal(t, http.MethodGet, req.Method)
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderContentType))
-	assert.Equal(t, JSONMime, req.Header.Get(HeaderAccept))
+	assert.EqualT(t, http.MethodGet, req.Method)
+	assert.EqualT(t, JSONMime, req.Header.Get(HeaderContentType))
+	assert.EqualT(t, JSONMime, req.Header.Get(HeaderAccept))
 
 	req, err = JSONRequest(http.MethodGet, "%2", nil)
 	require.Error(t, err)
@@ -176,10 +176,10 @@ func TestJSONRequest(t *testing.T) {
 func TestHasBody(t *testing.T) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "", nil)
 	require.NoError(t, err)
-	assert.False(t, HasBody(req))
+	assert.FalseT(t, HasBody(req))
 
 	req.ContentLength = 123
-	assert.True(t, HasBody(req))
+	assert.TrueT(t, HasBody(req))
 }
 
 func TestMethod(t *testing.T) {
@@ -202,11 +202,11 @@ func TestMethod(t *testing.T) {
 
 	for _, tc := range testcase {
 		t.Run(tc.method, func(t *testing.T) {
-			assert.Equal(t, tc.canHaveBody, CanHaveBody(tc.method), "CanHaveBody")
+			assert.EqualT(t, tc.canHaveBody, CanHaveBody(tc.method), "CanHaveBody")
 
 			req := http.Request{Method: tc.method}
-			assert.Equal(t, tc.allowsBody, AllowsBody(&req), "AllowsBody")
-			assert.Equal(t, tc.isSafe, IsSafe(&req), "IsSafe")
+			assert.EqualT(t, tc.allowsBody, AllowsBody(&req), "AllowsBody")
+			assert.EqualT(t, tc.isSafe, IsSafe(&req), "IsSafe")
 		})
 	}
 }
@@ -214,7 +214,7 @@ func TestMethod(t *testing.T) {
 func TestReadSingle(t *testing.T) {
 	values := url.Values(make(map[string][]string))
 	values.Add("something", "the thing")
-	assert.Equal(t, "the thing", ReadSingleValue(Values(values), "something"))
+	assert.EqualT(t, "the thing", ReadSingleValue(Values(values), "something"))
 	assert.Empty(t, ReadSingleValue(Values(values), "notthere"))
 }
 

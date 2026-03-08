@@ -176,20 +176,20 @@ func testIsAuthorized(_ context.Context, req *http.Request, authorizer runtime.A
 
 		case expectIsAuthorized:
 			require.NoError(t, err)
-			assert.True(t, hasToken)
+			assert.TrueT(t, hasToken)
 			assert.Equal(t, principal, usr)
-			assert.Equal(t, owners, OAuth2SchemeName(req))
+			assert.EqualT(t, owners, OAuth2SchemeName(req))
 
 		case expectInvalidAuthorization:
 			require.Error(t, err)
 			require.ErrorContains(t, err, "unauthenticated")
-			assert.True(t, hasToken)
+			assert.TrueT(t, hasToken)
 			assert.Nil(t, usr)
-			assert.Equal(t, owners, OAuth2SchemeName(req))
+			assert.EqualT(t, owners, OAuth2SchemeName(req))
 
 		case expectNoAuthorization:
 			require.NoError(t, err)
-			assert.False(t, hasToken)
+			assert.FalseT(t, hasToken)
 			assert.Nil(t, usr)
 			assert.Empty(t, OAuth2SchemeName(req))
 		}
