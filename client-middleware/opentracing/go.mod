@@ -42,4 +42,4 @@ require (
 
 replace github.com/go-openapi/runtime => ../..
 
-go 1.24.0
+go 1.25.0
