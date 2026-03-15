@@ -59,6 +59,7 @@ This is a mono-repo with a `go.work` workspace:
 
 - All `.go` files must have SPDX license headers (Apache-2.0).
 - Commits require DCO sign-off (`git commit -s`).
+- Formatting: `golangci-lint fmt` (not `gofmt` or `gofumpt`).
 - Linting: `golangci-lint run` — config in `.golangci.yml` (posture: `default: all` with explicit disables).
 - Every `//nolint` directive **must** have an inline comment explaining why.
 - Tests: `go test work ./...` (all modules) or `go test ./...` (root only). CI runs with `-race` on `{ubuntu, macos, windows} x {stable, oldstable}`.
