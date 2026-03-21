@@ -4,12 +4,12 @@
 
 | Total Contributors | Total Contributions |
 | --- | --- |
-| 69  | 485  |
+| 69  | 489  |
 
 | Username | All Time Contribution Count | All Commits |
 | --- | --- | --- |
 | @casualjim | 268 | <https://github.com/go-openapi/runtime/commits?author=casualjim> |
-| @fredbi | 64 | <https://github.com/go-openapi/runtime/commits?author=fredbi> |
+| @fredbi | 68 | <https://github.com/go-openapi/runtime/commits?author=fredbi> |
 | @youyuanwu | 19 | <https://github.com/go-openapi/runtime/commits?author=youyuanwu> |
 | @josephwoodward | 13 | <https://github.com/go-openapi/runtime/commits?author=josephwoodward> |
 | @kenjones-cisco | 12 | <https://github.com/go-openapi/runtime/commits?author=kenjones-cisco> |
@@ -34,7 +34,6 @@
 | @bcomnes | 2 | <https://github.com/go-openapi/runtime/commits?author=bcomnes> |
 | @galaxie | 2 | <https://github.com/go-openapi/runtime/commits?author=galaxie> |
 | @anfernee | 2 | <https://github.com/go-openapi/runtime/commits?author=anfernee> |
-| @akutz | 1 | <https://github.com/go-openapi/runtime/commits?author=akutz> |
 | @wahabmk | 1 | <https://github.com/go-openapi/runtime/commits?author=wahabmk> |
 | @vearutop | 1 | <https://github.com/go-openapi/runtime/commits?author=vearutop> |
 | @tschaub | 1 | <https://github.com/go-openapi/runtime/commits?author=tschaub> |
@@ -45,6 +44,8 @@
 | @petrkotas | 1 | <https://github.com/go-openapi/runtime/commits?author=petrkotas> |
 | @maxatome | 1 | <https://github.com/go-openapi/runtime/commits?author=maxatome> |
 | @maxkarelov | 1 | <https://github.com/go-openapi/runtime/commits?author=maxkarelov> |
+| @aleksandr-vin | 1 | <https://github.com/go-openapi/runtime/commits?author=aleksandr-vin> |
+| @akutz | 1 | <https://github.com/go-openapi/runtime/commits?author=akutz> |
 | @yabberyabber | 1 | <https://github.com/go-openapi/runtime/commits?author=yabberyabber> |
 | @elv-gilles | 1 | <https://github.com/go-openapi/runtime/commits?author=elv-gilles> |
 | @gregmarr | 1 | <https://github.com/go-openapi/runtime/commits?author=gregmarr> |
@@ -55,7 +56,6 @@
 | @tte | 1 | <https://github.com/go-openapi/runtime/commits?author=tte> |
 | @martian4202 | 1 | <https://github.com/go-openapi/runtime/commits?author=martian4202> |
 | @yan-zhuang | 1 | <https://github.com/go-openapi/runtime/commits?author=yan-zhuang> |
-| @aleksandr-vin | 1 | <https://github.com/go-openapi/runtime/commits?author=aleksandr-vin> |
 | @azylman | 1 | <https://github.com/go-openapi/runtime/commits?author=azylman> |
 | @anasmuhmd | 1 | <https://github.com/go-openapi/runtime/commits?author=anasmuhmd> |
 | @ArFe | 1 | <https://github.com/go-openapi/runtime/commits?author=ArFe> |
