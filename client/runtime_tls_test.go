@@ -8,13 +8,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	goruntime "runtime"
 	"testing"
 	"time"
@@ -112,7 +109,7 @@ func TestRuntimeTLSOptions(t *testing.T) {
 			// NOTE: fixtures may be expired certs, but may validate with a fixed date in the past.
 			chains, err := fixtures.RSA.LoadedCA.Verify(x509.VerifyOptions{
 				Roots:       cfg.RootCAs,
-				CurrentTime: time.Date(2017, 1, 1, 1, 1, 1, 1, time.UTC),
+				CurrentTime: time.Date(2027, 1, 1, 1, 1, 1, 1, time.UTC),
 			})
 			require.NoError(t, err)
 			require.NotEmpty(t, chains)
@@ -226,7 +223,7 @@ func testTLSClient(t testing.TB, fixtures *tlsFixtures, verifyCalled *bool) *htt
 
 			opts := x509.VerifyOptions{
 				Roots:       caCertPool,
-				CurrentTime: time.Date(2017, time.July, 1, 1, 1, 1, 1, time.UTC),
+				CurrentTime: time.Date(2027, time.July, 1, 1, 1, 1, 1, time.UTC),
 			}
 
 			cert, e := x509.ParseCertificate(rawCerts[0])
@@ -261,109 +258,6 @@ type (
 		CertFile string
 	}
 )
-
-// newTLSFixtures loads TLS material for testing.
-func newTLSFixtures(t testing.TB) *tlsFixtures {
-	const subject = "somewhere"
-
-	certFixturesDir := filepath.Join("..", "fixtures", "certs")
-
-	keyFile := filepath.Join(certFixturesDir, "myclient.key")
-	keyPem, err := os.ReadFile(keyFile)
-	require.NoError(t, err)
-
-	keyDer, _ := pem.Decode(keyPem)
-	require.NotNil(t, keyDer)
-
-	key, err := x509.ParsePKCS1PrivateKey(keyDer.Bytes)
-	require.NoError(t, err)
-
-	certFile := filepath.Join(certFixturesDir, "myclient.crt")
-	certPem, err := os.ReadFile(certFile)
-	require.NoError(t, err)
-
-	certDer, _ := pem.Decode(certPem)
-	require.NotNil(t, certDer)
-
-	cert, err := x509.ParseCertificate(certDer.Bytes)
-	require.NoError(t, err)
-
-	eccKeyFile := filepath.Join(certFixturesDir, "myclient-ecc.key")
-	eckeyPem, err := os.ReadFile(eccKeyFile)
-	require.NoError(t, err)
-
-	_, remainder := pem.Decode(eckeyPem)
-	ecKeyDer, _ := pem.Decode(remainder)
-	require.NotNil(t, ecKeyDer)
-
-	ecKey, err := x509.ParseECPrivateKey(ecKeyDer.Bytes)
-	require.NoError(t, err)
-
-	eccCertFile := filepath.Join(certFixturesDir, "myclient-ecc.crt")
-	ecCertPem, err := os.ReadFile(eccCertFile)
-	require.NoError(t, err)
-
-	ecCertDer, _ := pem.Decode(ecCertPem)
-	require.NotNil(t, ecCertDer)
-
-	ecCert, err := x509.ParseCertificate(ecCertDer.Bytes)
-	require.NoError(t, err)
-
-	caFile := filepath.Join(certFixturesDir, "myCA.crt")
-	caPem, err := os.ReadFile(caFile)
-	require.NoError(t, err)
-
-	caBlock, _ := pem.Decode(caPem)
-	require.NotNil(t, caBlock)
-
-	caCert, err := x509.ParseCertificate(caBlock.Bytes)
-	require.NoError(t, err)
-
-	serverKeyFile := filepath.Join(certFixturesDir, "mycert1.key")
-	serverKeyPem, err := os.ReadFile(serverKeyFile)
-	require.NoError(t, err)
-
-	serverKeyDer, _ := pem.Decode(serverKeyPem)
-	require.NotNil(t, serverKeyDer)
-
-	serverKey, err := x509.ParsePKCS1PrivateKey(serverKeyDer.Bytes)
-	require.NoError(t, err)
-
-	serverCertFile := filepath.Join(certFixturesDir, "mycert1.crt")
-	serverCertPem, err := os.ReadFile(serverCertFile)
-	require.NoError(t, err)
-
-	serverCertDer, _ := pem.Decode(serverCertPem)
-	require.NotNil(t, serverCertDer)
-
-	serverCert, err := x509.ParseCertificate(serverCertDer.Bytes)
-	require.NoError(t, err)
-
-	return &tlsFixtures{
-		Subject: subject,
-		RSA: tlsFixture{
-			CAFile:     caFile,
-			KeyFile:    keyFile,
-			CertFile:   certFile,
-			LoadedCA:   caCert,
-			LoadedKey:  key,
-			LoadedCert: cert,
-		},
-		ECDSA: tlsFixture{
-			KeyFile:    eccKeyFile,
-			CertFile:   eccCertFile,
-			LoadedKey:  ecKey,
-			LoadedCert: ecCert,
-		},
-		Server: tlsFixture{
-			KeyFile:    serverKeyFile,
-			CertFile:   serverCertFile,
-			LoadedCA:   caCert,
-			LoadedKey:  serverKey,
-			LoadedCert: serverCert,
-		},
-	}
-}
 
 func systemCAPool(t testing.TB) *x509.CertPool {
 	if goruntime.GOOS == "windows" {
