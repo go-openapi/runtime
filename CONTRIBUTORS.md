@@ -4,19 +4,19 @@
 
 | Total Contributors | Total Contributions |
 | --- | --- |
-| 69  | 489  |
+| 69  | 490  |
 
 | Username | All Time Contribution Count | All Commits |
 | --- | --- | --- |
 | @casualjim | 268 | <https://github.com/go-openapi/runtime/commits?author=casualjim> |
-| @fredbi | 68 | <https://github.com/go-openapi/runtime/commits?author=fredbi> |
+| @fredbi | 69 | <https://github.com/go-openapi/runtime/commits?author=fredbi> |
 | @youyuanwu | 19 | <https://github.com/go-openapi/runtime/commits?author=youyuanwu> |
 | @josephwoodward | 13 | <https://github.com/go-openapi/runtime/commits?author=josephwoodward> |
 | @kenjones-cisco | 12 | <https://github.com/go-openapi/runtime/commits?author=kenjones-cisco> |
 | @GlenDC | 7 | <https://github.com/go-openapi/runtime/commits?author=GlenDC> |
+| @elakito | 6 | <https://github.com/go-openapi/runtime/commits?author=elakito> |
 | @moenning | 6 | <https://github.com/go-openapi/runtime/commits?author=moenning> |
 | @mstoykov | 6 | <https://github.com/go-openapi/runtime/commits?author=mstoykov> |
-| @elakito | 6 | <https://github.com/go-openapi/runtime/commits?author=elakito> |
 | @ifraixedes | 5 | <https://github.com/go-openapi/runtime/commits?author=ifraixedes> |
 | @zeitlinger | 4 | <https://github.com/go-openapi/runtime/commits?author=zeitlinger> |
 | @jkawamoto | 3 | <https://github.com/go-openapi/runtime/commits?author=jkawamoto> |
