@@ -357,7 +357,7 @@ func (d *defaultRouter) Lookup(method, path string) (*MatchedRoute, bool) {
 		}
 	}
 	if router, ok := d.routers[mth]; ok {
-		if m, rp, ok := router.Lookup(fpath.Clean(path)); ok && m != nil {
+		if m, rp, ok := router.Lookup(fpath.Clean(escapeLiteralColons(path))); ok && m != nil {
 			if entry, ok := m.(*routeEntry); ok {
 				d.debugLogf("found a route for %s %s with %d parameters", method, path, len(entry.Parameters))
 				var params RouteParams
@@ -398,7 +398,7 @@ func (d *defaultRouter) OtherMethods(method, path string) []string {
 	var methods []string
 	for k, v := range d.routers {
 		if k != mn {
-			if _, _, ok := v.Lookup(fpath.Clean(path)); ok {
+			if _, _, ok := v.Lookup(fpath.Clean(escapeLiteralColons(path))); ok {
 				methods = append(methods, k)
 				continue
 			}
@@ -413,6 +413,14 @@ func (d *defaultRouter) SetLogger(lg logger.Logger) {
 
 // convert swagger parameters per path segment into a denco parameter as multiple parameters per segment are not supported in denco.
 var pathConverter = regexp.MustCompile(`{(.+?)}([^/]*)`)
+
+// escapeLiteralColons replaces literal ':' characters with their URL-encoded
+// equivalent "%3A". This prevents the denco router from misinterpreting ':'
+// in URL path segments as parameter delimiters. The ':' character is valid in
+// URL paths per RFC 3986 section 3.3.
+func escapeLiteralColons(path string) string {
+	return strings.ReplaceAll(path, ":", "%3A")
+}
 
 func decodeCompositParams(name string, value string, pattern string, names []string, values []string) ([]string, []string) {
 	pleft := strings.Index(pattern, "{")
@@ -463,7 +471,7 @@ func (d *defaultRouteBuilder) AddRoute(method, path string, operation *spec.Oper
 
 		requestBinder := NewUntypedRequestBinder(parameters, d.spec.Spec(), d.api.Formats())
 		requestBinder.setDebugLogf(d.debugLogf)
-		record := denco.NewRecord(pathConverter.ReplaceAllString(path, ":$1"), &routeEntry{
+		record := denco.NewRecord(pathConverter.ReplaceAllString(escapeLiteralColons(path), ":$1"), &routeEntry{
 			BasePath:       bp,
 			PathPattern:    path,
 			Operation:      operation,

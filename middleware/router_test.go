@@ -14,6 +14,7 @@ import (
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime/internal/testing/petstore"
+	"github.com/go-openapi/runtime/middleware/denco"
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/testify/v2/assert"
 	"github.com/go-openapi/testify/v2/require"
@@ -232,6 +233,96 @@ func TestPathConverter(t *testing.T) {
 		actual := pathConverter.ReplaceAllString(tc.swagger, ":$1")
 		assert.EqualT(t, tc.denco, actual, "expected swagger path %s to match %s but got %s", tc.swagger, tc.denco, actual)
 	}
+}
+
+func TestEscapeLiteralColons(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"/", "/"},
+		{"/something", "/something"},
+		{"/allow/{serverName}/tokenlist:add", "/allow/{serverName}/tokenlist%3Aadd"},
+		{"/path:with:colons", "/path%3Awith%3Acolons"},
+		{"/{id}:{name}", "/{id}%3A{name}"},
+		{"/action:do/{id}", "/action%3Ado/{id}"},
+		{"/normal/path", "/normal/path"},
+	}
+
+	for _, tc := range cases {
+		actual := escapeLiteralColons(tc.input)
+		assert.EqualT(t, tc.expected, actual, "expected escapeLiteralColons(%s) to be %s but got %s", tc.input, tc.expected, actual)
+	}
+}
+
+func TestPathConverterWithLiteralColons(t *testing.T) {
+	// Verify the full pipeline: escapeLiteralColons then pathConverter
+	cases := []struct {
+		swagger string
+		denco   string
+	}{
+		// The main use case from issue #352
+		{"/allow/{serverName}/tokenlist:add", "/allow/:serverName/tokenlist%3Aadd"},
+		// Literal colons in static segments
+		{"/action:do/{id}", "/action%3Ado/:id"},
+		{"/path:with:colons", "/path%3Awith%3Acolons"},
+		// Multiple colons in different segments
+		{"/api:v1/items/{id}", "/api%3Av1/items/:id"},
+	}
+
+	for _, tc := range cases {
+		actual := pathConverter.ReplaceAllString(escapeLiteralColons(tc.swagger), ":$1")
+		assert.EqualT(t, tc.denco, actual, "expected swagger path %s to produce denco path %s but got %s", tc.swagger, tc.denco, actual)
+	}
+}
+
+func TestDencoRouterWithLiteralColons(t *testing.T) {
+	// Test that the denco router correctly handles paths with literal colons
+	// when the colons are URL-encoded as %3A.
+	t.Run("static path with encoded colons", func(t *testing.T) {
+		router := denco.New()
+		err := router.Build([]denco.Record{
+			denco.NewRecord("/path%3Awith%3Acolons", "static-colon-route"),
+		})
+		require.NoError(t, err)
+
+		data, _, ok := router.Lookup("/path%3Awith%3Acolons")
+		assert.TrueT(t, ok)
+		assert.EqualT(t, "static-colon-route", data)
+
+		// Should not match the unescaped version
+		_, _, ok = router.Lookup("/path:with:colons")
+		assert.FalseT(t, ok)
+	})
+
+	t.Run("parametric path with encoded colons in suffix", func(t *testing.T) {
+		router := denco.New()
+		err := router.Build([]denco.Record{
+			denco.NewRecord("/allow/:serverName/tokenlist%3Aadd", "param-colon-route"),
+		})
+		require.NoError(t, err)
+
+		data, params, ok := router.Lookup("/allow/myserver/tokenlist%3Aadd")
+		assert.TrueT(t, ok)
+		assert.EqualT(t, "param-colon-route", data)
+		require.Len(t, params, 1)
+		assert.EqualT(t, "myserver", params[0].Value)
+	})
+
+	t.Run("parametric path with encoded colons between params", func(t *testing.T) {
+		router := denco.New()
+		err := router.Build([]denco.Record{
+			denco.NewRecord("/:id/items%3Acheck/:name", "between-params-route"),
+		})
+		require.NoError(t, err)
+
+		data, params, ok := router.Lookup("/foo/items%3Acheck/bar")
+		assert.TrueT(t, ok)
+		assert.EqualT(t, "between-params-route", data)
+		require.Len(t, params, 2)
+		assert.EqualT(t, "foo", params[0].Value)
+		assert.EqualT(t, "bar", params[1].Value)
+	})
 }
 
 func TestExtractCompositParameters(t *testing.T) {
