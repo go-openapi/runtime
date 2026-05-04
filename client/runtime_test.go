@@ -476,6 +476,38 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	assert.Equal(t, result, actual)
 }
 
+// TestPickConsumesMediaType covers the selection rule used by the client
+// runtime: when an operation advertises both multipart/form-data and
+// application/x-www-form-urlencoded, multipart wins regardless of the order
+// codegen produced. See issue #286.
+func TestPickConsumesMediaType(t *testing.T) {
+	const def = "application/json"
+	cases := []struct {
+		name     string
+		consumes []string
+		want     string
+	}{
+		{"empty falls back to default", nil, def},
+		{"only empties fall back to default", []string{"", ""}, def},
+		{"single entry wins", []string{"text/plain"}, "text/plain"},
+		{"first non-empty wins when no multipart",
+			[]string{"", runtime.URLencodedFormMime}, runtime.URLencodedFormMime},
+		{"multipart preferred when listed first",
+			[]string{runtime.MultipartFormMime, runtime.URLencodedFormMime}, runtime.MultipartFormMime},
+		{"multipart preferred when listed last",
+			[]string{runtime.URLencodedFormMime, runtime.MultipartFormMime}, runtime.MultipartFormMime},
+		{"caller's explicit single choice is honored",
+			[]string{runtime.URLencodedFormMime}, runtime.URLencodedFormMime},
+		{"multipart match is case-insensitive",
+			[]string{runtime.URLencodedFormMime, "Multipart/Form-Data"}, "Multipart/Form-Data"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.EqualT(t, tc.want, pickConsumesMediaType(tc.consumes, def))
+		})
+	}
+}
+
 func TestRuntime_PickConsumer(t *testing.T) {
 	result := []task{
 		{false, "task 1 content", 1},

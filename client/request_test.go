@@ -450,6 +450,10 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	fileverifier("empty", 0, filepath.Base(emptyFile.Name()), []byte{})
 }
 
+// TestBuildRequest_BuildHTTP_Files_URLEncoded covers issue #286: when the
+// caller explicitly picks application/x-www-form-urlencoded, file fields must
+// be encoded as regular URL-encoded form values rather than producing a
+// multipart body advertised under a urlencoded Content-Type.
 func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	cont, err := os.ReadFile("./runtime.go")
 	require.NoError(t, err)
@@ -474,31 +478,23 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
 	assert.EqualT(t, "/flats/1234/", req.URL.Path)
-	mediaType, params, err := mime.ParseMediaType(req.Header.Get(runtime.HeaderContentType))
-	require.NoError(t, err)
 
-	assert.EqualT(t, runtime.URLencodedFormMime, mediaType)
-	boundary := params["boundary"]
-	mr := multipart.NewReader(req.Body, boundary)
+	// Content-Type must be the bare urlencoded type — no boundary parameter.
+	assert.EqualT(t, runtime.URLencodedFormMime, req.Header.Get(runtime.HeaderContentType))
+
+	body, err := io.ReadAll(req.Body)
+	require.NoError(t, err)
 	defer req.Body.Close()
-	frm, err := mr.ReadForm(1 << 20)
+
+	values, err := url.ParseQuery(string(body))
 	require.NoError(t, err)
 
-	assert.EqualT(t, "some value", frm.Value["something"][0])
-	fileverifier := func(name string, index int, filename string, content []byte) {
-		mpff := frm.File[name][index]
-		mpf, e := mpff.Open()
-		require.NoError(t, e)
-		defer mpf.Close()
-		assert.EqualT(t, filename, mpff.Filename)
-		actual, e := io.ReadAll(mpf)
-		require.NoError(t, e)
-		assert.Equal(t, content, actual)
-	}
-	fileverifier("file", 0, "runtime.go", cont)
-
-	fileverifier("otherfiles", 0, "runtime.go", cont)
-	fileverifier("otherfiles", 1, "request.go", cont2)
+	assert.EqualT(t, "some value", values.Get("something"))
+	require.Len(t, values["file"], 1)
+	assert.Equal(t, string(cont), values["file"][0])
+	require.Len(t, values["otherfiles"], 2)
+	assert.Equal(t, string(cont), values["otherfiles"][0])
+	assert.Equal(t, string(cont2), values["otherfiles"][1])
 }
 
 type contentTypeProvider struct {
