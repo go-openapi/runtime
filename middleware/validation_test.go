@@ -137,6 +137,11 @@ func TestResponseFormatValidation(t *testing.T) {
 }
 
 func TestValidateContentType(t *testing.T) {
+	const (
+		textPlain         = "text/plain"
+		textPlainUTF8     = "text/plain;charset=utf-8"
+		textPlainParamSrv = "text/plain; charset=utf-8"
+	)
 	data := []struct {
 		hdr     string
 		allowed []string
@@ -152,6 +157,22 @@ func TestValidateContentType(t *testing.T) {
 		{"application/json;char*", []string{"application/json"}, errors.InvalidContentType("application/json;char*", []string{"application/json"})},
 		{"application/octet-stream", []string{"image/jpeg", "application/*"}, nil},
 		{"image/png", []string{"*/*", "application/json"}, nil},
+		// regression for https://github.com/go-openapi/runtime/issues/136:
+		// allowed entries with MIME parameters should not block matching clients.
+		// (1) client sends bare type, server allows type with params -> accept
+		{textPlain, []string{textPlainParamSrv}, nil},
+		// (2) client sends a different param than server -> reject
+		{"text/plain;blah=true", []string{textPlainParamSrv},
+			errors.InvalidContentType("text/plain;blah=true", []string{textPlainParamSrv})},
+		// (3) client sends params, server allows bare type -> accept
+		{textPlainUTF8, []string{textPlain}, nil},
+		// (4) exact param match -> accept
+		{textPlainUTF8, []string{textPlainUTF8}, nil},
+		// param value compare is case-insensitive (charset is case-insensitive)
+		{"text/plain;charset=UTF-8", []string{textPlainUTF8}, nil},
+		// (5) conflicting param values -> reject
+		{textPlainUTF8, []string{"text/plain;charset=ascii"},
+			errors.InvalidContentType(textPlainUTF8, []string{"text/plain;charset=ascii"})},
 	}
 
 	for _, v := range data {
