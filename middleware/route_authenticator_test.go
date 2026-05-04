@@ -194,6 +194,41 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 	require.EqualT(t, 5, count)
 }
 
+// TestAuthenticateTypedNilPrincipal is a regression test for
+// https://github.com/go-openapi/runtime/issues/147.
+//
+// When an authenticator is written with a concrete principal type (e.g. *myPrincipal),
+// returning (true, nil, nil) packs a typed-nil into the any return. A naive
+// `usr == nil` check would miss it and treat the typed-nil as a successful auth.
+// The Authenticate path must detect that case so the unauthenticated branch
+// (a 401 in Context.Authorize) is taken.
+func TestAuthenticateTypedNilPrincipal(t *testing.T) {
+	type myPrincipal struct{}
+
+	typedNilAuth := runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
+		var p *myPrincipal // typed nil
+		return true, p, nil
+	})
+
+	ra := RouteAuthenticator{
+		Authenticator: map[string]runtime.Authenticator{
+			"auth1": typedNilAuth,
+		},
+		Schemes: []string{"auth1"},
+		Scopes:  map[string][]string{"auth1": nil},
+	}
+	ras := RouteAuthenticators([]RouteAuthenticator{ra})
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	route := &MatchedRoute{}
+	ok, prin, err := ras.Authenticate(req, route)
+	require.NoError(t, err)
+	// applies=true was returned but principal is (typed) nil: treated as
+	// not-authenticated, so the aggregator must report no successful auth.
+	require.FalseT(t, ok)
+	require.Nil(t, prin)
+}
+
 func TestAuthenticateOptional(t *testing.T) {
 	ra1 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
