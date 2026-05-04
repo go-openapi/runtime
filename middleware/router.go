@@ -21,6 +21,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag/stringutils"
+	"github.com/go-openapi/swag/typeutils"
 )
 
 // RouteParam is a object to capture route params in a framework agnostic way.
@@ -292,7 +293,7 @@ func (ras RouteAuthenticators) Authenticate(req *http.Request, route *MatchedRou
 			continue
 		}
 		applies, usr, err := ra.Authenticate(req, route)
-		if !applies || err != nil || usr == nil {
+		if !applies || err != nil || typeutils.IsZero(usr) {
 			if err != nil {
 				lastError = err
 			}
