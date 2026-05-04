@@ -43,6 +43,7 @@ github.com/go-openapi/swag/typeutils v0.26.0/go.mod h1:oovDuIUvTrEHVMqWilQzKzV4Y
 github.com/go-openapi/swag/yamlutils v0.25.5 h1:kASCIS+oIeoc55j28T4o8KwlV2S4ZLPT6G0iq2SSbVQ=
 github.com/go-openapi/swag/yamlutils v0.25.5/go.mod h1:Gek1/SjjfbYvM+Iq4QGwa/2lEXde9n2j4a3wI3pNuOQ=
 github.com/go-openapi/testify/enable/yaml/v2 v2.5.0 h1:3hZD1fwydvCx/cc1R2uYNQirHqf2s6lqpKV3FcNTURA=
+github.com/go-openapi/testify/enable/yaml/v2 v2.5.0/go.mod h1:TvDZKBH7ZbMaF3EqH2AwTvNQCmzyZq8K1agRjf1B+Nk=
 github.com/go-openapi/testify/v2 v2.5.0 h1:UOCr63aAsMIDydZbZGqo5Ev01D4eydItRbekDuZMJLw=
 github.com/go-openapi/testify/v2 v2.5.0/go.mod h1:SgsVHtfooshd0tublTtJ50FPKhujf47YRqauXXOUxfw=
 github.com/go-openapi/validate v0.25.2 h1:12NsfLAwGegqbGWr2CnvT65X/Q2USJipmJ9b7xDJZz0=
