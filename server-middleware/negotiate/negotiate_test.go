@@ -7,14 +7,14 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd.
 
-package middleware_test
+package negotiate_test
 
 import (
 	"fmt"
 	"net/http"
 	"testing"
 
-	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
 
 // Test fixtures: extracted to dedup goconst hits across the table-driven cases.
@@ -32,6 +32,9 @@ const (
 	xy            = "x/y"
 
 	textHTML = "text/html"
+
+	encGzip     = "gzip"
+	encIdentity = "identity"
 )
 
 var negotiateContentEncodingTests = []struct {
@@ -39,15 +42,15 @@ var negotiateContentEncodingTests = []struct {
 	offers []string
 	expect string
 }{
-	{"", []string{"identity", "gzip"}, "identity"},
-	{"*;q=0", []string{"identity", "gzip"}, ""},
-	{"gzip", []string{"identity", "gzip"}, "gzip"},
+	{"", []string{encIdentity, encGzip}, encIdentity},
+	{"*;q=0", []string{encIdentity, encGzip}, ""},
+	{encGzip, []string{encIdentity, encGzip}, encGzip},
 }
 
 func TestNegotiateContentEncoding(t *testing.T) {
 	for _, tt := range negotiateContentEncodingTests {
 		r := &http.Request{Header: http.Header{"Accept-Encoding": {tt.s}}}
-		actual := middleware.NegotiateContentEncoding(r, tt.offers)
+		actual := negotiate.ContentEncoding(r, tt.offers)
 		if actual != tt.expect {
 			t.Errorf("NegotiateContentEncoding(%q, %#v)=%q, want %q", tt.s, tt.offers, actual, tt.expect)
 		}
@@ -119,7 +122,7 @@ func TestNegotiateContentTypeDefault(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			r := &http.Request{Header: http.Header{headerAccept: {c.acceptHeader}}}
-			got := middleware.NegotiateContentType(r, c.offers, c.defaultOffer)
+			got := negotiate.ContentType(r, c.offers, c.defaultOffer)
 			if got != c.expect {
 				t.Errorf("NegotiateContentType(%q, %#v, %q) = %q, want %q",
 					c.acceptHeader, c.offers, c.defaultOffer, got, c.expect)
@@ -166,8 +169,8 @@ func TestNegotiateContentTypeIgnoreParameters(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			r := &http.Request{Header: http.Header{headerAccept: {c.acceptHeader}}}
-			got := middleware.NegotiateContentType(r, c.offers, c.defaultOffer,
-				middleware.WithIgnoreParameters(true),
+			got := negotiate.ContentType(r, c.offers, c.defaultOffer,
+				negotiate.WithIgnoreParameters(true),
 			)
 			if got != c.expect {
 				t.Errorf("NegotiateContentType(%q, %#v, %q, WithIgnoreParameters(true)) = %q, want %q",
@@ -182,10 +185,10 @@ func TestNegotiateContentTypeIgnoreParameters(t *testing.T) {
 func TestNegotiateContentTypeNoAcceptHeader(t *testing.T) {
 	r := &http.Request{Header: http.Header{}}
 	offers := []string{jsonMime, "text/xml"}
-	if got := middleware.NegotiateContentType(r, offers, ""); got != jsonMime {
+	if got := negotiate.ContentType(r, offers, ""); got != jsonMime {
 		t.Errorf("default mode: got %q, want %q", got, jsonMime)
 	}
-	if got := middleware.NegotiateContentType(r, offers, "", middleware.WithIgnoreParameters(true)); got != jsonMime {
+	if got := negotiate.ContentType(r, offers, "", negotiate.WithIgnoreParameters(true)); got != jsonMime {
 		t.Errorf("ignore mode: got %q, want %q", got, jsonMime)
 	}
 }
@@ -197,7 +200,7 @@ func TestNegotiateContentTypeNoAcceptHeader(t *testing.T) {
 func TestNegotiateContentTypeMultiHeader(t *testing.T) {
 	r := &http.Request{Header: http.Header{headerAccept: {"application/xml", jsonMime}}}
 	offers := []string{jsonMime}
-	if got := middleware.NegotiateContentType(r, offers, ""); got != jsonMime {
+	if got := negotiate.ContentType(r, offers, ""); got != jsonMime {
 		t.Errorf("got %q, want %q (later Accept value should still match)", got, jsonMime)
 	}
 }
@@ -210,12 +213,12 @@ func ExampleWithIgnoreParameters() {
 
 	// Default: parameters are honoured. The charset values disagree, so
 	// no offer matches and we fall back to the default.
-	strict := middleware.NegotiateContentType(r, offers, "fallback/default")
+	strict := negotiate.ContentType(r, offers, "fallback/default")
 
 	// Opt-out: strip parameters before matching. The bare types agree, so
 	// the offer is selected.
-	loose := middleware.NegotiateContentType(r, offers, "fallback/default",
-		middleware.WithIgnoreParameters(true),
+	loose := negotiate.ContentType(r, offers, "fallback/default",
+		negotiate.WithIgnoreParameters(true),
 	)
 
 	fmt.Printf("strict=%q\nloose=%q\n", strict, loose)

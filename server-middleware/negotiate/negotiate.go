@@ -1,33 +1,25 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-// Copyright 2013 The Go Authors. All rights reserved.
-//
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file or at
-// https://developers.google.com/open-source/licenses/bsd.
-
-// this file was originally based on github.com/golang/gddo
-
-package middleware
+package negotiate
 
 import (
 	"net/http"
 	"strings"
 
-	"github.com/go-openapi/runtime/middleware/header"
 	"github.com/go-openapi/runtime/server-middleware/mediatype"
+	"github.com/go-openapi/runtime/server-middleware/negotiate/header"
 )
 
-// NegotiateOption configures [NegotiateContentType] behaviour.
-type NegotiateOption func(*negotiateOptions)
+// Option configures [ContentType] behaviour.
+type Option func(*options)
 
-type negotiateOptions struct {
+type options struct {
 	ignoreParameters bool
 }
 
-func negotiateOptionsWithDefaults(opts []NegotiateOption) negotiateOptions {
-	var o negotiateOptions
+func optionsWithDefaults(opts []Option) options {
+	var o options
 	for _, apply := range opts {
 		apply(&o)
 	}
@@ -35,7 +27,7 @@ func negotiateOptionsWithDefaults(opts []NegotiateOption) negotiateOptions {
 	return o
 }
 
-// WithIgnoreParameters returns a [NegotiateOption] that strips MIME-type
+// WithIgnoreParameters returns an [Option] that strips MIME-type
 // parameters from both Accept entries and offers before matching, restoring
 // the behaviour the runtime had before v0.30.
 //
@@ -46,27 +38,27 @@ func negotiateOptionsWithDefaults(opts []NegotiateOption) negotiateOptions {
 //
 // Example — per-call opt-out:
 //
-//	chosen := middleware.NegotiateContentType(r, offers, "",
-//	    middleware.WithIgnoreParameters(true),
+//	chosen := negotiate.ContentType(r, offers, "",
+//	    negotiate.WithIgnoreParameters(true),
 //	)
 //
-// Example — server-wide opt-out:
+// Example — server-wide opt-out (via [middleware.Context]):
 //
 //	ctx := middleware.NewContext(spec, api, nil).SetIgnoreParameters(true)
-func WithIgnoreParameters(ignore bool) NegotiateOption {
-	return func(o *negotiateOptions) {
+func WithIgnoreParameters(ignore bool) Option {
+	return func(o *options) {
 		o.ignoreParameters = ignore
 	}
 }
 
-// NegotiateContentEncoding returns the best offered content encoding for the
-// request's Accept-Encoding header. If two offers match with equal weight and
-// then the offer earlier in the list is preferred. If no offers are
-// acceptable, then "" is returned.
+// ContentEncoding returns the best offered content encoding for the
+// request's Accept-Encoding header. If two offers match with equal
+// weight then the offer earlier in the list is preferred. If no offers
+// are acceptable, then "" is returned.
 //
 // Encoding tokens have no parameters, so this function is unaffected by
-// the v0.30 parameter-honouring change to [NegotiateContentType].
-func NegotiateContentEncoding(r *http.Request, offers []string) string {
+// the v0.30 parameter-honouring change to [ContentType].
+func ContentEncoding(r *http.Request, offers []string) string {
 	bestOffer := "identity"
 	bestQ := -1.0
 	specs := header.ParseAccept(r.Header, "Accept-Encoding")
@@ -86,12 +78,12 @@ func NegotiateContentEncoding(r *http.Request, offers []string) string {
 	return bestOffer
 }
 
-// NegotiateContentType returns the best offered content type for the
-// request's Accept header. If two offers match with equal weight, then
-// the more specific offer is preferred (text/* trumps */*; type/subtype
-// trumps type/*). If two offers match with equal weight and specificity,
-// then the offer earlier in the list is preferred. If no offers match,
-// then defaultOffer is returned.
+// ContentType returns the best offered content type for the request's
+// Accept header. If two offers match with equal weight, then the more
+// specific offer is preferred (text/* trumps */*; type/subtype trumps
+// type/*). If two offers match with equal weight and specificity, then
+// the offer earlier in the list is preferred. If no offers match, then
+// defaultOffer is returned.
 //
 // As of v0.30 the matching rule honours MIME-type parameters: an Accept
 // entry of "text/plain;charset=utf-8" matches an offer of bare
@@ -103,11 +95,11 @@ func NegotiateContentEncoding(r *http.Request, offers []string) string {
 //
 // When the Accept header is absent, the first offer is returned
 // unchanged (param-stripping is irrelevant in that case).
-func NegotiateContentType(r *http.Request, offers []string, defaultOffer string, opts ...NegotiateOption) string {
+func ContentType(r *http.Request, offers []string, defaultOffer string, opts ...Option) string {
 	if len(offers) == 0 {
 		return defaultOffer
 	}
-	o := negotiateOptionsWithDefaults(opts)
+	o := optionsWithDefaults(opts)
 
 	// Per RFC 7230 §3.2.2, multiple Accept headers are equivalent to a
 	// single comma-joined value. Join before parsing so we don't drop
@@ -151,6 +143,7 @@ func NegotiateContentType(r *http.Request, offers []string, defaultOffer string,
 			return rawByIdx[i]
 		}
 	}
+
 	return best.String()
 }
 
@@ -174,16 +167,4 @@ func sameParams(a, b map[string]string) bool {
 	}
 
 	return true
-}
-
-func normalizeOffers(orig []string) (norm []string) {
-	for _, o := range orig {
-		norm = append(norm, normalizeOffer(o))
-	}
-	return
-}
-
-func normalizeOffer(orig string) string {
-	const maxParts = 2
-	return strings.SplitN(orig, ";", maxParts)[0]
 }

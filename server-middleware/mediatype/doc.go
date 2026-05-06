@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-// Package mediatype provides a typed value for RFC 7231 / RFC 2045 media
-// types and the matching/selection primitives used by both server-side
+// Package mediatype provides a typed value for media types
+// defined by RFC 7231 and RFC 2045.
+//
+// The matching/selection primitives used by both server-side
 // validation and Accept-header negotiation.
 //
 // The package is stdlib-only.

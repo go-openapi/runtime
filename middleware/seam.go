@@ -5,7 +5,32 @@ package middleware
 
 import (
 	"github.com/go-openapi/runtime/server-middleware/docui"
+	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
+
+// NegotiateOption configures [NegotiateContentType] behaviour.
+//
+// Deprecated: moved to the [negotiate] package. Use [negotiate.Option] instead.
+type NegotiateOption = negotiate.Option
+
+// NegotiateContentType returns the best offered content type for the
+// request's Accept header.
+//
+// Deprecated: moved to the [negotiate] package. Use [negotiate.ContentType] instead.
+var NegotiateContentType = negotiate.ContentType
+
+// NegotiateContentEncoding returns the best offered content encoding for
+// the request's Accept-Encoding header.
+//
+// Deprecated: moved to the [negotiate] package. Use [negotiate.ContentEncoding] instead.
+var NegotiateContentEncoding = negotiate.ContentEncoding
+
+// WithIgnoreParameters returns a [NegotiateOption] that strips MIME-type
+// parameters from both Accept entries and offers before matching,
+// restoring the pre-v0.30 behaviour.
+//
+// Deprecated: moved to the [negotiate] package. Use [negotiate.WithIgnoreParameters] instead.
+var WithIgnoreParameters = negotiate.WithIgnoreParameters
 
 // RapiDocOpts configures the [RapiDoc] middlewares.
 //

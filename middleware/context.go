@@ -24,14 +24,13 @@ import (
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/runtime/server-middleware/docui"
+	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
 
 // Debug when true turns on verbose logging.
 var Debug = logger.DebugEnabled()
 
 // Logger is the standard library logger used for printing debug messages.
-//
-// (Note: The correct spelling is "library", not "libra". "Libra" is a zodiac sign/constellation and wouldn't make sense in this context.)
 var Logger logger.Logger = logger.StandardLogger{}
 
 func debugLogfFunc(lg logger.Logger) func(string, ...any) {
@@ -370,7 +369,7 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 			requestContentType = "*/*"
 		}
 
-		if str := NegotiateContentType(request, route.Produces, requestContentType, c.negotiateOpts()...); str == "" {
+		if str := negotiate.ContentType(request, route.Produces, requestContentType, c.negotiateOpts()...); str == "" {
 			res = append(res, errors.InvalidResponseFormat(request.Header.Get(runtime.HeaderAccept), route.Produces))
 		}
 	}
@@ -449,7 +448,7 @@ func (c *Context) ResponseFormat(r *http.Request, offers []string) (string, *htt
 		return v, r
 	}
 
-	format := NegotiateContentType(r, offers, "", c.negotiateOpts()...)
+	format := negotiate.ContentType(r, offers, "", c.negotiateOpts()...)
 	if format != "" {
 		c.debugLogf("[%s %s] set response format %q in context", r.Method, r.URL.Path, format)
 		r = r.WithContext(stdContext.WithValue(rCtx, ctxResponseFormat, format))
@@ -731,12 +730,12 @@ func (c Context) uiOptionsForHandler(opts []UIOption) (string, docui.UIOptions, 
 	return pth, uiOpts, []SpecOption{docui.WithSpecDocument(doc)}
 }
 
-func (c *Context) negotiateOpts() []NegotiateOption {
+func (c *Context) negotiateOpts() []negotiate.Option {
 	if !c.ignoreParameters {
 		return nil
 	}
 
-	return []NegotiateOption{WithIgnoreParameters(true)}
+	return []negotiate.Option{negotiate.WithIgnoreParameters(true)}
 }
 
 func cantFindProducer(format string) string {

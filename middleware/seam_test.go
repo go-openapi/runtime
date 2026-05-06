@@ -4,12 +4,12 @@
 package middleware_test
 
 // Smoke tests for the deprecated middleware aliases that forward to the
-// docui package. These verify that:
+// docui and negotiate packages. These verify that:
 //
 //   - the type aliases still resolve so user code keeps compiling,
-//   - the function-value aliases still serve the documented payload.
+//   - the function-value aliases still produce the documented behaviour.
 //
-// The exhaustive coverage lives in the docui package itself.
+// The exhaustive coverage lives in the destination packages themselves.
 
 import (
 	"context"
@@ -22,16 +22,19 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/server-middleware/docui"
+	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
 
 // Compile-time assertions that the deprecated middleware names alias the
-// docui types — type identity is required for these assignments to type-check.
+// destination types — type identity is required for these assignments to
+// type-check.
 var (
 	_ = func(o docui.SwaggerUIOpts) middleware.SwaggerUIOpts { return o }
 	_ = func(o docui.RedocOpts) middleware.RedocOpts { return o }
 	_ = func(o docui.RapiDocOpts) middleware.RapiDocOpts { return o }
 	_ = func(o docui.UIOption) middleware.UIOption { return o }
 	_ = func(o docui.SpecOption) middleware.SpecOption { return o }
+	_ = func(o negotiate.Option) middleware.NegotiateOption { return o }
 )
 
 func TestDeprecatedDocUIForwarders(t *testing.T) {
@@ -80,5 +83,35 @@ func TestDeprecatedDocUIForwarders(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		assert.EqualT(t, http.StatusOK, rec.Code)
 		assert.EqualT(t, string(body), rec.Body.String())
+	})
+
+	t.Run("middleware.NegotiateContentType still selects the offered type", func(t *testing.T) {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req.Header.Set("Accept", "application/json")
+		got := middleware.NegotiateContentType(req, []string{"application/json"}, "")
+		assert.EqualT(t, "application/json", got)
+	})
+
+	t.Run("middleware.NegotiateContentEncoding still selects gzip", func(t *testing.T) {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req.Header.Set("Accept-Encoding", "gzip")
+		got := middleware.NegotiateContentEncoding(req, []string{"identity", "gzip"})
+		assert.EqualT(t, "gzip", got)
+	})
+
+	t.Run("middleware.WithIgnoreParameters still strips params", func(t *testing.T) {
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req.Header.Set("Accept", "text/plain;charset=ascii")
+		// Strict (default): no match because charset disagrees.
+		strict := middleware.NegotiateContentType(req, []string{"text/plain;charset=utf-8"}, "fallback")
+		assert.EqualT(t, "fallback", strict)
+		// Loose (legacy mode): bare types agree, offer picked.
+		loose := middleware.NegotiateContentType(req, []string{"text/plain;charset=utf-8"}, "fallback",
+			middleware.WithIgnoreParameters(true),
+		)
+		assert.EqualT(t, "text/plain;charset=utf-8", loose)
 	})
 }
