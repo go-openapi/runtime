@@ -77,11 +77,27 @@ func (fn ResponderFunc) WriteResponse(rw http.ResponseWriter, pr runtime.Produce
 // used throughout to store request context with the standard context attached
 // to the [http.Request].
 type Context struct {
-	spec      *loads.Document
-	analyzer  *analysis.Spec
-	api       RoutableAPI
-	router    Router
-	debugLogf func(string, ...any) // a logging function to debug context and all components using it
+	spec             *loads.Document
+	analyzer         *analysis.Spec
+	api              RoutableAPI
+	router           Router
+	debugLogf        func(string, ...any) // a logging function to debug context and all components using it
+	ignoreParameters bool                 // see SetIgnoreParameters / WithIgnoreParameters
+}
+
+// SetIgnoreParameters toggles the legacy parameter-stripping behaviour for
+// Accept negotiation server-wide. When set, every internal call to
+// [NegotiateContentType] from this Context applies [WithIgnoreParameters].
+//
+// Returns the receiver for fluent configuration:
+//
+//	ctx := middleware.NewContext(spec, api, nil).SetIgnoreParameters(true)
+//
+// See [WithIgnoreParameters] for the rationale and an example.
+func (c *Context) SetIgnoreParameters(ignore bool) *Context {
+	c.ignoreParameters = ignore
+
+	return c
 }
 
 type routableUntypedAPI struct {
@@ -354,7 +370,7 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 			requestContentType = "*/*"
 		}
 
-		if str := NegotiateContentType(request, route.Produces, requestContentType); str == "" {
+		if str := NegotiateContentType(request, route.Produces, requestContentType, c.negotiateOpts()...); str == "" {
 			res = append(res, errors.InvalidResponseFormat(request.Header.Get(runtime.HeaderAccept), route.Produces))
 		}
 	}
@@ -433,7 +449,7 @@ func (c *Context) ResponseFormat(r *http.Request, offers []string) (string, *htt
 		return v, r
 	}
 
-	format := NegotiateContentType(r, offers, "")
+	format := NegotiateContentType(r, offers, "", c.negotiateOpts()...)
 	if format != "" {
 		c.debugLogf("[%s %s] set response format %q in context", r.Method, r.URL.Path, format)
 		r = r.WithContext(stdContext.WithValue(rCtx, ctxResponseFormat, format))
@@ -713,6 +729,14 @@ func (c Context) uiOptionsForHandler(opts []UIOption) (string, docui.UIOptions, 
 	}
 
 	return pth, uiOpts, []SpecOption{docui.WithSpecDocument(doc)}
+}
+
+func (c *Context) negotiateOpts() []NegotiateOption {
+	if !c.ignoreParameters {
+		return nil
+	}
+
+	return []NegotiateOption{WithIgnoreParameters(true)}
 }
 
 func cantFindProducer(format string) string {
