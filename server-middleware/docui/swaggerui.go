@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"bytes"
@@ -65,9 +65,9 @@ func (r *SwaggerUIOpts) EnsureDefaultsOauth2() {
 }
 
 func (r *SwaggerUIOpts) ensureDefaults() {
-	common := toCommonUIOptions(r)
+	common := ToCommonUIOptions(r)
 	common.EnsureDefaults()
-	fromCommonToAnyOptions(common, r)
+	FromCommonToAnyOptions(common, r)
 
 	// swaggerui-specifics
 	if r.OAuthCallbackURL == "" {

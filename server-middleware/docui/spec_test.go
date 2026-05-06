@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"context"
@@ -11,40 +11,35 @@ import (
 
 	"github.com/go-openapi/testify/v2/assert"
 	"github.com/go-openapi/testify/v2/require"
-
-	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/runtime/internal/testing/petstore"
 )
 
-func TestServeSpecMiddleware(t *testing.T) {
-	spec, api := petstore.NewAPI(t)
-	ctx := NewContext(spec, api, nil)
+// minimal valid swagger 2.0 document, sufficient for round-tripping bytes
+// without dragging in the petstore fixture (which lives in an internal/
+// package of the parent runtime module and is not importable from here).
+var testSpec = []byte(`{"swagger":"2.0","info":{"title":"Test","version":"1.0.0"},"paths":{}}`)
 
-	t.Run("Spec handler", func(t *testing.T) {
-		handler := Spec("", ctx.spec.Raw(), nil)
+func TestServeSpecMiddleware(t *testing.T) {
+	t.Run("ServeSpec handler", func(t *testing.T) {
+		handler := ServeSpec("", testSpec, nil)
 
 		t.Run("serves spec", func(t *testing.T) {
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
 			require.NoError(t, err)
-			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
 			assert.EqualT(t, http.StatusOK, recorder.Code)
 
 			responseHeaders := recorder.Result().Header
-			responseContentType := responseHeaders.Get("Content-Type")
+			responseContentType := responseHeaders.Get(contentTypeHeader)
 			assert.EqualT(t, applicationJSON, responseContentType)
 
-			responseBody := recorder.Body
-			require.NotNil(t, responseBody)
-			require.JSONEqT(t, string(spec.Raw()), responseBody.String())
+			require.JSONEqT(t, string(testSpec), recorder.Body.String())
 		})
 
 		t.Run("returns 404 when no next handler", func(t *testing.T) {
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
 			require.NoError(t, err)
-			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
@@ -52,12 +47,11 @@ func TestServeSpecMiddleware(t *testing.T) {
 		})
 
 		t.Run("forwards to next handler for other url", func(t *testing.T) {
-			handler = Spec("", ctx.spec.Raw(), http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			handler = ServeSpec("", testSpec, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 				rw.WriteHeader(http.StatusOK)
 			}))
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
 			require.NoError(t, err)
-			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
@@ -65,8 +59,8 @@ func TestServeSpecMiddleware(t *testing.T) {
 		})
 	})
 
-	t.Run("Spec handler with options", func(t *testing.T) {
-		handler := Spec("/swagger", ctx.spec.Raw(), nil,
+	t.Run("ServeSpec handler with options", func(t *testing.T) {
+		handler := ServeSpec("/swagger", testSpec, nil,
 			WithSpecPath("spec"),
 			WithSpecDocument("myapi-swagger.json"),
 		)
@@ -74,7 +68,6 @@ func TestServeSpecMiddleware(t *testing.T) {
 		t.Run("serves spec", func(t *testing.T) {
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger/spec/myapi-swagger.json", nil)
 			require.NoError(t, err)
-			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)
@@ -84,7 +77,6 @@ func TestServeSpecMiddleware(t *testing.T) {
 		t.Run("should not find spec there", func(t *testing.T) {
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
 			require.NoError(t, err)
-			request.Header.Add(runtime.HeaderContentType, runtime.JSONMime)
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(recorder, request)

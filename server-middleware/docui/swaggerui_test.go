@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"context"
@@ -60,11 +60,7 @@ func TestSwaggerUIMiddleware(t *testing.T) {
 		t.Run("with custom template that fails to execute", func(t *testing.T) {
 			assert.Panics(t, func() {
 				SwaggerUI(SwaggerUIOpts{
-					Template: `<!DOCTYPE html>
-<html>
-	spec-url='{{ .Unknown }}'
-</html>
-`,
+					Template: badTemplate,
 				}, nil)
 			})
 		})

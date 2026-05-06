@@ -1,19 +1,14 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"net/http"
 	"path"
 )
 
-const (
-	contentTypeHeader = "Content-Type"
-	applicationJSON   = "application/json"
-)
-
-// SpecOption can be applied to the Spec serving [middleware].
+// SpecOption can be applied to the [ServeSpec] [middleware].
 type SpecOption func(*specOptions)
 
 var defaultSpecOptions = specOptions{
@@ -35,13 +30,13 @@ func specOptionsWithDefaults(opts []SpecOption) specOptions {
 	return o
 }
 
-// Spec creates a [middleware] to serve a swagger spec as a JSON document.
+// ServeSpec creates a [middleware] to serve a swagger spec as a JSON document.
 //
 // This allows for altering the spec before starting the [http] listener.
 //
 // The basePath argument indicates the path of the spec document (defaults to "/").
 // Additional [SpecOption] can be used to change the name of the document (defaults to "swagger.json").
-func Spec(basePath string, b []byte, next http.Handler, opts ...SpecOption) http.Handler {
+func ServeSpec(basePath string, b []byte, next http.Handler, opts ...SpecOption) http.Handler {
 	if basePath == "" {
 		basePath = "/"
 	}
@@ -68,7 +63,7 @@ func Spec(basePath string, b []byte, next http.Handler, opts ...SpecOption) http
 	})
 }
 
-// WithSpecPath sets the path to be joined to the base path of the Spec [middleware].
+// WithSpecPath sets the path to be joined to the base path of the [ServeSpec] [middleware].
 //
 // This is empty by default.
 func WithSpecPath(pth string) SpecOption {

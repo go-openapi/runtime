@@ -1,14 +1,11 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
-	"net/http"
-	"path"
 	"strings"
 )
 
@@ -17,10 +14,13 @@ const (
 	defaultDocsPath  = "docs"
 	defaultDocsURL   = "/swagger.json"
 	defaultDocsTitle = "API Documentation"
+
+	contentTypeHeader = "Content-Type"
+	applicationJSON   = "application/json"
 )
 
-// uiOptions defines common options for UI serving middlewares.
-type uiOptions struct {
+// UIOptions defines common options for UI serving middlewares.
+type UIOptions struct {
 	// BasePath for the UI, defaults to: /
 	BasePath string
 
@@ -39,14 +39,14 @@ type uiOptions struct {
 	Template string
 }
 
-// toCommonUIOptions converts any UI option type to retain the common options.
+// ToCommonUIOptions converts any UI option type to retain the common options.
 //
 // This uses gob encoding/decoding to convert common fields from one struct to another.
-func toCommonUIOptions(opts any) uiOptions {
+func ToCommonUIOptions(opts any) UIOptions {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	dec := gob.NewDecoder(&buf)
-	var o uiOptions
+	var o UIOptions
 	err := enc.Encode(opts)
 	if err != nil {
 		panic(err)
@@ -60,7 +60,10 @@ func toCommonUIOptions(opts any) uiOptions {
 	return o
 }
 
-func fromCommonToAnyOptions[T any](source uiOptions, target *T) {
+// FromCommonToAnyOptions copies the common UI options held in source into the
+// flavor-specific target struct (one of [SwaggerUIOpts], [RedocOpts] or
+// [RapiDocOpts]).
+func FromCommonToAnyOptions[T any](source UIOptions, target *T) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	dec := gob.NewDecoder(&buf)
@@ -75,12 +78,16 @@ func fromCommonToAnyOptions[T any](source uiOptions, target *T) {
 	}
 }
 
-// UIOption can be applied to UI serving [middleware], such as Context.[APIHandler] or
-// Context.[APIHandlerSwaggerUI] to alter the default behavior.
-type UIOption func(*uiOptions)
+// UIOption can be applied to UI serving [middleware] to alter the default
+// behavior.
+type UIOption func(*UIOptions)
 
-func uiOptionsWithDefaults(opts []UIOption) uiOptions {
-	var o uiOptions
+// UIOptionsWithDefaults applies the given options on top of an empty
+// [UIOptions]. Per-flavor handlers ([SwaggerUI], [Redoc], [RapiDoc])
+// fill in the remaining defaults via [UIOptions.EnsureDefaults] when
+// the option struct is used.
+func UIOptionsWithDefaults(opts []UIOption) UIOptions {
+	var o UIOptions
 	for _, apply := range opts {
 		apply(&o)
 	}
@@ -89,10 +96,8 @@ func uiOptionsWithDefaults(opts []UIOption) uiOptions {
 }
 
 // WithUIBasePath sets the base path from where to serve the UI assets.
-//
-// By default, Context [middleware] sets this value to the API base path.
 func WithUIBasePath(base string) UIOption {
-	return func(o *uiOptions) {
+	return func(o *UIOptions) {
 		if !strings.HasPrefix(base, "/") {
 			base = "/" + base
 		}
@@ -102,7 +107,7 @@ func WithUIBasePath(base string) UIOption {
 
 // WithUIPath sets the path from where to serve the UI assets (i.e. /{basepath}/{path}.
 func WithUIPath(pth string) UIOption {
-	return func(o *uiOptions) {
+	return func(o *UIOptions) {
 		o.Path = pth
 	}
 }
@@ -113,16 +118,14 @@ func WithUIPath(pth string) UIOption {
 //
 // By default, this is "/swagger.json".
 func WithUISpecURL(specURL string) UIOption {
-	return func(o *uiOptions) {
+	return func(o *UIOptions) {
 		o.SpecURL = specURL
 	}
 }
 
 // WithUITitle sets the title of the UI.
-//
-// By default, Context [middleware] sets this value to the title found in the API spec.
 func WithUITitle(title string) UIOption {
-	return func(o *uiOptions) {
+	return func(o *UIOptions) {
 		o.Title = title
 	}
 }
@@ -131,13 +134,13 @@ func WithUITitle(title string) UIOption {
 //
 // UI [middleware] will panic if the template does not parse or execute properly.
 func WithTemplate(tpl string) UIOption {
-	return func(o *uiOptions) {
+	return func(o *UIOptions) {
 		o.Template = tpl
 	}
 }
 
 // EnsureDefaults in case some options are missing.
-func (r *uiOptions) EnsureDefaults() {
+func (r *UIOptions) EnsureDefaults() {
 	if r.BasePath == "" {
 		r.BasePath = "/"
 	}
@@ -150,27 +153,4 @@ func (r *uiOptions) EnsureDefaults() {
 	if r.Title == "" {
 		r.Title = defaultDocsTitle
 	}
-}
-
-// serveUI creates a middleware that serves a templated asset as text/html.
-func serveUI(pth string, assets []byte, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		if path.Clean(r.URL.Path) == pth {
-			rw.Header().Set(contentTypeHeader, "text/html; charset=utf-8")
-			rw.WriteHeader(http.StatusOK)
-			_, _ = rw.Write(assets)
-
-			return
-		}
-
-		if next != nil {
-			next.ServeHTTP(rw, r)
-
-			return
-		}
-
-		rw.Header().Set(contentTypeHeader, "text/plain")
-		rw.WriteHeader(http.StatusNotFound)
-		_, _ = fmt.Fprintf(rw, "%q not found", pth)
-	})
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
+	"github.com/go-openapi/runtime/server-middleware/docui"
 )
 
 // Debug when true turns on verbose logging.
@@ -619,7 +620,7 @@ func (c *Context) Respond(rw http.ResponseWriter, r *http.Request, produces []st
 //
 // This handler includes a swagger spec, router and the contract defined in the swagger spec.
 //
-// A spec UI ([SwaggerUI]) is served at {API base path}/docs and the spec document at /swagger.json
+// A spec UI ([docui.SwaggerUI]) is served at {API base path}/docs and the spec document at /swagger.json
 // (these can be modified with uiOptions).
 func (c *Context) APIHandlerSwaggerUI(builder Builder, opts ...UIOption) http.Handler {
 	b := builder
@@ -628,17 +629,17 @@ func (c *Context) APIHandlerSwaggerUI(builder Builder, opts ...UIOption) http.Ha
 	}
 
 	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
-	var swaggerUIOpts SwaggerUIOpts
-	fromCommonToAnyOptions(uiOpts, &swaggerUIOpts)
+	var swaggerUIOpts docui.SwaggerUIOpts
+	docui.FromCommonToAnyOptions(uiOpts, &swaggerUIOpts)
 
-	return Spec(specPath, c.spec.Raw(), SwaggerUI(swaggerUIOpts, c.RoutesHandler(b)), specOpts...)
+	return docui.ServeSpec(specPath, c.spec.Raw(), docui.SwaggerUI(swaggerUIOpts, c.RoutesHandler(b)), specOpts...)
 }
 
 // APIHandlerRapiDoc returns a handler to serve the API.
 //
 // This handler includes a swagger spec, router and the contract defined in the swagger spec.
 //
-// A spec UI ([RapiDoc]) is served at {API base path}/docs and the spec document at /swagger.json
+// A spec UI ([docui.RapiDoc]) is served at {API base path}/docs and the spec document at /swagger.json
 // (these can be modified with uiOptions).
 func (c *Context) APIHandlerRapiDoc(builder Builder, opts ...UIOption) http.Handler {
 	b := builder
@@ -647,17 +648,17 @@ func (c *Context) APIHandlerRapiDoc(builder Builder, opts ...UIOption) http.Hand
 	}
 
 	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
-	var rapidocUIOpts RapiDocOpts
-	fromCommonToAnyOptions(uiOpts, &rapidocUIOpts)
+	var rapidocUIOpts docui.RapiDocOpts
+	docui.FromCommonToAnyOptions(uiOpts, &rapidocUIOpts)
 
-	return Spec(specPath, c.spec.Raw(), RapiDoc(rapidocUIOpts, c.RoutesHandler(b)), specOpts...)
+	return docui.ServeSpec(specPath, c.spec.Raw(), docui.RapiDoc(rapidocUIOpts, c.RoutesHandler(b)), specOpts...)
 }
 
 // APIHandler returns a handler to serve the API.
 //
 // This handler includes a swagger spec, router and the contract defined in the swagger spec.
 //
-// A spec UI ([Redoc]) is served at {API base path}/docs and the spec document at /swagger.json
+// A spec UI ([docui.Redoc]) is served at {API base path}/docs and the spec document at /swagger.json
 // (these can be modified with uiOptions).
 func (c *Context) APIHandler(builder Builder, opts ...UIOption) http.Handler {
 	b := builder
@@ -666,10 +667,10 @@ func (c *Context) APIHandler(builder Builder, opts ...UIOption) http.Handler {
 	}
 
 	specPath, uiOpts, specOpts := c.uiOptionsForHandler(opts)
-	var redocOpts RedocOpts
-	fromCommonToAnyOptions(uiOpts, &redocOpts)
+	var redocOpts docui.RedocOpts
+	docui.FromCommonToAnyOptions(uiOpts, &redocOpts)
 
-	return Spec(specPath, c.spec.Raw(), Redoc(redocOpts, c.RoutesHandler(b)), specOpts...)
+	return docui.ServeSpec(specPath, c.spec.Raw(), docui.Redoc(redocOpts, c.RoutesHandler(b)), specOpts...)
 }
 
 // RoutesHandler returns a handler to serve the API, just the routes and the contract defined in the swagger spec.
@@ -681,7 +682,7 @@ func (c *Context) RoutesHandler(builder Builder) http.Handler {
 	return NewRouter(c, b(NewOperationExecutor(c)))
 }
 
-func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []SpecOption) {
+func (c Context) uiOptionsForHandler(opts []UIOption) (string, docui.UIOptions, []SpecOption) {
 	var title string
 	sp := c.spec.Spec()
 	if sp != nil && sp.Info != nil && sp.Info.Title != "" {
@@ -696,7 +697,7 @@ func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []Spec
 		WithUITitle(title),
 	)
 	optsForContext = append(optsForContext, opts...)
-	uiOpts := uiOptionsWithDefaults(optsForContext)
+	uiOpts := docui.UIOptionsWithDefaults(optsForContext)
 
 	// If spec URL is provided, there is a non-default path to serve the spec.
 	// This makes sure that the UI middleware is aligned with the Spec middleware.
@@ -711,7 +712,7 @@ func (c Context) uiOptionsForHandler(opts []UIOption) (string, uiOptions, []Spec
 		pth = ""
 	}
 
-	return pth, uiOpts, []SpecOption{WithSpecDocument(doc)}
+	return pth, uiOpts, []SpecOption{docui.WithSpecDocument(doc)}
 }
 
 func cantFindProducer(format string) string {

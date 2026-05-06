@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestConvertOptions(t *testing.T) {
-	t.Run("from any UI options to uiOptions", func(t *testing.T) {
+	t.Run("from any UI options to UIOptions", func(t *testing.T) {
 		t.Run("from RedocOpts", func(t *testing.T) {
 			in := RedocOpts{
 				BasePath: "a",
@@ -20,7 +20,7 @@ func TestConvertOptions(t *testing.T) {
 				Title:    "e",
 				RedocURL: "f",
 			}
-			out := toCommonUIOptions(in)
+			out := ToCommonUIOptions(in)
 
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
@@ -38,7 +38,7 @@ func TestConvertOptions(t *testing.T) {
 				Title:      "e",
 				RapiDocURL: "f",
 			}
-			out := toCommonUIOptions(in)
+			out := ToCommonUIOptions(in)
 
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
@@ -56,7 +56,7 @@ func TestConvertOptions(t *testing.T) {
 				Title:      "e",
 				SwaggerURL: "f",
 			}
-			out := toCommonUIOptions(in)
+			out := ToCommonUIOptions(in)
 
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
@@ -66,8 +66,8 @@ func TestConvertOptions(t *testing.T) {
 		})
 	})
 
-	t.Run("from uiOptions to any UI options", func(t *testing.T) {
-		in := uiOptions{
+	t.Run("from UIOptions to any UI options", func(t *testing.T) {
+		in := UIOptions{
 			BasePath: "a",
 			Path:     "b",
 			SpecURL:  "c",
@@ -77,7 +77,7 @@ func TestConvertOptions(t *testing.T) {
 
 		t.Run("to RedocOpts", func(t *testing.T) {
 			var out RedocOpts
-			fromCommonToAnyOptions(in, &out)
+			FromCommonToAnyOptions(in, &out)
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
 			require.EqualT(t, "c", out.SpecURL)
@@ -87,7 +87,7 @@ func TestConvertOptions(t *testing.T) {
 
 		t.Run("to RapiDocOpts", func(t *testing.T) {
 			var out RapiDocOpts
-			fromCommonToAnyOptions(in, &out)
+			FromCommonToAnyOptions(in, &out)
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
 			require.EqualT(t, "c", out.SpecURL)
@@ -97,7 +97,7 @@ func TestConvertOptions(t *testing.T) {
 
 		t.Run("to SwaggerUIOpts", func(t *testing.T) {
 			var out SwaggerUIOpts
-			fromCommonToAnyOptions(in, &out)
+			FromCommonToAnyOptions(in, &out)
 			require.EqualT(t, "a", out.BasePath)
 			require.EqualT(t, "b", out.Path)
 			require.EqualT(t, "c", out.SpecURL)

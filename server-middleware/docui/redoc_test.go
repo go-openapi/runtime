@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package middleware
+package docui
 
 import (
 	"context"
@@ -13,6 +13,12 @@ import (
 	"github.com/go-openapi/testify/v2/assert"
 	"github.com/go-openapi/testify/v2/require"
 )
+
+const badTemplate = `<!DOCTYPE html>
+<html>
+	spec-url='{{ .Unknown }}'
+</html>
+`
 
 func TestRedocMiddleware(t *testing.T) {
 	t.Run("with defaults", func(t *testing.T) {
@@ -107,11 +113,7 @@ func TestRedocMiddleware(t *testing.T) {
 		t.Run("with custom template that fails to execute", func(t *testing.T) {
 			assert.Panics(t, func() {
 				Redoc(RedocOpts{
-					Template: `<!DOCTYPE html>
-<html>
-	spec-url='{{ .Unknown }}'
-</html>
-`,
+					Template: badTemplate,
 				}, nil)
 			})
 		})
