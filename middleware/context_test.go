@@ -63,8 +63,8 @@ func TestContentType_Issue264(t *testing.T) {
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(swspec)
-	api.RegisterConsumer(applicationJSON, runtime.JSONConsumer())
-	api.RegisterProducer(applicationJSON, runtime.JSONProducer())
+	api.RegisterConsumer(runtime.JSONMime, runtime.JSONConsumer())
+	api.RegisterProducer(runtime.JSONMime, runtime.JSONProducer())
 	api.RegisterOperation("delete", "/key/{id}", new(stubOperationHandler))
 
 	handler := Serve(swspec, api)
@@ -95,7 +95,7 @@ func TestContentType_Issue172(t *testing.T) {
 	assert.EqualT(t, http.StatusNotAcceptable, recorder.Code)
 
 	// acceptable as defined as default by the API (not explicit in the spec)
-	request.Header.Add("Accept", applicationJSON)
+	request.Header.Add("Accept", runtime.JSONMime)
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	assert.EqualT(t, http.StatusOK, recorder.Code)
@@ -106,8 +106,8 @@ func TestContentType_Issue174(t *testing.T) {
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(swspec)
-	api.RegisterConsumer(applicationJSON, runtime.JSONConsumer())
-	api.RegisterProducer(applicationJSON, runtime.JSONProducer())
+	api.RegisterConsumer(runtime.JSONMime, runtime.JSONConsumer())
+	api.RegisterProducer(runtime.JSONMime, runtime.JSONProducer())
 	api.RegisterOperation("get", "/pets", new(stubOperationHandler))
 
 	handler := Serve(swspec, api)
@@ -475,7 +475,7 @@ func TestContextBindValidRequest(t *testing.T) {
 	request, err = http.NewRequestWithContext(stdcontext.Background(), http.MethodPost, "/api/pets", nil)
 	require.NoError(t, err)
 	request.Header.Add("Accept", "application/vnd.cia.v1+json")
-	request.Header.Add("Content-Type", applicationJSON)
+	request.Header.Add("Content-Type", runtime.JSONMime)
 
 	ri, request, _ = ctx.RouteInfo(request)
 	assertAPIError(t, http.StatusNotAcceptable, ctx.BindValidRequest(request, ri, new(stubBindRequester)))
@@ -486,8 +486,8 @@ func TestContextBindValidRequest_Issue174(t *testing.T) {
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(spec)
-	api.RegisterConsumer(applicationJSON, runtime.JSONConsumer())
-	api.RegisterProducer(applicationJSON, runtime.JSONProducer())
+	api.RegisterConsumer(runtime.JSONMime, runtime.JSONConsumer())
+	api.RegisterProducer(runtime.JSONMime, runtime.JSONProducer())
 	api.RegisterOperation("get", "/pets", new(stubOperationHandler))
 
 	ctx := NewContext(spec, api, nil)
@@ -588,7 +588,7 @@ func TestContextRender(t *testing.T) {
 }
 
 func TestContextValidResponseFormat(t *testing.T) {
-	const ct = applicationJSON
+	const ct = runtime.JSONMime
 	spec, api := petstore.NewAPI(t)
 	ctx := NewContext(spec, api, nil)
 	ctx.router = DefaultRouter(spec, ctx.api)
@@ -705,7 +705,7 @@ func TestContextInvalidRoute(t *testing.T) {
 }
 
 func TestContextValidContentType(t *testing.T) {
-	ct := applicationJSON
+	ct := runtime.JSONMime
 	ctx := NewContext(nil, nil, nil)
 
 	request, err := http.NewRequestWithContext(stdcontext.Background(), http.MethodGet, "http://localhost:8080", nil)
