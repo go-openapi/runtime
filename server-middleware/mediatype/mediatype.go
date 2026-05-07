@@ -4,7 +4,6 @@
 package mediatype
 
 import (
-	"errors"
 	"fmt"
 	"mime"
 	"strconv"
@@ -21,6 +20,20 @@ const (
 	SpecificityExact                  // "type/subtype" (no params)
 	SpecificityExactWithParams        // "type/subtype;k=v"
 )
+
+type mediaTypeError string
+
+func (e mediaTypeError) Error() string {
+	return string(e)
+}
+
+// ErrMalformed is the sentinel returned (wrapped) by [Parse] when its input
+// cannot be parsed as an RFC 7231 media type.
+//
+// Callers can test for it with [errors.Is] to distinguish a client-side
+// malformed Content-Type header (an HTTP 400 outcome) from a well-formed
+// value that simply matches no allowed entry (an HTTP 415 outcome).
+const ErrMalformed mediaTypeError = "mediatype: malformed"
 
 // MediaType is a parsed RFC 7231 media type with optional parameters and
 // an optional q-value (used by Accept negotiation).
@@ -43,15 +56,15 @@ type MediaType struct {
 func Parse(s string) (MediaType, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return MediaType{}, errors.New("mediatype: empty value")
+		return MediaType{}, fmt.Errorf("%w: empty value", ErrMalformed)
 	}
 	full, params, err := mime.ParseMediaType(s)
 	if err != nil {
-		return MediaType{}, fmt.Errorf("mediatype: %w", err)
+		return MediaType{}, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
 	slash := strings.IndexByte(full, '/')
 	if slash <= 0 || slash == len(full)-1 {
-		return MediaType{}, fmt.Errorf("mediatype: %q has no subtype", s)
+		return MediaType{}, fmt.Errorf("%w: %q has no subtype", ErrMalformed, s)
 	}
 	mt := MediaType{
 		Type:    full[:slash],

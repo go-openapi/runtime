@@ -136,54 +136,35 @@ func TestResponseFormatValidation(t *testing.T) {
 	assert.EqualT(t, http.StatusNotAcceptable, recorder.Code)
 }
 
+// TestValidateContentType is a smoke test confirming the wrapper still
+// maps to errors.InvalidContentType for both no-match and malformed-actual.
+// The matching matrix lives in server-middleware/mediatype/match_test.go.
 func TestValidateContentType(t *testing.T) {
-	const (
-		textPlain         = "text/plain"
-		textPlainUTF8     = "text/plain;charset=utf-8"
-		textPlainParamSrv = "text/plain; charset=utf-8"
-	)
-	data := []struct {
-		hdr     string
-		allowed []string
-		err     *errors.Validation
-	}{
-		{"application/json", []string{"application/json"}, nil},
-		{"application/json", []string{"application/x-yaml", "text/html"}, errors.InvalidContentType("application/json", []string{"application/x-yaml", "text/html"})},
-		{"text/html; charset=utf-8", []string{"text/html"}, nil},
-		{"text/html;charset=utf-8", []string{"text/html"}, nil},
-		{"", []string{"application/json"}, errors.InvalidContentType("", []string{"application/json"})},
-		{"text/html;           charset=utf-8", []string{"application/json"}, errors.InvalidContentType("text/html;           charset=utf-8", []string{"application/json"})},
-		{"application(", []string{"application/json"}, errors.InvalidContentType("application(", []string{"application/json"})},
-		{"application/json;char*", []string{"application/json"}, errors.InvalidContentType("application/json;char*", []string{"application/json"})},
-		{"application/octet-stream", []string{"image/jpeg", "application/*"}, nil},
-		{"image/png", []string{"*/*", "application/json"}, nil},
-		// regression for https://github.com/go-openapi/runtime/issues/136:
-		// allowed entries with MIME parameters should not block matching clients.
-		// (1) client sends bare type, server allows type with params -> accept
-		{textPlain, []string{textPlainParamSrv}, nil},
-		// (2) client sends a different param than server -> reject
-		{"text/plain;blah=true", []string{textPlainParamSrv},
-			errors.InvalidContentType("text/plain;blah=true", []string{textPlainParamSrv})},
-		// (3) client sends params, server allows bare type -> accept
-		{textPlainUTF8, []string{textPlain}, nil},
-		// (4) exact param match -> accept
-		{textPlainUTF8, []string{textPlainUTF8}, nil},
-		// param value compare is case-insensitive (charset is case-insensitive)
-		{"text/plain;charset=UTF-8", []string{textPlainUTF8}, nil},
-		// (5) conflicting param values -> reject
-		{textPlainUTF8, []string{"text/plain;charset=ascii"},
-			errors.InvalidContentType(textPlainUTF8, []string{"text/plain;charset=ascii"})},
-	}
+	const json = "application/json"
 
-	for _, v := range data {
-		err := validateContentType(v.allowed, v.hdr)
-		if v.err == nil {
-			require.NoError(t, err, "input: %q", v.hdr)
-		} else {
-			require.Error(t, err, "input: %q", v.hdr)
-			assert.IsTypef(t, &errors.Validation{}, err, "input: %q", v.hdr)
-			require.EqualErrorf(t, err, v.err.Error(), "input: %q", v.hdr)
-			assert.EqualValues(t, http.StatusUnsupportedMediaType, err.(*errors.Validation).Code())
-		}
-	}
+	t.Run("nil allowed accepts anything", func(t *testing.T) {
+		require.NoError(t, validateContentType(nil, json))
+	})
+
+	t.Run("match returns nil", func(t *testing.T) {
+		require.NoError(t, validateContentType([]string{json}, json))
+	})
+
+	t.Run("no match returns 415", func(t *testing.T) {
+		err := validateContentType([]string{json}, "text/html")
+		require.Error(t, err)
+		var v *errors.Validation
+		require.ErrorAs(t, err, &v)
+		assert.EqualT(t, http.StatusUnsupportedMediaType, int(v.Code()))
+	})
+
+	t.Run("malformed actual maps to the same 415 today", func(t *testing.T) {
+		// Behaviour preservation: callers wanting a 400-vs-415 split can
+		// inspect mediatype.MatchFirst's error directly.
+		err := validateContentType([]string{json}, "application(")
+		require.Error(t, err)
+		var v *errors.Validation
+		require.ErrorAs(t, err, &v)
+		assert.EqualT(t, http.StatusUnsupportedMediaType, int(v.Code()))
+	})
 }
