@@ -265,7 +265,7 @@ func Serve(spec *loads.Document, api *untyped.API) http.Handler {
 // by the Builder.
 func ServeWithBuilder(spec *loads.Document, api *untyped.API, builder Builder) http.Handler {
 	context := NewContext(spec, api, nil)
-	return context.APIHandler(builder) // TODO: use new method
+	return context.APIHandler(builder)
 }
 
 type contextKey int8
