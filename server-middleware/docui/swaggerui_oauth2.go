@@ -11,7 +11,7 @@ import (
 	"text/template"
 )
 
-// UseSwaggerUIOAuth2Callback creates a [middleware] that serves a callback URL to complete
+// UseSwaggerUIOAuth2Callback creates a middleware that serves a callback URL to complete
 // a OAuth2 token handshake.
 func UseSwaggerUIOAuth2Callback(opts ...Option) func(next http.Handler) http.Handler {
 	pth, assets := swaggeruiOAuth2Setup(opts)

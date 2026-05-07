@@ -11,7 +11,9 @@ import (
 	"path"
 )
 
-// UseRedoc creates a [middleware] to serve a documentation site for a swagger spec.
+// UseRedoc creates a middleware to serve a documentation site for a swagger spec using [Redoc].
+//
+// [Redoc]: https://redocly.com/docs/redoc
 func UseRedoc(opts ...Option) func(next http.Handler) http.Handler {
 	pth, assets := redocSetup(opts)
 
@@ -20,11 +22,13 @@ func UseRedoc(opts ...Option) func(next http.Handler) http.Handler {
 	}
 }
 
-// Redoc creates a [http.Handler] to serve a documentation site for a swagger spec.
+// Redoc creates a [http.Handler] to serve a documentation site for a swagger spec using [Redoc].
 //
 // By default, the UI is served at route "/docs"
 //
 // This allows for altering the spec before starting the [http] listener.
+//
+// [Redoc]: https://redocly.com/docs/redoc
 func Redoc(next http.Handler, opts ...Option) http.Handler {
 	pth, assets := redocSetup(opts)
 

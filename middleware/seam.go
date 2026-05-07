@@ -25,20 +25,26 @@ type NegotiateOption = negotiate.Option
 // request's Accept header.
 //
 // Deprecated: moved to the [negotiate] package. Use [negotiate.ContentType] instead.
-var NegotiateContentType = negotiate.ContentType
+func NegotiateContentType(r *http.Request, offers []string, defaultOffer string, opts ...NegotiateOption) string {
+	return negotiate.ContentType(r, offers, defaultOffer, opts...)
+}
 
 // NegotiateContentEncoding returns the best offered content encoding for
 // the request's Accept-Encoding header.
 //
 // Deprecated: moved to the [negotiate] package. Use [negotiate.ContentEncoding] instead.
-var NegotiateContentEncoding = negotiate.ContentEncoding
+func NegotiateContentEncoding(r *http.Request, offers []string) string {
+	return negotiate.ContentEncoding(r, offers)
+}
 
 // WithIgnoreParameters returns a [NegotiateOption] that strips MIME-type
 // parameters from both Accept entries and offers before matching,
 // restoring the pre-v0.30 behaviour.
 //
 // Deprecated: moved to the [negotiate] package. Use [negotiate.WithIgnoreParameters] instead.
-var WithIgnoreParameters = negotiate.WithIgnoreParameters
+func WithIgnoreParameters(ignore bool) NegotiateOption {
+	return negotiate.WithIgnoreParameters(ignore)
+}
 
 /////////////////////////////////////////////////////////:
 // Seam to the UI options
@@ -338,8 +344,11 @@ type SwaggerUIOpts struct {
 	// Template specifies a custom template to serve the UI
 	Template string
 
-	// OAuth2CallbackURL the url called after OAuth2 login
-	OAuth2CallbackURL string
+	// OAuthCallbackURL the url called after OAuth2 login
+	//
+	// NOTE: in the new [docui.SwaggerUIOptions] type, this field is named `OAuth2CallbackURL`,
+	// which is more appropriate.
+	OAuthCallbackURL string
 
 	// The three components needed to embed swagger-ui
 
@@ -386,7 +395,7 @@ func (o SwaggerUIOpts) toFuncOptions() []docui.Option {
 	var empty SwaggerUIOpts
 	if o != empty {
 		swaggeruiOpts := docui.SwaggerUIOptions{
-			OAuth2CallbackURL: o.OAuth2CallbackURL,
+			OAuth2CallbackURL: o.OAuthCallbackURL,
 			SwaggerPresetURL:  o.SwaggerPresetURL,
 			SwaggerStylesURL:  o.SwaggerStylesURL,
 			Favicon32:         o.Favicon32,

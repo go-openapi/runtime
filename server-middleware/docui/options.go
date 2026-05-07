@@ -27,18 +27,18 @@ type UIMiddleware func(...Option) func(http.Handler) http.Handler
 // Options may be combined to alter the route at which the UI asset is served,
 // the URL of the spec document, the source URL of the UI asset and the title of the UI page.
 //
-// The embedded js scriptlet served may be modified using `WithTemplate`.
+// The embedded js scriptlet served may be modified using [WithUITemplate].
 type Option func(*options)
 
-// SpecOption can be applied to the [ServeSpec] [middleware].
+// SpecOption can be applied to the [ServeSpec] middleware.
 type SpecOption func(*specOptions)
 
 // SwaggerUIOptions define a group of extra options specific to the SwaggerUI component.
 type SwaggerUIOptions struct {
-	// OAuth2CallbackURL sets the url called after OAuth2 login
+	// OAuth2CallbackURL sets the URL called after OAuth2 login
 	OAuth2CallbackURL string
 
-	// Defines the url of the swagger UI assets with presets.
+	// Defines the URL of the swagger UI assets with presets.
 	//
 	// Default: https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js
 	SwaggerPresetURL string
@@ -52,8 +52,8 @@ type SwaggerUIOptions struct {
 	//
 	// Defaults:
 	//
-	//   - 16x16: "https://unpkg.com/swagger-ui-dist/favicon-16x16.png"
-	//   - 32x32: "https://unpkg.com/swagger-ui-dist/favicon-32x32.png"
+	//   - 16x16: https://unpkg.com/swagger-ui-dist/favicon-16x16.png
+	//   - 32x32: https://unpkg.com/swagger-ui-dist/favicon-32x32.png
 	Favicon32 string
 	Favicon16 string
 }
@@ -116,7 +116,7 @@ func WithUIBasePath(base string) Option {
 	}
 }
 
-// WithUIPath sets the path from where to serve the UI assets (i.e. /{basepath}/{path}.
+// WithUIPath sets the path from where to serve the UI assets (i.e. /{basepath}/{path}).
 //
 // Default: "docs"
 func WithUIPath(pth string) Option {
@@ -157,8 +157,8 @@ func WithUIAssetsURL(assets string) Option {
 // Reference documentations to customize your js scriptlet:
 //
 //   - for Redoc: https://github.com/Redocly/redoc/blob/main/docs/deployment/html.md
-//   - for RapiDoc:
-//   - for SwaggerUI:
+//   - for RapiDoc: https://github.com/rapi-doc/RapiDoc
+//   - for SwaggerUI: https://github.com/swagger-api/swagger-ui
 func WithUITemplate[StringOrBytes ~string | ~[]byte](tpl StringOrBytes) Option {
 	return func(o *options) {
 		o.Template = string(tpl)
@@ -166,6 +166,7 @@ func WithUITemplate[StringOrBytes ~string | ~[]byte](tpl StringOrBytes) Option {
 }
 
 // WithSpecURL sets the URL of the spec document.
+//
 // Defaults to: /swagger.json
 func WithSpecURL(u string) Option {
 	return func(o *options) {
@@ -201,7 +202,7 @@ func WithSpecPath(pth string) SpecOption {
 }
 
 // WithSpecPathFromOptions reuses the same SpecPath as the one specified in
-// a set of UI [Option] (extract the value provided by [WithSpecURL]).
+// a set of UI [Option] (extract the path from the URL provided by [WithSpecURL]).
 func WithSpecPathFromOptions(opts ...Option) SpecOption {
 	return func(o *specOptions) {
 		uiOpts := optionsWithDefaults(opts)

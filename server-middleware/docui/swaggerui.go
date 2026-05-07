@@ -11,7 +11,9 @@ import (
 	"path"
 )
 
-// UseSwaggerUI creates a [middleware] to serve a documentation site for a swagger spec.
+// UseSwaggerUI creates a middleware to serve a documentation site for a swagger spec using [SwaggerUI].
+//
+// [SwaggerUI]: https://swagger.io/tools/swagger-ui
 func UseSwaggerUI(opts ...Option) func(next http.Handler) http.Handler {
 	pth, assets := swaggeruiSetup(opts)
 
@@ -20,11 +22,13 @@ func UseSwaggerUI(opts ...Option) func(next http.Handler) http.Handler {
 	}
 }
 
-// SwaggerUI creates a [http.Handler] to serve a documentation site for a swagger spec.
+// SwaggerUI creates a [http.Handler] to serve a documentation site for a swagger spec using [SwaggerUI].
 //
 // By default, the UI is served at route "/docs"
 //
 // This allows for altering the spec before starting the [http] listener.
+//
+// [SwaggerUI]: https://swagger.io/tools/swagger-ui
 func SwaggerUI(next http.Handler, opts ...Option) http.Handler {
 	pth, assets := swaggeruiSetup(opts)
 
