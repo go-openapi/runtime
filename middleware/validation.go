@@ -21,41 +21,29 @@ type validation struct {
 	bound   map[string]any
 }
 
-// validateContentType validates a request's Content-Type against the route's
-// declared consumes list, applying the parameter-aware matching rule from
-// [mediatype.MediaType.Matches]:
+// validateContentType maps [mediatype.MatchFirst] to the runtime's
+// validation errors:
 //
-//   - bare types must agree (with "*/*" and "type/*" wildcards on the
-//     allowed side);
-//   - an allowed entry without parameters accepts any client parameters;
-//   - an allowed entry with parameters constrains the client — every
-//     parameter the client sends must be present on the allowed entry
-//     with the same value (case-insensitive). The allowed entry may
-//     carry additional parameters the client omits.
+//   - actual fails to parse        → HTTP 400 ([errors.NewParseError]).
+//   - actual is well-formed but
+//     no allowed entry accepts it  → HTTP 415 ([errors.InvalidContentType]).
+//
+// In the standard runtime flow, malformed Content-Type headers are
+// already caught upstream by [runtime.ContentType] (which itself returns
+// a 400 [errors.ParseError]). This function therefore only sees the
+// malformed case when invoked directly by callers that have bypassed
+// that step.
 func validateContentType(allowed []string, actual string) error {
 	if len(allowed) == 0 {
 		return nil
 	}
-	actualMT, err := mediatype.Parse(actual)
+	_, ok, err := mediatype.MatchFirst(allowed, actual)
+	if ok {
+		return nil
+	}
 	if err != nil {
-		return errors.InvalidContentType(actual, allowed)
+		return errors.NewParseError(runtime.HeaderContentType, "header", actual, err)
 	}
-	for _, a := range allowed {
-		allowedMT, perr := mediatype.Parse(a)
-		if perr != nil {
-			// Configured value isn't a valid media type — fall back to
-			// a case-insensitive bare comparison, preserving the
-			// pre-mediatype behaviour.
-			if strings.EqualFold(a, actual) {
-				return nil
-			}
-			continue
-		}
-		if allowedMT.Matches(actualMT) {
-			return nil
-		}
-	}
-
 	return errors.InvalidContentType(actual, allowed)
 }
 
@@ -124,7 +112,7 @@ func (v *validation) contentType() {
 }
 
 func (v *validation) responseFormat() {
-	// if the route provides values for Produces and no format could be identify then return an error.
+	// if the route provides values for Produces and no format could be identified then return an error.
 	// if the route does not specify values for Produces then treat request as valid since the API designer
 	// choose not to specify the format for responses.
 	if str, rCtx := v.context.ResponseFormat(v.request, v.route.Produces); str == "" && len(v.route.Produces) > 0 {

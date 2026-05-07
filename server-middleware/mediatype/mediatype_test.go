@@ -87,7 +87,8 @@ func TestParse(t *testing.T) {
 		for _, s := range invalid {
 			t.Run(s, func(t *testing.T) {
 				_, err := Parse(s)
-				assert.Error(t, err)
+				require.Error(t, err)
+				assert.ErrorIs(t, err, ErrMalformed)
 			})
 		}
 	})
