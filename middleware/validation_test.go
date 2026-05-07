@@ -136,9 +136,10 @@ func TestResponseFormatValidation(t *testing.T) {
 	assert.EqualT(t, http.StatusNotAcceptable, recorder.Code)
 }
 
-// TestValidateContentType is a smoke test confirming the wrapper still
-// maps to errors.InvalidContentType for both no-match and malformed-actual.
-// The matching matrix lives in server-middleware/mediatype/match_test.go.
+// TestValidateContentType is a smoke test confirming the wrapper maps
+// no-match to 415 (errors.InvalidContentType) and malformed-actual to 400
+// (errors.NewParseError). The matching matrix lives in
+// server-middleware/mediatype/match_test.go.
 func TestValidateContentType(t *testing.T) {
 	const json = "application/json"
 
@@ -158,13 +159,13 @@ func TestValidateContentType(t *testing.T) {
 		assert.EqualT(t, http.StatusUnsupportedMediaType, int(v.Code()))
 	})
 
-	t.Run("malformed actual maps to the same 415 today", func(t *testing.T) {
-		// Behaviour preservation: callers wanting a 400-vs-415 split can
-		// inspect mediatype.MatchFirst's error directly.
+	t.Run("malformed actual returns 400", func(t *testing.T) {
+		// In the normal runtime flow this case is caught upstream by
+		// runtime.ContentType. The smoke test exercises the direct path.
 		err := validateContentType([]string{json}, "application(")
 		require.Error(t, err)
-		var v *errors.Validation
-		require.ErrorAs(t, err, &v)
-		assert.EqualT(t, http.StatusUnsupportedMediaType, int(v.Code()))
+		var p *errors.ParseError
+		require.ErrorAs(t, err, &p)
+		assert.EqualT(t, http.StatusBadRequest, int(p.Code()))
 	})
 }

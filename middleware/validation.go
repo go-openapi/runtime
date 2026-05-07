@@ -21,21 +21,30 @@ type validation struct {
 	bound   map[string]any
 }
 
-// validateContentType maps [mediatype.MatchFirst] to the runtime's HTTP-415
-// validation error.
+// validateContentType maps [mediatype.MatchFirst] to the runtime's
+// validation errors:
 //
-// Both "no match" and "actual is malformed" map to the same outcome;
-// if a future revision wants to split them (415 vs 400),
-// inspect the error returned by [mediatype.MatchFirst] with [errors.Is] against
-// [mediatype.ErrMalformed].
+//   - actual fails to parse        → HTTP 400 ([errors.NewParseError]).
+//   - actual is well-formed but
+//     no allowed entry accepts it  → HTTP 415 ([errors.InvalidContentType]).
+//
+// In the standard runtime flow, malformed Content-Type headers are
+// already caught upstream by [runtime.ContentType] (which itself returns
+// a 400 [errors.ParseError]). This function therefore only sees the
+// malformed case when invoked directly by callers that have bypassed
+// that step.
 func validateContentType(allowed []string, actual string) error {
 	if len(allowed) == 0 {
 		return nil
 	}
-	if _, ok, _ := mediatype.MatchFirst(allowed, actual); !ok {
-		return errors.InvalidContentType(actual, allowed)
+	_, ok, err := mediatype.MatchFirst(allowed, actual)
+	if ok {
+		return nil
 	}
-	return nil
+	if err != nil {
+		return errors.NewParseError(runtime.HeaderContentType, "header", actual, err)
+	}
+	return errors.InvalidContentType(actual, allowed)
 }
 
 func validateRequest(ctx *Context, request *http.Request, route *MatchedRoute) *validation {
