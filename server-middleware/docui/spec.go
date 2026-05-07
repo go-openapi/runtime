@@ -8,46 +8,32 @@ import (
 	"path"
 )
 
-// SpecOption can be applied to the [ServeSpec] [middleware].
-type SpecOption func(*specOptions)
+// UseSpec creates a middleware to serve a swagger spec as a JSON document.
+func UseSpec(spec []byte, opts ...SpecOption) func(next http.Handler) http.Handler {
+	o := specOptionsWithDefaults(opts)
 
-var defaultSpecOptions = specOptions{
-	Path:     "",
-	Document: "swagger.json",
-}
-
-type specOptions struct {
-	Path     string
-	Document string
-}
-
-func specOptionsWithDefaults(opts []SpecOption) specOptions {
-	o := defaultSpecOptions
-	for _, apply := range opts {
-		apply(&o)
+	return func(next http.Handler) http.Handler {
+		return handleSpec(o.Path, spec, next)
 	}
-
-	return o
 }
 
-// ServeSpec creates a [middleware] to serve a swagger spec as a JSON document.
+// ServeSpec creates a [http.Handler] to serve a swagger spec as a JSON document.
 //
 // This allows for altering the spec before starting the [http] listener.
 //
-// The basePath argument indicates the path of the spec document (defaults to "/").
-// Additional [SpecOption] can be used to change the name of the document (defaults to "swagger.json").
-func ServeSpec(basePath string, b []byte, next http.Handler, opts ...SpecOption) http.Handler {
-	if basePath == "" {
-		basePath = "/"
-	}
+// Additional [SpecOption] can be used to change the path and the name of the document (defaults to "/swagger.json").
+func ServeSpec(spec []byte, next http.Handler, opts ...SpecOption) http.Handler {
 	o := specOptionsWithDefaults(opts)
-	pth := path.Join(basePath, o.Path, o.Document)
 
+	return handleSpec(o.Path, spec, next)
+}
+
+func handleSpec(pth string, spec []byte, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if path.Clean(r.URL.Path) == pth {
 			rw.Header().Set(contentTypeHeader, applicationJSON)
 			rw.WriteHeader(http.StatusOK)
-			_, _ = rw.Write(b)
+			_, _ = rw.Write(spec)
 
 			return
 		}
@@ -61,26 +47,4 @@ func ServeSpec(basePath string, b []byte, next http.Handler, opts ...SpecOption)
 		rw.Header().Set(contentTypeHeader, applicationJSON)
 		rw.WriteHeader(http.StatusNotFound)
 	})
-}
-
-// WithSpecPath sets the path to be joined to the base path of the [ServeSpec] [middleware].
-//
-// This is empty by default.
-func WithSpecPath(pth string) SpecOption {
-	return func(o *specOptions) {
-		o.Path = pth
-	}
-}
-
-// WithSpecDocument sets the name of the JSON document served as a spec.
-//
-// By default, this is "swagger.json".
-func WithSpecDocument(doc string) SpecOption {
-	return func(o *specOptions) {
-		if doc == "" {
-			return
-		}
-
-		o.Document = doc
-	}
 }

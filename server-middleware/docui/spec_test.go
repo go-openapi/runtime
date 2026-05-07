@@ -13,14 +13,9 @@ import (
 	"github.com/go-openapi/testify/v2/require"
 )
 
-// minimal valid swagger 2.0 document, sufficient for round-tripping bytes
-// without dragging in the petstore fixture (which lives in an internal/
-// package of the parent runtime module and is not importable from here).
-var testSpec = []byte(`{"swagger":"2.0","info":{"title":"Test","version":"1.0.0"},"paths":{}}`)
-
 func TestServeSpecMiddleware(t *testing.T) {
 	t.Run("ServeSpec handler", func(t *testing.T) {
-		handler := ServeSpec("", testSpec, nil)
+		handler := ServeSpec(testSpec, nil)
 
 		t.Run("serves spec", func(t *testing.T) {
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/swagger.json", nil)
@@ -47,7 +42,7 @@ func TestServeSpecMiddleware(t *testing.T) {
 		})
 
 		t.Run("forwards to next handler for other url", func(t *testing.T) {
-			handler = ServeSpec("", testSpec, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+			handler = ServeSpec(testSpec, http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 				rw.WriteHeader(http.StatusOK)
 			}))
 			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/api/pets", nil)
@@ -60,9 +55,8 @@ func TestServeSpecMiddleware(t *testing.T) {
 	})
 
 	t.Run("ServeSpec handler with options", func(t *testing.T) {
-		handler := ServeSpec("/swagger", testSpec, nil,
-			WithSpecPath("spec"),
-			WithSpecDocument("myapi-swagger.json"),
+		handler := ServeSpec(testSpec, nil,
+			WithSpecPath("/swagger/spec/myapi-swagger.json"),
 		)
 
 		t.Run("serves spec", func(t *testing.T) {

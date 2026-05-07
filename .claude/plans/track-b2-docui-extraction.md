@@ -140,3 +140,10 @@ unexported `uiOptions`.
    `go test ./...` in both modules.
 8. Add a minimal smoke test per shim in `middleware/`.
 9. `golangci-lint run --new-from-rev master` clean.
+
+## Track B.5 - Refactor midleware options for UI
+
+Objective: in the new package, replace the xxxOption struct argument by the more
+modern function options pattern.
+
+The xxxOption structs remain part of the deprecated "seam.go" and are not reconducted in the new module.

@@ -11,59 +11,39 @@ import (
 	"path"
 )
 
-// RapiDocOpts configures the [RapiDoc] middlewares.
-type RapiDocOpts struct {
-	// BasePath for the UI, defaults to: /
-	BasePath string
-
-	// Path combines with BasePath to construct the path to the UI, defaults to: "docs".
-	Path string
-
-	// SpecURL is the URL of the spec document.
-	//
-	// Defaults to: /swagger.json
-	SpecURL string
-
-	// Title for the documentation site, default to: API documentation
-	Title string
-
-	// Template specifies a custom template to serve the UI
-	Template string
-
-	// RapiDocURL points to the js asset that generates the rapidoc site.
-	//
-	// Defaults to https://unpkg.com/rapidoc/dist/rapidoc-min.js
-	RapiDocURL string
-}
-
-func (r *RapiDocOpts) EnsureDefaults() {
-	common := ToCommonUIOptions(r)
-	common.EnsureDefaults()
-	FromCommonToAnyOptions(common, r)
-
-	// rapidoc-specifics
-	if r.RapiDocURL == "" {
-		r.RapiDocURL = rapidocLatest
-	}
-	if r.Template == "" {
-		r.Template = rapidocTemplate
+// UseRapiDoc creates a [middleware] to serve a documentation site for a swagger spec.
+func UseRapiDoc(opts ...Option) func(next http.Handler) http.Handler {
+	pth, assets := rapiDocSetup(opts)
+	return func(next http.Handler) http.Handler {
+		return serveUI(pth, assets, next)
 	}
 }
 
-// RapiDoc creates a [middleware] to serve a documentation site for a swagger spec.
+// RapiDoc creates a [http.Handler] to serve a documentation site for a swagger spec.
+//
+// By default, the UI is served at route "/docs"
 //
 // This allows for altering the spec before starting the [http] listener.
-func RapiDoc(opts RapiDocOpts, next http.Handler) http.Handler {
-	opts.EnsureDefaults()
+func RapiDoc(next http.Handler, opts ...Option) http.Handler {
+	pth, assets := rapiDocSetup(opts)
 
-	pth := path.Join(opts.BasePath, opts.Path)
-	tmpl := template.Must(template.New("rapidoc").Parse(opts.Template))
-	assets := bytes.NewBuffer(nil)
-	if err := tmpl.Execute(assets, opts); err != nil {
+	return serveUI(pth, assets, next)
+}
+
+func rapiDocSetup(opts []Option) (pth string, assets []byte) {
+	o := optionsWithDefaults(opts,
+		// defaults for rapiDoc
+		WithUITemplate(rapidocTemplate),
+		WithUIAssetsURL(rapidocLatest),
+	)
+	pth = path.Join(o.BasePath, o.Path)
+	tmpl := template.Must(template.New("rapidoc").Parse(o.Template))
+	buf := bytes.NewBuffer(nil)
+	if err := tmpl.Execute(buf, o); err != nil {
 		panic(fmt.Errorf("cannot execute template: %w", err))
 	}
 
-	return serveUI(pth, assets.Bytes(), next)
+	return pth, buf.Bytes()
 }
 
 const (
@@ -73,7 +53,7 @@ const (
 <head>
   <title>{{ .Title }}</title>
   <meta charset="utf-8"> <!-- Important: rapi-doc uses utf8 characters -->
-  <script type="module" src="{{ .RapiDocURL }}"></script>
+  <script type="module" src="{{ .AssetsURL }}"></script>
 </head>
 <body>
   <rapi-doc spec-url="{{ .SpecURL }}"></rapi-doc>

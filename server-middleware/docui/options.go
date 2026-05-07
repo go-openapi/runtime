@@ -4,8 +4,8 @@
 package docui
 
 import (
-	"bytes"
-	"encoding/gob"
+	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -19,85 +19,96 @@ const (
 	applicationJSON   = "application/json"
 )
 
-// UIOptions defines common options for UI serving middlewares.
-type UIOptions struct {
-	// BasePath for the UI, defaults to: /
-	BasePath string
+// UIMiddleware is a function returning a http middleware which accepts UI [Option].
+type UIMiddleware func(...Option) func(http.Handler) http.Handler
 
-	// Path combines with BasePath to construct the path to the UI, defaults to: "docs".
-	Path string
-
-	// SpecURL is the URL of the spec document.
-	//
-	// Defaults to: /swagger.json
-	SpecURL string
-
-	// Title for the documentation site, default to: API documentation
-	Title string
-
-	// Template specifies a custom template to serve the UI
-	Template string
-}
-
-// ToCommonUIOptions converts any UI option type to retain the common options.
+// Option to tune your swagger documentation UI middleware.
 //
-// This uses gob encoding/decoding to convert common fields from one struct to another.
-func ToCommonUIOptions(opts any) UIOptions {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	dec := gob.NewDecoder(&buf)
-	var o UIOptions
-	err := enc.Encode(opts)
-	if err != nil {
-		panic(err)
-	}
+// Options may be combined to alter the route at which the UI asset is served,
+// the URL of the spec document, the source URL of the UI asset and the title of the UI page.
+//
+// The embedded js scriptlet served may be modified using `WithTemplate`.
+type Option func(*options)
 
-	err = dec.Decode(&o)
-	if err != nil {
-		panic(err)
-	}
+// SpecOption can be applied to the [ServeSpec] [middleware].
+type SpecOption func(*specOptions)
 
-	return o
+// SwaggerUIOptions define a group of extra options specific to the SwaggerUI component.
+type SwaggerUIOptions struct {
+	// OAuth2CallbackURL sets the url called after OAuth2 login
+	OAuth2CallbackURL string
+
+	// Defines the url of the swagger UI assets with presets.
+	//
+	// Default: https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js
+	SwaggerPresetURL string
+
+	// Defines style sheet URL.
+	//
+	// Default: https://unpkg.com/swagger-ui-dist/swagger-ui.css
+	SwaggerStylesURL string
+
+	// Define the favicons URLs.
+	//
+	// Defaults:
+	//
+	//   - 16x16: "https://unpkg.com/swagger-ui-dist/favicon-16x16.png"
+	//   - 32x32: "https://unpkg.com/swagger-ui-dist/favicon-32x32.png"
+	Favicon32 string
+	Favicon16 string
 }
 
-// FromCommonToAnyOptions copies the common UI options held in source into the
-// flavor-specific target struct (one of [SwaggerUIOpts], [RedocOpts] or
-// [RapiDocOpts]).
-func FromCommonToAnyOptions[T any](source UIOptions, target *T) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	dec := gob.NewDecoder(&buf)
-	err := enc.Encode(source)
-	if err != nil {
-		panic(err)
+func (o *SwaggerUIOptions) applySwaggerUIDefaults() {
+	if o.SwaggerPresetURL == "" {
+		o.SwaggerPresetURL = swaggerPresetLatest
 	}
-
-	err = dec.Decode(target)
-	if err != nil {
-		panic(err)
+	if o.SwaggerStylesURL == "" {
+		o.SwaggerStylesURL = swaggerStylesLatest
+	}
+	if o.Favicon16 == "" || o.Favicon32 == "" {
+		o.Favicon16 = swaggerFavicon16Latest
+		o.Favicon32 = swaggerFavicon32Latest
 	}
 }
 
-// UIOption can be applied to UI serving [middleware] to alter the default
-// behavior.
-type UIOption func(*UIOptions)
+type (
+	options struct {
+		SwaggerUIOptions
 
-// UIOptionsWithDefaults applies the given options on top of an empty
-// [UIOptions]. Per-flavor handlers ([SwaggerUI], [Redoc], [RapiDoc])
-// fill in the remaining defaults via [UIOptions.EnsureDefaults] when
-// the option struct is used.
-func UIOptionsWithDefaults(opts []UIOption) UIOptions {
-	var o UIOptions
-	for _, apply := range opts {
-		apply(&o)
+		// BasePath for the UI, defaults to: /
+		BasePath string
+
+		// Path combines with BasePath to construct the path to the UI, defaults to: "docs".
+		Path string
+
+		// SpecURL is the URL of the spec document.
+		SpecURL string
+
+		// Title for the documentation site, default to: API documentation
+		Title string
+
+		// Template specifies a custom template to serve the UI
+		Template string
+
+		// AssetsURL points to the js asset that generates the documentation page.
+		AssetsURL string
 	}
 
-	return o
-}
+	specOptions struct {
+		Path     string
+		Document string
+	}
+)
+
+////////////////////////////////////////////////////////////
+// Common UI options
+////////////////////////////////////////////////////////////
 
 // WithUIBasePath sets the base path from where to serve the UI assets.
-func WithUIBasePath(base string) UIOption {
-	return func(o *UIOptions) {
+//
+// Default: "/"
+func WithUIBasePath(base string) Option {
+	return func(o *options) {
 		if !strings.HasPrefix(base, "/") {
 			base = "/" + base
 		}
@@ -106,51 +117,136 @@ func WithUIBasePath(base string) UIOption {
 }
 
 // WithUIPath sets the path from where to serve the UI assets (i.e. /{basepath}/{path}.
-func WithUIPath(pth string) UIOption {
-	return func(o *UIOptions) {
+//
+// Default: "docs"
+func WithUIPath(pth string) Option {
+	return func(o *options) {
 		o.Path = pth
 	}
 }
 
-// WithUISpecURL sets the path from where to serve swagger spec document.
-//
-// This may be specified as a full URL or a path.
-//
-// By default, this is "/swagger.json".
-func WithUISpecURL(specURL string) UIOption {
-	return func(o *UIOptions) {
-		o.SpecURL = specURL
-	}
-}
-
 // WithUITitle sets the title of the UI.
-func WithUITitle(title string) UIOption {
-	return func(o *UIOptions) {
+//
+// Default: "API documentation"
+func WithUITitle(title string) Option {
+	return func(o *options) {
 		o.Title = title
 	}
 }
 
-// WithTemplate allows to set a custom template for the UI.
+// WithUIAssetsURL sets the URL from where to fetch the js assets.
 //
-// UI [middleware] will panic if the template does not parse or execute properly.
-func WithTemplate(tpl string) UIOption {
-	return func(o *UIOptions) {
-		o.Template = tpl
+// Defaults:
+//
+//   - for Redoc: https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js
+//   - for RapiDoc, this defaults to: https://unpkg.com/rapidoc/dist/rapidoc-min.js
+//   - for SwaggerUI: https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js
+func WithUIAssetsURL(assets string) Option {
+	return func(o *options) {
+		o.AssetsURL = assets
 	}
 }
 
-// EnsureDefaults in case some options are missing.
-func (r *UIOptions) EnsureDefaults() {
-	if r.BasePath == "" {
-		r.BasePath = "/"
+// WithUITemplate allows to set a custom template for the UI.
+//
+// This allows the caller to fully customize the rendered UI, using the advanced options
+// provided by any UI.
+//
+// The UI [middleware] will panic if the template does not parse or execute properly.
+//
+// Reference documentations to customize your js scriptlet:
+//
+//   - for Redoc: https://github.com/Redocly/redoc/blob/main/docs/deployment/html.md
+//   - for RapiDoc:
+//   - for SwaggerUI:
+func WithUITemplate[StringOrBytes ~string | ~[]byte](tpl StringOrBytes) Option {
+	return func(o *options) {
+		o.Template = string(tpl)
 	}
-	if r.Path == "" {
-		r.Path = defaultDocsPath
+}
+
+// WithSpecURL sets the URL of the spec document.
+// Defaults to: /swagger.json
+func WithSpecURL(u string) Option {
+	return func(o *options) {
+		o.SpecURL = u
 	}
-	if r.SpecURL == "" {
-		r.SpecURL = defaultDocsURL
+}
+
+////////////////////////////////////////////////////////////
+// SwaggerUI UI options
+////////////////////////////////////////////////////////////
+
+func WithSwaggerUIOptions(opts SwaggerUIOptions) Option {
+	return func(o *options) {
+		o.SwaggerUIOptions = opts
 	}
-	if r.Title == "" {
-		r.Title = defaultDocsTitle
+}
+
+////////////////////////////////////////////////////////////
+// Spec options
+////////////////////////////////////////////////////////////
+
+// WithSpecPath sets the path of the spec document.
+//
+// This is "/swagger.json" by default.
+func WithSpecPath(pth string) SpecOption {
+	return func(o *specOptions) {
+		if pth == "" {
+			return
+		}
+
+		o.Path = pth
 	}
+}
+
+// WithSpecPathFromOptions reuses the same SpecPath as the one specified in
+// a set of UI [Option] (extract the value provided by [WithSpecURL]).
+func WithSpecPathFromOptions(opts ...Option) SpecOption {
+	return func(o *specOptions) {
+		uiOpts := optionsWithDefaults(opts)
+
+		// If the spec URL is provided, there is a non-default path to serve the spec.
+		//
+		// This makes sure that the UI middleware is aligned with the Spec middleware.
+		u, _ := url.Parse(uiOpts.SpecURL)
+
+		if u.Path == "" {
+			return
+		}
+
+		o.Path = u.Path
+	}
+}
+
+func optionsWithDefaults(opts []Option, prepend ...Option) options {
+	o := options{
+		BasePath: "/",
+		Path:     defaultDocsPath,
+		SpecURL:  defaultDocsURL,
+		Title:    defaultDocsTitle,
+	}
+
+	prepend = append(prepend, opts...)
+	for _, apply := range prepend {
+		apply(&o)
+	}
+
+	return o
+}
+
+func specOptionsWithDefaults(opts []SpecOption) specOptions {
+	o := specOptions{
+		Path: defaultDocsURL,
+	}
+
+	for _, apply := range opts {
+		apply(&o)
+	}
+
+	if !strings.HasPrefix(o.Path, "/") {
+		o.Path = "/" + o.Path
+	}
+
+	return o
 }

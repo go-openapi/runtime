@@ -9,7 +9,7 @@ import (
 	"path"
 )
 
-// serveUI creates a middleware that serves a templated asset as text/html.
+// serveUI creates a [http.Handler] that serves a templated asset as text/html.
 func serveUI(pth string, assets []byte, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if path.Clean(r.URL.Path) == pth {

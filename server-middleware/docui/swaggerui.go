@@ -11,99 +11,45 @@ import (
 	"path"
 )
 
-// SwaggerUIOpts configures the [SwaggerUI] [middleware].
-type SwaggerUIOpts struct {
-	// BasePath for the API, defaults to: /
-	BasePath string
+// UseSwaggerUI creates a [middleware] to serve a documentation site for a swagger spec.
+func UseSwaggerUI(opts ...Option) func(next http.Handler) http.Handler {
+	pth, assets := swaggeruiSetup(opts)
 
-	// Path combines with BasePath to construct the path to the UI, defaults to: "docs".
-	Path string
-
-	// SpecURL is the URL of the spec document.
-	//
-	// Defaults to: /swagger.json
-	SpecURL string
-
-	// Title for the documentation site, default to: API documentation
-	Title string
-
-	// Template specifies a custom template to serve the UI
-	Template string
-
-	// OAuthCallbackURL the url called after OAuth2 login
-	OAuthCallbackURL string
-
-	// The three components needed to embed swagger-ui
-
-	// SwaggerURL points to the js that generates the SwaggerUI site.
-	//
-	// Defaults to: https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js
-	SwaggerURL string
-
-	SwaggerPresetURL string
-	SwaggerStylesURL string
-
-	Favicon32 string
-	Favicon16 string
-}
-
-// EnsureDefaults in case some options are missing.
-func (r *SwaggerUIOpts) EnsureDefaults() {
-	r.ensureDefaults()
-
-	if r.Template == "" {
-		r.Template = swaggeruiTemplate
+	return func(next http.Handler) http.Handler {
+		return serveUI(pth, assets, next)
 	}
 }
 
-func (r *SwaggerUIOpts) EnsureDefaultsOauth2() {
-	r.ensureDefaults()
-
-	if r.Template == "" {
-		r.Template = swaggerOAuthTemplate
-	}
-}
-
-func (r *SwaggerUIOpts) ensureDefaults() {
-	common := ToCommonUIOptions(r)
-	common.EnsureDefaults()
-	FromCommonToAnyOptions(common, r)
-
-	// swaggerui-specifics
-	if r.OAuthCallbackURL == "" {
-		r.OAuthCallbackURL = path.Join(r.BasePath, r.Path, "oauth2-callback")
-	}
-	if r.SwaggerURL == "" {
-		r.SwaggerURL = swaggerLatest
-	}
-	if r.SwaggerPresetURL == "" {
-		r.SwaggerPresetURL = swaggerPresetLatest
-	}
-	if r.SwaggerStylesURL == "" {
-		r.SwaggerStylesURL = swaggerStylesLatest
-	}
-	if r.Favicon16 == "" {
-		r.Favicon16 = swaggerFavicon16Latest
-	}
-	if r.Favicon32 == "" {
-		r.Favicon32 = swaggerFavicon32Latest
-	}
-}
-
-// SwaggerUI creates a [middleware] to serve a documentation site for a swagger spec.
+// SwaggerUI creates a [http.Handler] to serve a documentation site for a swagger spec.
+//
+// By default, the UI is served at route "/docs"
 //
 // This allows for altering the spec before starting the [http] listener.
-func SwaggerUI(opts SwaggerUIOpts, next http.Handler) http.Handler {
-	opts.EnsureDefaults()
+func SwaggerUI(next http.Handler, opts ...Option) http.Handler {
+	pth, assets := swaggeruiSetup(opts)
 
-	pth := path.Join(opts.BasePath, opts.Path)
-	tmpl := template.Must(template.New("swaggerui").Parse(opts.Template))
-	assets := bytes.NewBuffer(nil)
-	if err := tmpl.Execute(assets, opts); err != nil {
+	return serveUI(pth, assets, next)
+}
+
+func swaggeruiSetup(opts []Option) (pth string, assets []byte) {
+	o := optionsWithDefaults(opts,
+		// defaults for SwaggerUI
+		WithUITemplate(swaggeruiTemplate),
+		WithUIAssetsURL(swaggerLatest),
+	)
+	o.applySwaggerUIDefaults()
+	if o.OAuth2CallbackURL == "" {
+		o.OAuth2CallbackURL = path.Join(o.BasePath, o.Path, "oauth2-callback")
+	}
+
+	pth = path.Join(o.BasePath, o.Path)
+	tmpl := template.Must(template.New("swaggerui").Parse(o.Template))
+	buf := bytes.NewBuffer(nil)
+	if err := tmpl.Execute(buf, o); err != nil {
 		panic(fmt.Errorf("cannot execute template: %w", err))
 	}
 
-	return serveUI(pth, assets.Bytes(), next)
+	return pth, buf.Bytes()
 }
 
 const (
@@ -119,9 +65,15 @@ const (
     <meta charset="UTF-8">
 		<title>{{ .Title }}</title>
 
-    <link rel="stylesheet" type="text/css" href="{{ .SwaggerStylesURL }}" >
+	  {{- if .SwaggerStylesURL }}
+    <link rel="stylesheet" type="text/css" href="{{ .SwaggerStylesURL }}" />
+	  {{- end }}
+	  {{- if .Favicon32 }}
     <link rel="icon" type="image/png" href="{{ .Favicon32 }}" sizes="32x32" />
+	  {{- end }}
+	  {{- if .Favicon16 }}
     <link rel="icon" type="image/png" href="{{ .Favicon16 }}" sizes="16x16" />
+	  {{- end }}
     <style>
       html
       {
@@ -148,8 +100,10 @@ const (
   <body>
     <div id="swagger-ui"></div>
 
-    <script src="{{ .SwaggerURL }}"> </script>
+    <script src="{{ .AssetsURL }}"> </script>
+	  {{- if .SwaggerPresetURL }}
     <script src="{{ .SwaggerPresetURL }}"> </script>
+	  {{- end }}
     <script>
     window.onload = function() {
       // Begin Swagger UI call region
@@ -165,7 +119,9 @@ const (
           SwaggerUIBundle.plugins.DownloadUrl
         ],
         layout: "StandaloneLayout",
-		oauth2RedirectUrl: '{{ .OAuthCallbackURL }}'
+	      {{- if .OAuth2CallbackURL }}
+        oauth2RedirectUrl: '{{ .OAuth2CallbackURL }}'
+	      {{- end }}
       })
       // End Swagger UI call region
 

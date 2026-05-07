@@ -21,20 +21,6 @@ import (
 	"github.com/go-openapi/testify/v2/require"
 
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/runtime/server-middleware/docui"
-	"github.com/go-openapi/runtime/server-middleware/negotiate"
-)
-
-// Compile-time assertions that the deprecated middleware names alias the
-// destination types — type identity is required for these assignments to
-// type-check.
-var (
-	_ = func(o docui.SwaggerUIOpts) middleware.SwaggerUIOpts { return o }
-	_ = func(o docui.RedocOpts) middleware.RedocOpts { return o }
-	_ = func(o docui.RapiDocOpts) middleware.RapiDocOpts { return o }
-	_ = func(o docui.UIOption) middleware.UIOption { return o }
-	_ = func(o docui.SpecOption) middleware.SpecOption { return o }
-	_ = func(o negotiate.Option) middleware.NegotiateOption { return o }
 )
 
 func TestDeprecatedDocUIForwarders(t *testing.T) {

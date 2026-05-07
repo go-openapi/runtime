@@ -11,64 +11,45 @@ import (
 	"path"
 )
 
-// RedocOpts configures the [Redoc] middlewares.
-type RedocOpts struct {
-	// BasePath for the UI, defaults to: /
-	BasePath string
+// UseRedoc creates a [middleware] to serve a documentation site for a swagger spec.
+func UseRedoc(opts ...Option) func(next http.Handler) http.Handler {
+	pth, assets := redocSetup(opts)
 
-	// Path combines with BasePath to construct the path to the UI, defaults to: "docs".
-	Path string
-
-	// SpecURL is the URL of the spec document.
-	//
-	// Defaults to: /swagger.json
-	SpecURL string
-
-	// Title for the documentation site, default to: API documentation
-	Title string
-
-	// Template specifies a custom template to serve the UI
-	Template string
-
-	// RedocURL points to the js that generates the redoc site.
-	//
-	// Defaults to: https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js
-	RedocURL string
-}
-
-// EnsureDefaults in case some options are missing.
-func (r *RedocOpts) EnsureDefaults() {
-	common := ToCommonUIOptions(r)
-	common.EnsureDefaults()
-	FromCommonToAnyOptions(common, r)
-
-	// redoc-specifics
-	if r.RedocURL == "" {
-		r.RedocURL = redocLatest
-	}
-	if r.Template == "" {
-		r.Template = redocTemplate
+	return func(next http.Handler) http.Handler {
+		return serveUI(pth, assets, next)
 	}
 }
 
-// Redoc creates a [middleware] to serve a documentation site for a swagger spec.
+// Redoc creates a [http.Handler] to serve a documentation site for a swagger spec.
+//
+// By default, the UI is served at route "/docs"
 //
 // This allows for altering the spec before starting the [http] listener.
-func Redoc(opts RedocOpts, next http.Handler) http.Handler {
-	opts.EnsureDefaults()
+func Redoc(next http.Handler, opts ...Option) http.Handler {
+	pth, assets := redocSetup(opts)
 
-	pth := path.Join(opts.BasePath, opts.Path)
-	tmpl := template.Must(template.New("redoc").Parse(opts.Template))
-	assets := bytes.NewBuffer(nil)
-	if err := tmpl.Execute(assets, opts); err != nil {
+	return serveUI(pth, assets, next)
+}
+
+func redocSetup(opts []Option) (pth string, assets []byte) {
+	o := optionsWithDefaults(opts,
+		// defaults for redoc
+		WithUITemplate(redocTemplate),
+		WithUIAssetsURL(redocLatest),
+	)
+
+	pth = path.Join(o.BasePath, o.Path)
+	tmpl := template.Must(template.New("redoc").Parse(o.Template))
+	buf := bytes.NewBuffer(nil)
+	if err := tmpl.Execute(buf, o); err != nil {
 		panic(fmt.Errorf("cannot execute template: %w", err))
 	}
 
-	return serveUI(pth, assets.Bytes(), next)
+	return pth, buf.Bytes()
 }
 
 const (
-	redocLatest   = "https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"
+	redocLatest   = "https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js" // "https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"
 	redocTemplate = `<!DOCTYPE html>
 <html>
   <head>
@@ -90,7 +71,7 @@ const (
   </head>
   <body>
     <redoc spec-url='{{ .SpecURL }}'></redoc>
-    <script src="{{ .RedocURL }}"> </script>
+    <script src="{{ .AssetsURL }}"> </script>
   </body>
 </html>
 `
