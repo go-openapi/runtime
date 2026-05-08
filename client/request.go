@@ -45,8 +45,14 @@ type request struct {
 	formFields url.Values
 	fileFields map[string][]runtime.NamedReadCloser
 	payload    any
-	timeout    time.Duration
-	buf        *bytes.Buffer
+	// consumes carries the operation's full ConsumesMediaTypes list so
+	// that buildHTTP — which runs after the writer populates the payload
+	// — can apply payload-aware fallback rules (see streamFallbackMime).
+	// Set by Runtime.createHttpRequest. Direct buildHTTP callers leave it
+	// nil and get unchanged single-mime behaviour.
+	consumes []string
+	timeout  time.Duration
+	buf      *bytes.Buffer
 
 	getBody func(r *request) []byte
 }
@@ -285,9 +291,7 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 			for fn, f := range r.fileFields {
 				for _, fi := range f {
 					var fileContentType string
-					if p, ok := fi.(interface {
-						ContentType() string
-					}); ok {
+					if p, ok := fi.(runtime.ContentTyper); ok {
 						fileContentType = p.ContentType()
 					} else {
 						// Need to read the data so that we can detect the content type
@@ -325,20 +329,38 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 	}
 
 	// if there is payload, use the producer to write the payload, and then
-	// set the header to the content-type appropriate for the payload produced
+	// set the header to the content-type appropriate for the payload produced.
+	//
+	// Stream payloads (io.Reader, io.ReadCloser) bypass the producer — their
+	// bytes flow through verbatim. For these, the wire Content-Type is
+	// resolved in priority order:
+	//
+	//  1. an explicit Content-Type set on the request via SetHeaderParam —
+	//     the historical escape hatch wins;
+	//  2. the payload's own [runtime.ContentTyper] declaration;
+	//  3. the Stage-2 octet-stream upgrade ([streamFallbackMime]);
+	//  4. the picker's mediaType.
+	//
+	// The non-stream branch is unchanged: producer runs, header reflects
+	// the picker. SetHeaderParam("Content-Type", …) is NOT honoured
+	// there because the producer is dispatched off mediaType — the wire
+	// header would otherwise misrepresent the body. Same reasoning
+	// applies to the form/multipart branches.
 	if r.payload != nil {
-		// Enhancement proposal: https://github.com/go-openapi/runtime/issues/387
-		r.header.Set(runtime.HeaderContentType, mediaType)
 		if rdr, ok := r.payload.(io.ReadCloser); ok {
+			setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
 			body = rdr
 			goto DoneChoosingBodySource
 		}
 
 		if rdr, ok := r.payload.(io.Reader); ok {
+			setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
 			body = rdr
 			goto DoneChoosingBodySource
 		}
 
+		// Non-stream payload: producer runs, header reflects the picker.
+		r.header.Set(runtime.HeaderContentType, mediaType)
 		producer := producers[mediaType]
 		if err := producer.Produce(r.buf, r.payload); err != nil {
 			return nil, err
@@ -472,6 +494,77 @@ DoneChoosingBodySource:
 
 func escapeQuotes(s string) string {
 	return strings.NewReplacer("\\", "\\\\", `"`, "\\\"").Replace(s)
+}
+
+// setStreamContentType resolves and writes the wire Content-Type for a
+// stream payload (io.Reader / io.ReadCloser). Priority:
+//
+//  1. an explicit value already in header — the user set it via
+//     SetHeaderParam during WriteToRequest, and we treat that as an
+//     intentional escape hatch;
+//  2. payload's [runtime.ContentTyper] declaration;
+//  3. [streamFallbackMime] (Stage-2 octet-stream upgrade);
+//  4. the picker's mediaType (passed in as the chain's terminal
+//     fallback).
+//
+// Does not apply to non-stream payloads or to form/multipart bodies —
+// see the comment above the call site in [request.buildHTTP].
+func setStreamContentType(
+	header http.Header,
+	payload any,
+	mediaType string,
+	candidates []string,
+	producers map[string]runtime.Producer,
+) {
+	if header.Get(runtime.HeaderContentType) != "" {
+		return
+	}
+	fallback := streamFallbackMime(mediaType, candidates, producers)
+	header.Set(runtime.HeaderContentType, payloadContentType(payload, fallback))
+}
+
+// payloadContentType returns the payload's declared content type when
+// it implements [runtime.ContentTyper] with a non-empty result, and
+// fallback otherwise. Mirrors the per-file convention already used for
+// multipart upload parts (see [request.buildHTTP] file-fields branch).
+func payloadContentType(payload any, fallback string) string {
+	if t, ok := payload.(runtime.ContentTyper); ok {
+		if ct := t.ContentType(); ct != "" {
+			return ct
+		}
+	}
+	return fallback
+}
+
+// streamFallbackMime selects a wire content-type for a stream payload
+// (io.Reader / io.ReadCloser) that has neither implemented
+// `ContentType() string` nor declared an explicit value.
+//
+// The picker (Stage 1) ran without seeing the payload, so its choice
+// may be wildly wrong for raw bytes — e.g. picking application/json
+// for a payload that is just a stream of opaque data. When the
+// candidate consumes list also offers application/octet-stream and
+// the runtime has an octet-stream producer registered, that's a
+// safer wire type than the picker's choice: it advertises "raw bytes"
+// rather than making a structural claim about the body.
+//
+// If octet-stream is unavailable in either the candidate list or the
+// producer set, the picker's choice is preserved. The wire header
+// then continues to misrepresent the body — but no correct
+// alternative exists and we cannot infer one without more
+// information from the caller.
+func streamFallbackMime(picked string, candidates []string, producers map[string]runtime.Producer) string {
+	if strings.EqualFold(picked, runtime.DefaultMime) {
+		return picked
+	}
+	for _, c := range candidates {
+		if strings.EqualFold(c, runtime.DefaultMime) {
+			if _, ok := producers[runtime.DefaultMime]; ok {
+				return runtime.DefaultMime
+			}
+		}
+	}
+	return picked
 }
 
 func getRequestBuffer(r *request) []byte {

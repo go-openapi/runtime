@@ -523,6 +523,7 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
 
 	request := newRequest(operation.Method, operation.PathPattern, params)
+	request.consumes = operation.ConsumesMediaTypes
 
 	accept := make([]string, 0, len(operation.ProducesMediaTypes))
 	accept = append(accept, operation.ProducesMediaTypes...)
@@ -544,8 +545,7 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 	//	}
 	//}
 
-	// Enhancement proposal: https://github.com/go-openapi/runtime/issues/386
-	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.DefaultMediaType)
+	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.Producers, r.DefaultMediaType)
 
 	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
 		return nil, nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
@@ -563,23 +563,58 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 
 // pickConsumesMediaType selects which Content-Type the client will send.
 //
-// When the operation advertises multipart/form-data alongside other types
-// (typically application/x-www-form-urlencoded), multipart is preferred because
-// it streams and preserves per-file Content-Type. Otherwise the first non-empty
-// entry wins, falling back to def. This makes the choice independent of the
-// order produced by codegen.
-func pickConsumesMediaType(consumes []string, def string) string {
+// Selection rules, in priority order:
+//
+//  1. multipart/form-data if any consumes entry advertises it (it streams
+//     and preserves per-file Content-Type, regardless of codegen ordering;
+//     resolves issue #286);
+//  2. the first non-empty entry whose mime is either structural
+//     (multipart/form-data or application/x-www-form-urlencoded — these
+//     do not need a producer in the map) or has a producer registered in
+//     producers — this lets the client gracefully skip unregistered
+//     spec entries instead of erroring at the gate that follows;
+//  3. the first non-empty entry overall (preserves the historical error
+//     path: the gate at the call site reports "none of producers" with
+//     the unregistered mime, so the diagnostic is unchanged when nothing
+//     in consumes is registered);
+//  4. def, if consumes is empty or all empty strings.
+//
+// Step 2 closes part of issues #32 and #386: an operation declaring
+// `consumes: [application/x-vendor, application/json]` with no vendor
+// producer registered now silently uses JSON instead of erroring.
+func pickConsumesMediaType(consumes []string, producers map[string]runtime.Producer, def string) string {
 	for _, mt := range consumes {
 		if strings.EqualFold(mt, runtime.MultipartFormMime) {
 			return mt
 		}
 	}
+	var firstNonEmpty string
 	for _, mt := range consumes {
-		if mt != "" {
+		if mt == "" {
+			continue
+		}
+		if firstNonEmpty == "" {
+			firstNonEmpty = mt
+		}
+		if isStructuralMime(mt) {
+			return mt
+		}
+		if _, ok := producers[mt]; ok {
 			return mt
 		}
 	}
+	if firstNonEmpty != "" {
+		return firstNonEmpty
+	}
 	return def
+}
+
+// isStructuralMime reports whether mt is a media type whose body shape
+// is owned by the runtime (multipart envelope, urlencoded form). These
+// do not require an entry in the producers map.
+func isStructuralMime(mt string) bool {
+	return strings.EqualFold(mt, runtime.MultipartFormMime) ||
+		strings.EqualFold(mt, runtime.URLencodedFormMime)
 }
 
 func basePool(pool *x509.CertPool) *x509.CertPool {
