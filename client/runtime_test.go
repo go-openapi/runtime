@@ -480,33 +480,49 @@ func TestRuntime_AuthCanary(t *testing.T) {
 }
 
 // TestPickConsumesMediaType covers the selection rule used by the client
-// runtime: when an operation advertises both multipart/form-data and
-// application/x-www-form-urlencoded, multipart wins regardless of the order
-// codegen produced. See issue #286.
+// runtime. Two responsibilities:
+//  1. multipart/form-data preference (issue #286);
+//  2. producer-capability filter — skip consumes entries with no producer
+//     registered, falling through to the next available match. Only fall
+//     back to first-non-empty when nothing in consumes is registered (so
+//     the gate at runtime.go:551 still emits its diagnostic).
 func TestPickConsumesMediaType(t *testing.T) {
 	const def = "application/json"
+	defaultProducers := New("example.com", "/", []string{schemeHTTP}).Producers
+	jsonOnly := map[string]runtime.Producer{
+		runtime.JSONMime: runtime.JSONProducer(),
+	}
 	cases := []struct {
-		name     string
-		consumes []string
-		want     string
+		name      string
+		consumes  []string
+		producers map[string]runtime.Producer
+		want      string
 	}{
-		{"empty falls back to default", nil, def},
-		{"only empties fall back to default", []string{"", ""}, def},
-		{"single entry wins", []string{"text/plain"}, "text/plain"},
+		{"empty falls back to default", nil, defaultProducers, def},
+		{"only empties fall back to default", []string{"", ""}, defaultProducers, def},
+		{"single entry wins", []string{"text/plain"}, defaultProducers, "text/plain"},
 		{"first non-empty wins when no multipart",
-			[]string{"", runtime.URLencodedFormMime}, runtime.URLencodedFormMime},
+			[]string{"", runtime.URLencodedFormMime}, defaultProducers, runtime.URLencodedFormMime},
 		{"multipart preferred when listed first",
-			[]string{runtime.MultipartFormMime, runtime.URLencodedFormMime}, runtime.MultipartFormMime},
+			[]string{runtime.MultipartFormMime, runtime.URLencodedFormMime}, defaultProducers, runtime.MultipartFormMime},
 		{"multipart preferred when listed last",
-			[]string{runtime.URLencodedFormMime, runtime.MultipartFormMime}, runtime.MultipartFormMime},
+			[]string{runtime.URLencodedFormMime, runtime.MultipartFormMime}, defaultProducers, runtime.MultipartFormMime},
 		{"caller's explicit single choice is honored",
-			[]string{runtime.URLencodedFormMime}, runtime.URLencodedFormMime},
+			[]string{runtime.URLencodedFormMime}, defaultProducers, runtime.URLencodedFormMime},
 		{"multipart match is case-insensitive",
-			[]string{runtime.URLencodedFormMime, "Multipart/Form-Data"}, "Multipart/Form-Data"},
+			[]string{runtime.URLencodedFormMime, "Multipart/Form-Data"}, defaultProducers, "Multipart/Form-Data"},
+
+		// Producer-capability filter (issues #32, #386).
+		{"unregistered first entry falls through to registered second",
+			[]string{"application/x-vendor", runtime.JSONMime}, jsonOnly, runtime.JSONMime},
+		{"all unregistered entries: first non-empty preserved (gate fires)",
+			[]string{vendorMime1, vendorMime2}, jsonOnly, vendorMime1},
+		{"structural mime returns even without producer entry",
+			[]string{runtime.URLencodedFormMime}, jsonOnly, runtime.URLencodedFormMime},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.EqualT(t, tc.want, pickConsumesMediaType(tc.consumes, def))
+			assert.EqualT(t, tc.want, pickConsumesMediaType(tc.consumes, tc.producers, def))
 		})
 	}
 }
