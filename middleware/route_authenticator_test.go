@@ -38,7 +38,7 @@ func newCountAuthenticator(applies bool, principal any, err error) *countAuthent
 
 var (
 	successAuth = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
-		return true, "the user", nil
+		return true, valTheUser, nil
 	})
 	failAuth = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		return true, nil, errors.New("unauthenticated")
@@ -47,7 +47,7 @@ var (
 		return false, nil, nil
 	})
 	successAuthWithPointer = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
-		return true, &principalType{Name: "the user"}, nil
+		return true, &principalType{Name: valTheUser}, nil
 	})
 	failAuthWithPointer = runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		var typedPrincipal *principalType
@@ -80,7 +80,7 @@ func TestAuthenticateSingle(t *testing.T) {
 		ok, prin, err := ras.Authenticate(req, route)
 		require.NoError(t, err)
 		require.TrueT(t, ok)
-		require.Equal(t, "the user", prin)
+		require.Equal(t, valTheUser, prin)
 
 		require.Equal(t, ra, *route.Authenticator)
 	})
@@ -105,8 +105,7 @@ func TestAuthenticateSingle(t *testing.T) {
 		require.TrueT(t, ok)
 		typed, ok := prin.(*principalType)
 		require.TrueT(t, ok)
-		require.EqualT(t, "the user", typed.Name)
-
+		require.EqualT(t, valTheUser, typed.Name)
 		require.Equal(t, ra, *route.Authenticator)
 	})
 }
@@ -130,7 +129,7 @@ func TestAuthenticateWrong(t *testing.T) {
 			ok, prin, err := ras.Authenticate(req, route)
 			require.NoError(t, err)
 			require.True(t, ok)
-			require.EqualValues(t, &principalType{Name: "the user"}, prin)
+			require.EqualValues(t, &principalType{Name: valTheUser}, prin)
 		})
 		t.Run("should not authenticate", func(t *testing.T) {
 			ra := RouteAuthenticator{
@@ -183,10 +182,10 @@ func TestAuthenticateLogicalOr(t *testing.T) {
 	}
 	ra2 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": successAuth,
+			testAuth2: successAuth,
 		},
-		Schemes: []string{"auth2"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 	// right side matches
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2})
@@ -197,7 +196,7 @@ func TestAuthenticateLogicalOr(t *testing.T) {
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
 	require.TrueT(t, ok)
-	require.Equal(t, "the user", prin)
+	require.Equal(t, valTheUser, prin)
 
 	require.Equal(t, ra2, *route.Authenticator)
 
@@ -211,7 +210,7 @@ func TestAuthenticateLogicalOr(t *testing.T) {
 	require.NoError(t, err)
 
 	require.TrueT(t, ok)
-	require.Equal(t, "the user", prin)
+	require.Equal(t, valTheUser, prin)
 	require.Equal(t, ra2, *route.Authenticator)
 }
 
@@ -223,14 +222,14 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 		Schemes: []string{testAuthenticator},
 		Scopes:  map[string][]string{testAuthenticator: nil},
 	}
-	authorizer := newCountAuthenticator(true, "the user", nil)
+	authorizer := newCountAuthenticator(true, valTheUser, nil)
 	ra2 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": authorizer,
-			"auth3": authorizer,
+			testAuth2: authorizer,
+			testAuth3: authorizer,
 		},
-		Schemes: []string{"auth2", "auth3"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2, testAuth3},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2})
 	require.FalseT(t, ras.AllowsAnonymous())
@@ -241,7 +240,7 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 	ok, prin, err := ras.Authenticate(req, route)
 	require.NoError(t, err)
 	require.TrueT(t, ok)
-	require.Equal(t, "the user", prin)
+	require.Equal(t, valTheUser, prin)
 
 	require.Equal(t, ra2, *route.Authenticator)
 	require.EqualT(t, 2, authorizer.count)
@@ -249,7 +248,7 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 	var count int
 	successA := runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		count++
-		return true, "the user", nil
+		return true, valTheUser, nil
 	})
 	failA := runtime.AuthenticatorFunc(func(_ any) (bool, any, error) {
 		count++
@@ -258,12 +257,12 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 
 	ra3 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": successA,
-			"auth3": failA,
-			"auth4": successA,
+			testAuth2: successA,
+			testAuth3: failA,
+			testAuth4: successA,
 		},
-		Schemes: []string{"auth2", "auth3", "auth4"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2, testAuth3, testAuth4},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 	ras = RouteAuthenticators([]RouteAuthenticator{ra1, ra3})
 
@@ -281,12 +280,12 @@ func TestAuthenticateLogicalAnd(t *testing.T) {
 
 	ra4 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": successA,
-			"auth3": successA,
-			"auth4": failA,
+			testAuth2: successA,
+			testAuth3: successA,
+			testAuth4: failA,
 		},
-		Schemes: []string{"auth2", "auth3", "auth4"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2, testAuth3, testAuth4},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 	ras = RouteAuthenticators([]RouteAuthenticator{ra1, ra4})
 
@@ -354,10 +353,10 @@ func TestAuthenticateOptional(t *testing.T) {
 
 	ra3 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": noApplyAuth,
+			testAuth2: noApplyAuth,
 		},
-		Schemes: []string{"auth2"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 
 	ras := RouteAuthenticators([]RouteAuthenticator{ra1, ra2, ra3})
@@ -385,10 +384,10 @@ func TestAuthenticateOptional(t *testing.T) {
 
 	ra6 := RouteAuthenticator{
 		Authenticator: map[string]runtime.Authenticator{
-			"auth2": failAuth,
+			testAuth2: failAuth,
 		},
-		Schemes: []string{"auth2"},
-		Scopes:  map[string][]string{"auth2": nil},
+		Schemes: []string{testAuth2},
+		Scopes:  map[string][]string{testAuth2: nil},
 	}
 
 	ras = RouteAuthenticators([]RouteAuthenticator{ra4, ra5, ra6})

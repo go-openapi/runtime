@@ -94,7 +94,7 @@ func IntParamTest(t *testing.T, pName string, val reflect.Value, defVal, expecte
 func TestParamBinding(t *testing.T) {
 	actual := new(SomeOperationParams)
 	val := reflect.ValueOf(actual).Elem()
-	pName := "Name"
+	pName := keyName
 	fld := val.FieldByName(pName)
 
 	binder := &untypedParamBinder{
@@ -245,12 +245,12 @@ func TestSliceConversion(t *testing.T) {
 	// require.Error(t, err)
 
 	sliced := []string{"some", typeString, "values"}
-	seps := map[string]string{"ssv": " ", "tsv": "\t", "pipes": "|", "csv": ",", "": ","}
+	seps := map[string]string{ssvFmt: " ", tsvFmt: "\t", pipesFmt: "|", "csv": ",", "": ","}
 
-	tagsField := val.FieldByName("Tags")
+	tagsField := val.FieldByName(keyTags)
 	for k, sep := range seps {
 		binder := &untypedParamBinder{
-			Name:      "Tags",
+			Name:      keyTags,
 			parameter: spec.QueryParam("tags").CollectionOf(stringItems, k),
 		}
 

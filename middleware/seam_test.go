@@ -23,6 +23,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
+const jsonMime = "application/json"
+
 func TestDeprecatedDocUIForwarders(t *testing.T) {
 	t.Run("middleware.SwaggerUI still serves the docs page", func(t *testing.T) {
 		h := middleware.SwaggerUI(middleware.SwaggerUIOpts{}, nil)
@@ -74,9 +76,9 @@ func TestDeprecatedDocUIForwarders(t *testing.T) {
 	t.Run("middleware.NegotiateContentType still selects the offered type", func(t *testing.T) {
 		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		require.NoError(t, err)
-		req.Header.Set("Accept", "application/json")
-		got := middleware.NegotiateContentType(req, []string{"application/json"}, "")
-		assert.EqualT(t, "application/json", got)
+		req.Header.Set("Accept", jsonMime)
+		got := middleware.NegotiateContentType(req, []string{jsonMime}, "")
+		assert.EqualT(t, jsonMime, got)
 	})
 
 	t.Run("middleware.NegotiateContentEncoding still selects gzip", func(t *testing.T) {

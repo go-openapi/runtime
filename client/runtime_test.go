@@ -51,8 +51,8 @@ func TestRuntime_Concurrent(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
@@ -84,7 +84,7 @@ func TestRuntime_Concurrent(t *testing.T) {
 				var errp error
 				for range 3 {
 					resp, errp = rt.Submit(&runtime.ClientOperation{
-						ID:          "getTasks",
+						ID:          operationID,
 						Method:      http.MethodGet,
 						PathPattern: "/",
 						Params:      rwrtr,
@@ -127,8 +127,8 @@ func TestRuntime_Canary(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime)
@@ -146,7 +146,7 @@ func TestRuntime_Canary(t *testing.T) {
 	require.NoError(t, err)
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
@@ -177,8 +177,8 @@ func TestRuntime_XMLCanary(t *testing.T) {
 	// and get the response for it.
 	result := tasks{
 		Tasks: []task{
-			{false, "task 1 content", 1},
-			{false, "task 2 content", 2},
+			{false, taskOneContent, 1},
+			{false, taskTwoContent, 2},
 		},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
@@ -198,7 +198,7 @@ func TestRuntime_XMLCanary(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
@@ -240,7 +240,7 @@ func TestRuntime_TextCanary(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
@@ -285,7 +285,7 @@ func TestRuntime_CSVCanary(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Params:      rwrtr,
@@ -318,8 +318,8 @@ func TestRuntime_CustomTransport(t *testing.T) {
 		return nil
 	})
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 
 	rt := New("localhost:3245", "/", []string{"ws", "wss", schemeHTTPS})
@@ -342,7 +342,7 @@ func TestRuntime_CustomTransport(t *testing.T) {
 	})
 
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{"ws", "wss", schemeHTTPS},
@@ -377,7 +377,10 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 			username, password, ok := req.BasicAuth()
 			if ok && username == "username" && password == "password" {
 				authenticated = true
-				http.SetCookie(rw, &http.Cookie{Name: "sessionid", Value: "abc"})
+				http.SetCookie(rw, &http.Cookie{ //nolint:gosec // it's okay for a local test cookie
+					Name:  "sessionid",
+					Value: "abc",
+				})
 			}
 		}
 		if authenticated {
@@ -404,7 +407,7 @@ func TestRuntime_CustomCookieJar(t *testing.T) {
 
 	submit := func(authInfo runtime.ClientAuthInfoWriter) {
 		_, err := rt.Submit(&runtime.ClientOperation{
-			ID:          "getTasks",
+			ID:          operationID,
 			Method:      http.MethodGet,
 			PathPattern: "/",
 			Params:      rwrtr,
@@ -430,8 +433,8 @@ func TestRuntime_AuthCanary(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
@@ -455,7 +458,7 @@ func TestRuntime_AuthCanary(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:     "getTasks",
+		ID:     operationID,
 		Params: rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
@@ -510,11 +513,11 @@ func TestPickConsumesMediaType(t *testing.T) {
 
 func TestRuntime_PickConsumer(t *testing.T) {
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("Content-Type") != "application/octet-stream" {
+		if req.Header.Get("Content-Type") != runtime.DefaultMime {
 			rw.Header().Add(runtime.HeaderContentType, runtime.JSONMime+charsetUTF8)
 			rw.WriteHeader(http.StatusBadRequest)
 			return
@@ -535,11 +538,11 @@ func TestRuntime_PickConsumer(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:                 "getTasks",
-		Method:             "POST",
+		ID:                 operationID,
+		Method:             http.MethodPost,
 		PathPattern:        "/",
 		Schemes:            []string{schemeHTTP},
-		ConsumesMediaTypes: []string{"application/octet-stream"},
+		ConsumesMediaTypes: []string{runtime.DefaultMime},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
@@ -565,8 +568,8 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
@@ -589,7 +592,7 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{schemeHTTP},
@@ -618,8 +621,8 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
@@ -644,7 +647,7 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/",
 		Schemes:     []string{schemeHTTP},
@@ -785,7 +788,7 @@ func TestRuntime_PreserveTrailingSlash(t *testing.T) {
 	})
 
 	_, err = rt.Submit(&runtime.ClientOperation{
-		ID:          "getTasks",
+		ID:          operationID,
 		Method:      http.MethodGet,
 		PathPattern: "/api/tasks/",
 		Params:      rwrtr,
@@ -821,11 +824,11 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 
 	// without the fallback consumer
 	_, err = rt.Submit(&runtime.ClientOperation{
-		ID:                 "getTasks",
-		Method:             "POST",
+		ID:                 operationID,
+		Method:             http.MethodPost,
 		PathPattern:        "/",
 		Schemes:            []string{schemeHTTP},
-		ConsumesMediaTypes: []string{"application/octet-stream"},
+		ConsumesMediaTypes: []string{runtime.DefaultMime},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
@@ -844,11 +847,11 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 	// add the fallback consumer
 	rt.Consumers["*/*"] = rt.Consumers[runtime.DefaultMime]
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:                 "getTasks",
-		Method:             "POST",
+		ID:                 operationID,
+		Method:             http.MethodPost,
 		PathPattern:        "/",
 		Schemes:            []string{schemeHTTP},
-		ConsumesMediaTypes: []string{"application/octet-stream"},
+		ConsumesMediaTypes: []string{runtime.DefaultMime},
 		Params:             rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
@@ -873,8 +876,8 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	// and get the response for it.
 	// defaults all the way down
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if req.Header.Get(runtime.HeaderAuthorization) != bearerToken {
@@ -898,7 +901,7 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 	rt := New(hu.Host, "/", []string{schemeHTTP})
 	rt.DefaultAuthentication = BearerToken("not-the-super-secret-token")
 	res, err := rt.Submit(&runtime.ClientOperation{
-		ID:     "getTasks",
+		ID:     operationID,
 		Params: rwrtr,
 		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 			if response.Code() == http.StatusOK {
@@ -920,8 +923,6 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 
 func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates the total lines of code, which is misleading
 	const (
-		operationID = "getTasks"
-
 		// these values should be sufficient for most CI engines
 		clientTimeout   time.Duration = 25 * time.Millisecond
 		serverDelay     time.Duration = 100 * time.Millisecond
@@ -929,8 +930,8 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 		ctxError                      = "context deadline exceeded"
 	)
 	result := []task{
-		{false, "task 1 content", 1},
-		{false, "task 2 content", 2},
+		{false, taskOneContent, 1},
+		{false, taskTwoContent, 2},
 	}
 
 	signedContext := func(value string) context.Context {

@@ -101,10 +101,10 @@ func TestRequiredValidation(t *testing.T) {
 	validateRequiredTest(t, strParam, reflect.ValueOf(""))
 	validateRequiredAllowEmptyTest(t, strParam, reflect.ValueOf(""))
 
-	intParam := spec.QueryParam("id").Typed("integer", "int32").AsRequired()
+	intParam := spec.QueryParam(paramKeyID).Typed("integer", "int32").AsRequired()
 	validateRequiredTest(t, intParam, reflect.ValueOf(int32(0)))
 	validateRequiredAllowEmptyTest(t, intParam, reflect.ValueOf(int32(0)))
-	longParam := spec.QueryParam("id").Typed("integer", "int64").AsRequired()
+	longParam := spec.QueryParam(paramKeyID).Typed("integer", "int64").AsRequired()
 	validateRequiredTest(t, longParam, reflect.ValueOf(int64(0)))
 	validateRequiredAllowEmptyTest(t, longParam, reflect.ValueOf(int64(0)))
 
@@ -129,10 +129,10 @@ func TestRequiredValidation(t *testing.T) {
 }
 
 func TestInvalidCollectionFormat(t *testing.T) {
-	validCf1 := spec.QueryParam("validFmt").CollectionOf(stringItems, "multi")
-	validCf2 := spec.FormDataParam("validFmt2").CollectionOf(stringItems, "multi")
-	invalidCf1 := spec.HeaderParam("invalidHdr").CollectionOf(stringItems, "multi")
-	invalidCf2 := spec.PathParam("invalidPath").CollectionOf(stringItems, "multi")
+	validCf1 := spec.QueryParam("validFmt").CollectionOf(stringItems, multiFmt)
+	validCf2 := spec.FormDataParam("validFmt2").CollectionOf(stringItems, multiFmt)
+	invalidCf1 := spec.HeaderParam("invalidHdr").CollectionOf(stringItems, multiFmt)
+	invalidCf2 := spec.PathParam("invalidPath").CollectionOf(stringItems, multiFmt)
 
 	testCollectionFormat(t, validCf1, true)
 	testCollectionFormat(t, validCf2, true)
@@ -153,10 +153,10 @@ func TestTypeValidation(t *testing.T) {
 		intParam := newParam("badInt").Typed("integer", "int32")
 		value := reflect.ValueOf(int32(0))
 		binder := np(intParam)
-		err := binder.bindValue([]string{"yada"}, true, value)
+		err := binder.bindValue([]string{valYada}, true, value)
 		// fails for invalid string
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(intParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(intParam, valYada).Error())
 
 		// fails for overflow
 		val := int64(math.MaxInt32)
@@ -174,9 +174,9 @@ func TestTypeValidation(t *testing.T) {
 		value = reflect.ValueOf(int64(0))
 
 		binder = np(longParam)
-		err = binder.bindValue([]string{"yada"}, true, value)
+		err = binder.bindValue([]string{valYada}, true, value)
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(longParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(longParam, valYada).Error())
 
 		// fails for overflow
 		str2 := strconv.FormatInt(math.MaxInt64, 10) + "0"
@@ -191,9 +191,9 @@ func TestTypeValidation(t *testing.T) {
 		floatParam := newParam("badFloat").Typed("number", "float")
 		value = reflect.ValueOf(float64(0))
 		binder = np(floatParam)
-		err = binder.bindValue([]string{"yada"}, true, value)
+		err = binder.bindValue([]string{valYada}, true, value)
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(floatParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(floatParam, valYada).Error())
 
 		// fails for overflow
 		str3 := strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
@@ -208,9 +208,9 @@ func TestTypeValidation(t *testing.T) {
 		doubleParam := newParam("badDouble").Typed("number", "double")
 		value = reflect.ValueOf(float64(0))
 		binder = np(doubleParam)
-		err = binder.bindValue([]string{"yada"}, true, value)
+		err = binder.bindValue([]string{valYada}, true, value)
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(doubleParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(doubleParam, valYada).Error())
 
 		// fails for overflow
 		str4 := "9" + strconv.FormatFloat(math.MaxFloat64, 'f', 5, 64)
@@ -225,17 +225,17 @@ func TestTypeValidation(t *testing.T) {
 		dateParam := newParam("badDate").Typed(typeString, "date")
 		value = reflect.ValueOf(strfmt.Date{})
 		binder = np(dateParam)
-		err = binder.bindValue([]string{"yada"}, true, value)
+		err = binder.bindValue([]string{valYada}, true, value)
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(dateParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(dateParam, valYada).Error())
 
 		// fails for invalid string
 		dateTimeParam := newParam("badDateTime").Typed(typeString, "date-time")
 		value = reflect.ValueOf(strfmt.DateTime{})
 		binder = np(dateTimeParam)
-		err = binder.bindValue([]string{"yada"}, true, value)
+		err = binder.bindValue([]string{valYada}, true, value)
 		require.Error(t, err)
-		require.EqualError(t, err, invalidTypeError(dateTimeParam, "yada").Error())
+		require.EqualError(t, err, invalidTypeError(dateTimeParam, valYada).Error())
 
 		// fails for invalid string
 		byteParam := newParam("badByte").Typed(typeString, "byte")

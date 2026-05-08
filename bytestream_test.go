@@ -437,7 +437,7 @@ func (b *binaryMarshalDummy) MarshalBinary() ([]byte, error) {
 
 type closingWriter struct {
 	calledClose int64
-	calledWrite int64
+	calledWrite atomic.Int64
 	b           bytes.Buffer
 }
 
@@ -447,7 +447,7 @@ func (c *closingWriter) Close() error {
 }
 
 func (c *closingWriter) Write(p []byte) (n int, err error) {
-	atomic.AddInt64(&c.calledWrite, 1)
+	c.calledWrite.Add(1)
 	return c.b.Write(p)
 }
 
@@ -457,7 +457,7 @@ func (c *closingWriter) String() string {
 
 type closingReader struct {
 	calledClose int64
-	calledRead  int64
+	calledRead  atomic.Int64
 	b           *bytes.Buffer
 }
 
@@ -467,6 +467,6 @@ func (c *closingReader) Close() error {
 }
 
 func (c *closingReader) Read(p []byte) (n int, err error) {
-	atomic.AddInt64(&c.calledRead, 1)
+	c.calledRead.Add(1)
 	return c.b.Read(p)
 }

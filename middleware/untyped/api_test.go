@@ -18,6 +18,8 @@ import (
 	"github.com/go-openapi/testify/v2/require"
 )
 
+const jsonMime = "application/json"
+
 func stubAutenticator() runtime.Authenticator {
 	return runtime.AuthenticatorFunc(func(_ any) (bool, any, error) { return false, nil, nil })
 }
@@ -69,9 +71,9 @@ func TestUntypedAPIRegistrations(t *testing.T) {
 	assert.TrueT(t, ok)
 	_, ok = api.producers["application/yada-2"]
 	assert.TrueT(t, ok)
-	_, ok = api.consumers["application/json"]
+	_, ok = api.consumers[jsonMime]
 	assert.TrueT(t, ok)
-	_, ok = api.producers["application/json"]
+	_, ok = api.producers[jsonMime]
 	assert.TrueT(t, ok)
 	_, ok = api.operations["GET"]["/{someId}"]
 	assert.TrueT(t, ok)

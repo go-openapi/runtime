@@ -82,6 +82,60 @@ type Context struct {
 	ignoreParameters bool                 // see SetIgnoreParameters / WithIgnoreParameters
 }
 
+// NewRoutableContext creates a new context for a routable API.
+//
+// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
+func NewRoutableContext(spec *loads.Document, routableAPI RoutableAPI, routes Router) *Context {
+	var an *analysis.Spec
+	if spec != nil {
+		an = analysis.New(spec.Spec())
+	}
+
+	return NewRoutableContextWithAnalyzedSpec(spec, an, routableAPI, routes)
+}
+
+// NewRoutableContextWithAnalyzedSpec is like [NewRoutableContext] but takes as input an already analysed spec.
+//
+// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
+func NewRoutableContextWithAnalyzedSpec(spec *loads.Document, an *analysis.Spec, routableAPI RoutableAPI, routes Router) *Context {
+	// Either there are no spec doc and analysis, or both of them.
+	if (spec != nil || an != nil) && (spec == nil || an == nil) {
+		panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, "routable context requires either both spec doc and analysis, or none of them"))
+	}
+
+	return &Context{
+		spec:      spec,
+		api:       routableAPI,
+		analyzer:  an,
+		router:    routes,
+		debugLogf: debugLogfFunc(nil),
+	}
+}
+
+// NewContext creates a new context wrapper.
+//
+// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
+func NewContext(spec *loads.Document, api *untyped.API, routes Router) *Context {
+	var an *analysis.Spec
+	if spec != nil {
+		an = analysis.New(spec.Spec())
+	}
+	ctx := &Context{
+		spec:      spec,
+		analyzer:  an,
+		router:    routes,
+		debugLogf: debugLogfFunc(nil),
+	}
+	ctx.api = newRoutableUntypedAPI(spec, api, ctx)
+
+	return ctx
+}
+
+// Serve serves the specified spec with the specified api registrations as a [http.Handler].
+func Serve(spec *loads.Document, api *untyped.API) http.Handler {
+	return ServeWithBuilder(spec, api, PassthroughBuilder)
+}
+
 // SetIgnoreParameters toggles the legacy parameter-stripping behaviour for
 // Accept negotiation server-wide. When set, every internal call to
 // [NegotiateContentType] from this Context applies [WithIgnoreParameters].
@@ -205,60 +259,6 @@ func (r *routableUntypedAPI) DefaultProduces() string {
 
 func (r *routableUntypedAPI) DefaultConsumes() string {
 	return r.defaultConsumes
-}
-
-// NewRoutableContext creates a new context for a routable API.
-//
-// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
-func NewRoutableContext(spec *loads.Document, routableAPI RoutableAPI, routes Router) *Context {
-	var an *analysis.Spec
-	if spec != nil {
-		an = analysis.New(spec.Spec())
-	}
-
-	return NewRoutableContextWithAnalyzedSpec(spec, an, routableAPI, routes)
-}
-
-// NewRoutableContextWithAnalyzedSpec is like [NewRoutableContext] but takes as input an already analysed spec.
-//
-// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
-func NewRoutableContextWithAnalyzedSpec(spec *loads.Document, an *analysis.Spec, routableAPI RoutableAPI, routes Router) *Context {
-	// Either there are no spec doc and analysis, or both of them.
-	if (spec != nil || an != nil) && (spec == nil || an == nil) {
-		panic(fmt.Errorf("%d: %s", http.StatusInternalServerError, "routable context requires either both spec doc and analysis, or none of them"))
-	}
-
-	return &Context{
-		spec:      spec,
-		api:       routableAPI,
-		analyzer:  an,
-		router:    routes,
-		debugLogf: debugLogfFunc(nil),
-	}
-}
-
-// NewContext creates a new context wrapper.
-//
-// If a nil Router is provided, the [DefaultRouter] ([denco]-based) will be used.
-func NewContext(spec *loads.Document, api *untyped.API, routes Router) *Context {
-	var an *analysis.Spec
-	if spec != nil {
-		an = analysis.New(spec.Spec())
-	}
-	ctx := &Context{
-		spec:      spec,
-		analyzer:  an,
-		router:    routes,
-		debugLogf: debugLogfFunc(nil),
-	}
-	ctx.api = newRoutableUntypedAPI(spec, api, ctx)
-
-	return ctx
-}
-
-// Serve serves the specified spec with the specified api registrations as a [http.Handler].
-func Serve(spec *loads.Document, api *untyped.API) http.Handler {
-	return ServeWithBuilder(spec, api, PassthroughBuilder)
 }
 
 // ServeWithBuilder serves the specified spec with the specified api registrations as a [http.Handler] that is decorated

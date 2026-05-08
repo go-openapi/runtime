@@ -44,13 +44,13 @@ func TestMux(t *testing.T) {
 		method, path, expected string
 	}{
 		{http.StatusOK, http.MethodGet, "/", "method: GET, path: /, params: []"},
-		{http.StatusOK, http.MethodGet, "/user/alice", "method: GET, path: /user/alice, params: [{name alice}]"},
+		{http.StatusOK, http.MethodGet, pathUserAlice, "method: GET, path: /user/alice, params: [{name alice}]"},
 		{http.StatusOK, http.MethodPost, "/user/bob", "method: POST, path: /user/bob, params: [{name bob}]"},
-		{http.StatusOK, http.MethodHead, "/user/alice", ""},
+		{http.StatusOK, http.MethodHead, pathUserAlice, ""},
 		{http.StatusOK, http.MethodPut, "/user/bob", "method: PUT, path: /user/bob, params: [{name bob}]"},
-		{http.StatusNotFound, http.MethodPost, "/", "404 page not found\n"},
-		{http.StatusNotFound, http.MethodGet, "/unknown", "404 page not found\n"},
-		{http.StatusNotFound, http.MethodPost, "/user/alice/1", "404 page not found\n"},
+		{http.StatusNotFound, http.MethodPost, "/", notFoundBody},
+		{http.StatusNotFound, http.MethodGet, "/unknown", notFoundBody},
+		{http.StatusNotFound, http.MethodPost, pathUserAlice + "/1", notFoundBody},
 		{http.StatusOK, http.MethodGet, "/user/handler", "method: GET, path: /user/handler, params: []"},
 		{http.StatusOK, http.MethodPost, "/user/handler", "method: POST, path: /user/handler, params: []"},
 		{http.StatusOK, http.MethodPut, "/user/inference", "method: PUT, path: /user/inference, params: []"},
