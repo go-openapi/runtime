@@ -283,13 +283,28 @@ func (r *request) buildBufferedRequest(mediaType, basePath string, producers map
 // lazily through the getBody closure installed by
 // applyAuthWithBodyCopy, which buffers the stream into r.buf so the
 // http.Request can use the buffered copy.
-func (r *request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+//
+// On any error path before the http.Request takes ownership of body,
+// we close body to release the underlying resource. For multipart
+// this unblocks the spawned writer goroutine (it would otherwise park
+// forever on pw.Write with no reader). For stream payloads it closes
+// the user-provided io.ReadCloser.
+func (r *request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
 	var body io.Reader
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
 		body = r.writeMultipartBody(mediaType)
 	} else {
 		body = r.writeStreamPayload(mediaType, producers)
 	}
+
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		if c, ok := body.(io.Closer); ok {
+			_ = c.Close()
+		}
+	}()
 
 	if runtime.CanHaveBody(r.method) && body != nil && r.header.Get(runtime.HeaderContentType) == "" {
 		r.header.Set(runtime.HeaderContentType, mediaType)
@@ -418,12 +433,16 @@ func (r *request) applyAuthWithBodyCopy(auth runtime.ClientAuthInfoWriter, body 
 
 	authErr := auth.AuthenticateRequest(r, registry)
 
+	// On error we return body alongside the error so the caller's
+	// cleanup defer (in buildStreamingRequest) can close the
+	// underlying pipe/stream. Caller treats body as ignorable when
+	// err != nil per Go convention; the defer reads it via closure.
 	if copyErr != nil {
-		return nil, fmt.Errorf("error retrieving the response body: %v", copyErr)
+		return body, fmt.Errorf("error retrieving the response body: %v", copyErr)
 	}
 
 	if authErr != nil {
-		return nil, authErr
+		return body, authErr
 	}
 
 	return body, nil

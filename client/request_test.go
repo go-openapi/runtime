@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/testify/v2/assert"
@@ -739,4 +740,115 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 
 	actual := res.(string)
 	require.EqualT(t, "test result", actual)
+}
+
+// observableFile is a NamedReadCloser that signals on Close and never
+// blocks on Read. Used to verify that error paths in buildHTTP close
+// the body source — and, for multipart, that the spawned writer
+// goroutine terminates and runs its deferred file-close loop.
+type observableFile struct {
+	name   string
+	data   *bytes.Reader
+	closed chan struct{}
+}
+
+func newObservableFile(name string, data []byte) *observableFile {
+	return &observableFile{
+		name:   name,
+		data:   bytes.NewReader(data),
+		closed: make(chan struct{}),
+	}
+}
+
+func (f *observableFile) Read(p []byte) (int, error) { return f.data.Read(p) }
+func (f *observableFile) Name() string               { return f.name }
+func (f *observableFile) Close() error {
+	select {
+	case <-f.closed:
+		// already closed
+	default:
+		close(f.closed)
+	}
+	return nil
+}
+
+// TestBuildRequest_BuildHTTP_MultipartGoroutineCleanupOnAuthError is a
+// regression test for a goroutine leak: when auth fails after
+// writeMultipartBody has spawned the pipe-writer goroutine, the
+// goroutine would park forever on pw.Write because no consumer ever
+// reads the pipe. The fix in buildStreamingRequest closes the pipe
+// reader on error paths, which unblocks the writer goroutine and lets
+// it run its deferred file-close.
+func TestBuildRequest_BuildHTTP_MultipartGoroutineCleanupOnAuthError(t *testing.T) {
+	file := newObservableFile("data.bin", bytes.Repeat([]byte("x"), 4096))
+
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetFileParam("upload", file)
+	})
+
+	authErr := errors.New("auth failed")
+	auth := runtime.ClientAuthInfoWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
+		return authErr
+	})
+
+	r := newRequest(http.MethodPost, "/upload", reqWrtr)
+	req, err := r.buildHTTP(runtime.MultipartFormMime, "", testProducers, nil, auth)
+	require.ErrorIs(t, err, authErr)
+	require.Nil(t, req)
+
+	// The multipart goroutine must terminate (its deferred file-close
+	// runs and signals on f.closed). Without the fix this select would
+	// hit the timeout because the goroutine is parked on pw.Write.
+	select {
+	case <-file.closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("multipart goroutine leaked: file was never closed after auth error")
+	}
+}
+
+// observableReadCloser is a stream payload whose Close is observable.
+type observableReadCloser struct {
+	data   *bytes.Reader
+	closed chan struct{}
+}
+
+func newObservableReadCloser(data []byte) *observableReadCloser {
+	return &observableReadCloser{data: bytes.NewReader(data), closed: make(chan struct{})}
+}
+
+func (r *observableReadCloser) Read(p []byte) (int, error) { return r.data.Read(p) }
+func (r *observableReadCloser) Close() error {
+	select {
+	case <-r.closed:
+	default:
+		close(r.closed)
+	}
+	return nil
+}
+
+// TestBuildRequest_BuildHTTP_StreamPayloadClosedOnAuthError verifies
+// that a stream payload's io.ReadCloser is closed when auth fails —
+// otherwise the user-provided closer leaks.
+func TestBuildRequest_BuildHTTP_StreamPayloadClosedOnAuthError(t *testing.T) {
+	payload := newObservableReadCloser([]byte("hello"))
+
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetBodyParam(payload)
+	})
+
+	authErr := errors.New("auth failed")
+	auth := runtime.ClientAuthInfoWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
+		return authErr
+	})
+
+	r := newRequest(http.MethodPost, "/stream", reqWrtr)
+	req, err := r.buildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
+	require.ErrorIs(t, err, authErr)
+	require.Nil(t, req)
+
+	select {
+	case <-payload.closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stream payload leaked: ReadCloser was never closed after auth error")
+	}
 }
