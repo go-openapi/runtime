@@ -210,13 +210,56 @@ func (r *request) isMultipart(mediaType string) bool {
 	return runtime.MultipartFormMime == mediaType
 }
 
+// buildHTTP dispatches to one of two end-to-end builders based on
+// whether the body source is a stream (multipart pipe or stream
+// payload) or a buffer (urlencoded form, producer output, or no body).
+//
+// The split mirrors the auth question: streaming bodies need the lazy
+// body-copy closure during AuthenticateRequest, buffered bodies do not.
 func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
-	// build the data
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
 	}
 
-	body, err := r.buildBody(mediaType, producers)
+	r.buf = bytes.NewBuffer(nil)
+
+	if r.usesStreamingBody(mediaType) {
+		return r.buildStreamingRequest(mediaType, basePath, producers, registry, auth)
+	}
+	return r.buildBufferedRequest(mediaType, basePath, producers, registry, auth)
+}
+
+// usesStreamingBody reports whether the request body must be assembled
+// as a stream (an io.Pipe for multipart, or the payload's own reader
+// for stream payloads). The complementary case is a fully buffered
+// body in r.buf — urlencoded form, producer output, or no body at all.
+func (r *request) usesStreamingBody(mediaType string) bool {
+	if (len(r.formFields) > 0 || len(r.fileFields) > 0) && r.isMultipart(mediaType) {
+		return true
+	}
+	if r.payload != nil {
+		if _, ok := r.payload.(io.Reader); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// buildBufferedRequest assembles a request whose body is fully
+// buffered in r.buf before AuthenticateRequest runs — urlencoded form,
+// producer-serialized payload, or no body. Auth is trivial in this
+// flow because the buffer is already populated when the auth helper
+// asks for the body via r.GetBody().
+func (r *request) buildBufferedRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+	var body io.Reader
+	var err error
+
+	switch {
+	case len(r.formFields) > 0 || len(r.fileFields) > 0:
+		body, err = r.writeURLEncodedBody(mediaType)
+	case r.payload != nil:
+		body, err = r.writeNonStreamPayload(mediaType, producers)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -225,11 +268,45 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 		r.header.Set(runtime.HeaderContentType, mediaType)
 	}
 
-	body, err = r.applyAuth(auth, body, registry)
+	if auth != nil {
+		if err := auth.AuthenticateRequest(r, registry); err != nil {
+			return nil, err
+		}
+	}
+
+	return r.assembleRequest(basePath, body)
+}
+
+// buildStreamingRequest assembles a request whose body is a stream —
+// either an io.Pipe filled by the multipart goroutine, or the
+// payload's own io.Reader. AuthenticateRequest must consume the body
+// lazily through the getBody closure installed by
+// applyAuthWithBodyCopy, which buffers the stream into r.buf so the
+// http.Request can use the buffered copy.
+func (r *request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+	var body io.Reader
+	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
+		body = r.writeMultipartBody(mediaType)
+	} else {
+		body = r.writeStreamPayload(mediaType, producers)
+	}
+
+	if runtime.CanHaveBody(r.method) && body != nil && r.header.Get(runtime.HeaderContentType) == "" {
+		r.header.Set(runtime.HeaderContentType, mediaType)
+	}
+
+	body, err := r.applyAuthWithBodyCopy(auth, body, registry)
 	if err != nil {
 		return nil, err
 	}
 
+	return r.assembleRequest(basePath, body)
+}
+
+// assembleRequest is the shared tail of both flows: build the URL
+// path, create the http.Request, merge static query parameters, and
+// finalize headers/query.
+func (r *request) assembleRequest(basePath string, body io.Reader) (*http.Request, error) {
 	urlPath, staticQueryParams, err := r.resolveURLPath(basePath)
 	if err != nil {
 		return nil, err
@@ -294,15 +371,12 @@ func (r *request) resolveURLPath(basePath string) (string, url.Values, error) {
 	return urlPath, staticQueryParams, nil
 }
 
-// applyAuth runs auth.AuthenticateRequest with a lazy getBody closure
-// installed for cases where the http.Request body is not r.buf — i.e.
-// the payload is an io.Reader / io.ReadCloser, or we are doing a
-// multipart form/file upload.
-//
-// In those cases, if AuthenticateRequest asks for the body, we copy
-// the stream/pipe into r.buf on demand and provide that. The closure
-// also reassigns the local body to r.buf so the post-auth body source
-// passed to http.NewRequestWithContext is the buffered copy.
+// applyAuthWithBodyCopy runs auth.AuthenticateRequest for the
+// streaming flow, where the http.Request body is a pipe or a payload
+// reader rather than r.buf. If AuthenticateRequest asks for the body
+// via r.GetBody(), the lazy closure copies the stream into r.buf on
+// demand and reassigns body to r.buf so the post-auth source passed
+// to http.NewRequestWithContext is the buffered copy.
 //
 // The closure is registered lazily because there is no way to know
 // ahead of time whether AuthenticateRequest will read the body.
@@ -312,36 +386,34 @@ func (r *request) resolveURLPath(basePath string) (string, url.Values, error) {
 // interfered with auth.
 //
 // No-op when auth is nil; returns body unchanged.
-func (r *request) applyAuth(auth runtime.ClientAuthInfoWriter, body io.Reader, registry strfmt.Registry) (io.Reader, error) {
+func (r *request) applyAuthWithBodyCopy(auth runtime.ClientAuthInfoWriter, body io.Reader, registry strfmt.Registry) (io.Reader, error) {
 	if auth == nil {
 		return body, nil
 	}
 
 	var copyErr error
-	if buf, ok := body.(*bytes.Buffer); body != nil && (!ok || buf != r.buf) {
-		var copied bool
-		r.getBody = func(r *request) []byte {
-			if copied {
-				return getRequestBuffer(r)
-			}
-
-			defer func() {
-				copied = true
-			}()
-
-			if _, copyErr = io.Copy(r.buf, body); copyErr != nil {
-				return nil
-			}
-
-			if closer, ok := body.(io.ReadCloser); ok {
-				if copyErr = closer.Close(); copyErr != nil {
-					return nil
-				}
-			}
-
-			body = r.buf
+	var copied bool
+	r.getBody = func(r *request) []byte {
+		if copied {
 			return getRequestBuffer(r)
 		}
+
+		defer func() {
+			copied = true
+		}()
+
+		if _, copyErr = io.Copy(r.buf, body); copyErr != nil {
+			return nil
+		}
+
+		if closer, ok := body.(io.ReadCloser); ok {
+			if copyErr = closer.Close(); copyErr != nil {
+				return nil
+			}
+		}
+
+		body = r.buf
+		return getRequestBuffer(r)
 	}
 
 	authErr := auth.AuthenticateRequest(r, registry)
@@ -371,36 +443,6 @@ func (r *request) mergeStaticQuery(staticQuery url.Values) error {
 		}
 	}
 	return nil
-}
-
-// buildBody dispatches to the appropriate body-construction helper based
-// on what the operation has populated. Initializes r.buf as the working
-// buffer (used by helpers that buffer their output, and later read back
-// by getRequestBuffer for auth body access).
-//
-// Returns (nil, nil) when the request carries no body — neither a
-// payload nor any form/file fields.
-//
-// Each helper sets the Content-Type header itself; this function does
-// not.
-func (r *request) buildBody(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
-	r.buf = bytes.NewBuffer(nil)
-
-	switch {
-	case len(r.formFields) > 0 || len(r.fileFields) > 0:
-		if r.isMultipart(mediaType) {
-			return r.writeMultipartBody(mediaType), nil
-		}
-		return r.writeURLEncodedBody(mediaType)
-	case r.payload != nil:
-		return r.writePayloadBody(mediaType, producers)
-	}
-
-	// nilnil: nil body / nil error means "no body to send" — the caller
-	// distinguishes this from an error via `body != nil`. Introducing a
-	// sentinel error would force the caller to compare against it before
-	// every error check, which is more complex than the current shape.
-	return nil, nil //nolint:nilnil
 }
 
 // writeURLEncodedBody serializes form fields (and any file fields, per
@@ -516,30 +558,31 @@ func (r *request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 	}
 }
 
-// writePayloadBody handles the r.payload != nil case.
+// writeStreamPayload handles a stream payload (io.Reader /
+// io.ReadCloser). The bytes flow through verbatim — no producer is
+// invoked. The wire Content-Type is resolved via setStreamContentType
+// (priority: existing header, payload's ContentTyper,
+// streamFallbackMime, mediaType).
 //
-// Stream payloads (io.Reader / io.ReadCloser) bypass the producer —
-// their bytes flow through verbatim and the wire Content-Type is
-// resolved via setStreamContentType (priority: existing header,
-// payload's ContentTyper, streamFallbackMime, mediaType).
+// Caller must ensure r.payload satisfies io.Reader (see
+// [request.usesStreamingBody]).
+func (r *request) writeStreamPayload(mediaType string, producers map[string]runtime.Producer) io.Reader {
+	setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
+	if rdr, ok := r.payload.(io.ReadCloser); ok {
+		return rdr
+	}
+	return r.payload.(io.Reader)
+}
+
+// writeNonStreamPayload runs the producer registered for mediaType
+// against r.payload, writing into r.buf. The Content-Type header
+// reflects the picker.
 //
-// Non-stream payloads run through the producer registered for
-// mediaType. The Content-Type header reflects the picker. Note:
 // SetHeaderParam("Content-Type", …) is intentionally NOT honored on
 // the producer path because the producer is dispatched off mediaType —
 // the wire header would otherwise misrepresent the body. Same
 // reasoning applies to the form/multipart branches.
-func (r *request) writePayloadBody(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
-	if rdr, ok := r.payload.(io.ReadCloser); ok {
-		setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
-		return rdr, nil
-	}
-
-	if rdr, ok := r.payload.(io.Reader); ok {
-		setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
-		return rdr, nil
-	}
-
+func (r *request) writeNonStreamPayload(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
 	r.header.Set(runtime.HeaderContentType, mediaType)
 	producer := producers[mediaType]
 	if err := producer.Produce(r.buf, r.payload); err != nil {
