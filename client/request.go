@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -27,13 +28,72 @@ var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
 
 // Request represents a swagger client request.
 //
-// This Request struct converts to a HTTP request.
-// There might be others that convert to other transports.
-// There is no error checking here, it is assumed to be used after a spec has been validated.
-// so impossible combinations should not arise (hopefully).
+// A [Request] binds parameters to a HTTP request.
 //
-// The main purpose of this struct is to hide the machinery of adding params to a transport request.
-// The generated code only implements what is necessary to turn a param into a valid value for these methods.
+// The main purpose of this struct is to hide the machinery of adding OpenAPI v2 parameters to a transport request.
+//
+// A generated client only implements what is necessary to turn a parameter into a valid value for these methods.
+//
+// There is no parameter validation here, it is assumed to be used after a spec has been validated.
+//
+// # Request binding
+//
+// The binding of parameters is carried out by method [request.BuildHTTP].
+//
+// It analyzes parameters, which may come in different flavors:
+// * a file or multipart form containing a file
+// * a body which is a [io.Reader]
+// * a buffered body (regular schema body, including urlencoded form)
+//
+// In all cases, we may also have query or path parameters encoded in the URL, or header parameters.
+//
+// The result is a [http.Request], with the following properties:
+// * file, multipart form or io.Reader body: a streaming request with an attached go routine that consumes the [io.Reader].
+// * buffered body: a simple request
+//
+// In all cases, it is left to the caller to set the request's [context.Context]: [request.BuildHTTP] only builds
+// requests with [context.Background].
+//
+// # Authentication
+//
+// Authentication is built in the request by using a [runtime.ClientAuthInfoWriter].
+// This helper may need to inspect the body of the request before sending authentication info.
+// To cover that case, streaming bodies use a copy of the body [io.Reader] for the [runtime.ClientAuthInfoWriter]
+// to consume if need be.
+//
+// # Content negotiation
+//
+// The [Request] detects `multipart/form-data` to switch to streamed request.
+//
+// `application/x-www-form-urlencoded` is also honored, even for file parameters, which are not streamed in this case.
+// File parameters default behavior is `multipart/form-data`.
+//
+// The natural way to define the `Content-Type` header is to use the `contentType` parameter to switch to the map of
+// available body producers.
+//
+// For buffered requests, this setting override any possibly `Content-Type` header set by calling `SetHeaderParam`.
+//
+// For streamed requests, users may want more flexibility. Rhe `Content-Type` header of a streamed request is defined
+// using the following sequence:
+//
+//  1. if the caller sets an explicit value already in header — the user set it via
+//     SetHeaderParam during WriteToRequest, and we treat that as an intentional escape hatch
+//  2. use payload's [runtime.ContentTyper] declaration (in this case, the produced payload knows its content type)
+//  3. use `application/octet-stream` if it is available in the registered producers
+//  4. otherwise ser the picker's mediaType
+//
+// For multi-part requests, the content type of each part is auto-detected using the following sequence:
+//
+//  1. use [runtime.ContentTyper] declaration (in this case, the file payload knows its content type)
+//  2. use [http.DetectContentType] on the first 512 bytes of the file
+//
+// # Concurrency
+//
+// A [Request] is a disposable object that is NOT intended to be reused or called concurrently.
+//
+// # Future evolutions
+//
+// There might be other similar structs that convert to other transports.
 type request struct {
 	pathPattern string
 	method      string
@@ -48,8 +108,8 @@ type request struct {
 	// consumes carries the operation's full ConsumesMediaTypes list so
 	// that buildHTTP — which runs after the writer populates the payload
 	// — can apply payload-aware fallback rules (see streamFallbackMime).
-	// Set by Runtime.createHttpRequest. Direct buildHTTP callers leave it
-	// nil and get unchanged single-mime behaviour.
+	//
+	// This i by Runtime.createHttpRequest.
 	consumes []string
 	timeout  time.Duration
 	buf      *bytes.Buffer
@@ -57,7 +117,7 @@ type request struct {
 	getBody func(r *request) []byte
 }
 
-// NewRequest creates a new swagger http client request.
+// newRequest creates a new http client [request] to handle OpenAPI v2 parameters.
 func newRequest(method, pathPattern string, writer runtime.ClientRequestWriter) *request {
 	return &request{
 		pathPattern: pathPattern,
@@ -70,71 +130,81 @@ func newRequest(method, pathPattern string, writer runtime.ClientRequestWriter) 
 	}
 }
 
-// BuildHTTP creates a new http request based on the data from the params.
-func (r *request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry) (*http.Request, error) {
-	return r.buildHTTP(mediaType, basePath, producers, registry, nil)
-}
-
+// GetMethod yields the method being used.
 func (r *request) GetMethod() string {
 	return r.method
 }
 
+// GetPath yields the URL path being used.
 func (r *request) GetPath() string {
-	path := r.pathPattern
+	pth := r.pathPattern
 	for k, v := range r.pathParams {
-		path = strings.ReplaceAll(path, "{"+k+"}", v)
+		pth = strings.ReplaceAll(pth, "{"+k+"}", v)
 	}
-	return path
+
+	return pth
 }
 
+// GetBody returns the request body, if any.
+//
+// For streaming requests, this is a copy of the original [io.Reader].
 func (r *request) GetBody() []byte {
 	return r.getBody(r)
 }
 
-// SetHeaderParam adds a header param to the request
-// when there is only 1 value provided for the varargs, it will set it.
-// when there are several values provided for the varargs it will add it (no overriding).
+// SetHeaderParam adds a header parameter to the request.
+//
+// The header key is always canonicalized.
+//
+//   - when there is only 1 value provided, it will set it.
+//   - when there are several values provided, it will add all of those (no overriding).
 func (r *request) SetHeaderParam(name string, values ...string) error {
 	if r.header == nil {
 		r.header = make(http.Header)
 	}
 	r.header[http.CanonicalHeaderKey(name)] = values
+
 	return nil
 }
 
-// GetHeaderParams returns the all headers currently set for the request.
+// GetHeaderParams returns all headers currently set for the request.
 func (r *request) GetHeaderParams() http.Header {
 	return r.header
 }
 
-// SetQueryParam adds a query param to the request
-// when there is only 1 value provided for the varargs, it will set it.
-// when there are several values provided for the varargs it will add it (no overriding).
+// SetQueryParam adds a query parameter to the request.
+//
+//   - when there is only 1 value provided, it will set it.
+//   - when there are several values provided, it will add all of those (no overriding).
 func (r *request) SetQueryParam(name string, values ...string) error {
 	if r.query == nil {
 		r.query = make(url.Values)
 	}
 	r.query[name] = values
+
 	return nil
 }
 
 // GetQueryParams returns a copy of all query params currently set for the request.
 func (r *request) GetQueryParams() url.Values {
-	var result = make(url.Values)
-	for key, value := range r.query {
-		result[key] = append([]string{}, value...)
+	result := make(url.Values, len(r.query))
+	for key, values := range r.query {
+		result[key] = append([]string{}, values...)
 	}
+
 	return result
 }
 
-// SetFormParam adds a forn param to the request
-// when there is only 1 value provided for the varargs, it will set it.
-// when there are several values provided for the varargs it will add it (no overriding).
+// SetFormParam adds a forn param to the request.
+//
+//   - when there is only 1 value provided, it will set it.
+//   - when there are several values provided, it will add all of those (no overriding).
 func (r *request) SetFormParam(name string, values ...string) error {
 	if r.formFields == nil {
 		r.formFields = make(url.Values)
 	}
 	r.formFields[name] = values
+
 	return nil
 }
 
@@ -145,10 +215,15 @@ func (r *request) SetPathParam(name string, value string) error {
 	}
 
 	r.pathParams[name] = value
+
 	return nil
 }
 
-// SetFileParam adds a file param to the request.
+// SetFileParam adds a file parameter to the request.
+//
+// Files must implement [runtime.NamedReadCloser].
+//
+// [runtime.File] is proposed as the default concrete implementation.
 func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) error {
 	for _, file := range files {
 		if actualFile, ok := file.(*os.File); ok {
@@ -156,6 +231,7 @@ func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) er
 			if err != nil {
 				return err
 			}
+
 			if fi.IsDir() {
 				return fmt.Errorf("%q is a directory, only files are supported", file.Name())
 			}
@@ -165,25 +241,31 @@ func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) er
 	if r.fileFields == nil {
 		r.fileFields = make(map[string][]runtime.NamedReadCloser)
 	}
+
 	if r.formFields == nil {
 		r.formFields = make(url.Values)
 	}
 
 	r.fileFields[name] = files
+
 	return nil
 }
 
+// GetFileParam yields all file parameters.
 func (r *request) GetFileParam() map[string][]runtime.NamedReadCloser {
 	return r.fileFields
 }
 
 // SetBodyParam sets a body parameter on the request.
-// This does not yet serialze the object, this happens as late as possible.
+//
+// This does not yet serialize the object: actual serialization happens as late as possible.
 func (r *request) SetBodyParam(payload any) error {
 	r.payload = payload
+
 	return nil
 }
 
+// GetBodyParam returns the body payload.
 func (r *request) GetBodyParam() any {
 	return r.payload
 }
@@ -191,32 +273,21 @@ func (r *request) GetBodyParam() any {
 // SetTimeout sets the timeout for a request.
 func (r *request) SetTimeout(timeout time.Duration) error {
 	r.timeout = timeout
+
 	return nil
 }
 
-func (r *request) isMultipart(mediaType string) bool {
-	// An explicit application/x-www-form-urlencoded choice is honored even when
-	// file fields are present: the spec allows files to travel as URL-encoded
-	// form values, although it does not stream and is discouraged. Without this
-	// short-circuit, picking urlencoded with files would silently fall back to
-	// multipart and emit an inconsistent Content-Type.
-	if strings.EqualFold(mediaType, runtime.URLencodedFormMime) {
-		return false
-	}
-	if len(r.fileFields) > 0 {
-		return true
-	}
-
-	return runtime.MultipartFormMime == mediaType
-}
-
-// buildHTTP dispatches to one of two end-to-end builders based on
-// whether the body source is a stream (multipart pipe or stream
-// payload) or a buffer (urlencoded form, producer output, or no body).
+// BuildHTTP dispatches to one of two end-to-end builders based on whether:
 //
-// The split mirrors the auth question: streaming bodies need the lazy
-// body-copy closure during AuthenticateRequest, buffered bodies do not.
-func (r *request) buildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+//   - the body source is a stream (multipart pipe or stream payload)
+//   - or a buffer (urlencoded form, producer output, or no body)
+//
+// It starts by writing the request, then proceed with adding authentication,
+// then finally assembling URL or header parameters.
+//
+// The split mirrors the auth question: streaming bodies require a lazy body-copy closure during AuthenticateRequest,
+// whereas buffered bodies do not.
+func (r *request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
 	}
@@ -231,8 +302,9 @@ func (r *request) buildHTTP(mediaType, basePath string, producers map[string]run
 
 // usesStreamingBody reports whether the request body must be assembled
 // as a stream (an io.Pipe for multipart, or the payload's own reader
-// for stream payloads). The complementary case is a fully buffered
-// body in r.buf — urlencoded form, producer output, or no body at all.
+// for stream payloads).
+//
+// The complementary case is a fully buffered body in r.buf — urlencoded form, producer output, or no body at all.
 func (r *request) usesStreamingBody(mediaType string) bool {
 	if (len(r.formFields) > 0 || len(r.fileFields) > 0) && r.isMultipart(mediaType) {
 		return true
@@ -245,10 +317,44 @@ func (r *request) usesStreamingBody(mediaType string) bool {
 	return false
 }
 
+func (r *request) isMultipart(mediaType string) bool {
+	// Strip media-type parameters before comparing: callers may legally
+	// pass `multipart/form-data; boundary=…` or
+	// `application/x-www-form-urlencoded; charset=utf-8` per RFC 7231,
+	// and a bare-string compare would route those to the wrong flow.
+	//
+	// mime.ParseMediaType lowercases the type/subtype and is
+	// case-insensitive on input, so plain == against our (lowercase)
+	// constants is sufficient on the happy path.
+	base, _, err := mime.ParseMediaType(mediaType)
+	if err != nil {
+		// Malformed mediaType: only the file-presence shortcut can
+		// fire — by definition we cannot recognize either canonical
+		// form mime in unparseable input.
+		return len(r.fileFields) > 0
+	}
+
+	// An explicit application/x-www-form-urlencoded choice is honored even when
+	// file fields are present: the spec allows files to travel as URL-encoded
+	// form values, although it does not stream and is discouraged. Without this
+	// short-circuit, picking urlencoded with files would silently fall back to
+	// multipart and emit an inconsistent Content-Type.
+	if base == runtime.URLencodedFormMime {
+		return false
+	}
+
+	if len(r.fileFields) > 0 {
+		return true
+	}
+
+	return base == runtime.MultipartFormMime
+}
+
 // buildBufferedRequest assembles a request whose body is fully
 // buffered in r.buf before AuthenticateRequest runs — urlencoded form,
-// producer-serialized payload, or no body. Auth is trivial in this
-// flow because the buffer is already populated when the auth helper
+// producer-serialized payload, or no body.
+//
+// Auth is trivial in this flow because the buffer is already populated when the auth helper
 // asks for the body via r.GetBody().
 func (r *request) buildBufferedRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	var body io.Reader
@@ -279,16 +385,18 @@ func (r *request) buildBufferedRequest(mediaType, basePath string, producers map
 
 // buildStreamingRequest assembles a request whose body is a stream —
 // either an io.Pipe filled by the multipart goroutine, or the
-// payload's own io.Reader. AuthenticateRequest must consume the body
-// lazily through the getBody closure installed by
-// applyAuthWithBodyCopy, which buffers the stream into r.buf so the
-// http.Request can use the buffered copy.
+// payload's own io.Reader.
 //
-// On any error path before the http.Request takes ownership of body,
-// we close body to release the underlying resource. For multipart
-// this unblocks the spawned writer goroutine (it would otherwise park
-// forever on pw.Write with no reader). For stream payloads it closes
-// the user-provided io.ReadCloser.
+// AuthenticateRequest consumes the body lazily through the getBody closure installed by
+// applyAuthWithBodyCopy, which buffers the stream into r.buf so the http.Request can use the buffered copy.
+//
+// On any error path before the http.Request takes ownership of body, we close the body to release
+// the underlying resource.
+//
+// For multipart this unblocks the spawned writer goroutine
+// (it would otherwise park forever on pw.Write with no reader).
+//
+// For stream payloads it closes the user-provided io.ReadCloser.
 func (r *request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
 	var body io.Reader
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
@@ -516,8 +624,9 @@ func (r *request) writeMultipartBody(mediaType string) io.Reader {
 }
 
 // streamMultipartParts writes form fields then file fields to mp,
-// closing mp and pw when done. Errors are reported by closing pw with
-// the error so the consumer of pr observes them on its next Read.
+// closing mp and pw when done.
+//
+// Errors are reported by closing pw with the error so the consumer of pr observes them on its next Read.
 func (r *request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) {
 	defer func() {
 		mp.Close()
@@ -540,6 +649,7 @@ func (r *request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 			}
 		}
 	}()
+
 	for fn, f := range r.fileFields {
 		for _, fi := range f {
 			var fileContentType string
@@ -599,8 +709,9 @@ func (r *request) writeStreamPayload(mediaType string, producers map[string]runt
 //
 // SetHeaderParam("Content-Type", …) is intentionally NOT honored on
 // the producer path because the producer is dispatched off mediaType —
-// the wire header would otherwise misrepresent the body. Same
-// reasoning applies to the form/multipart branches.
+// the wire header would otherwise misrepresent the body.
+//
+// The same reasoning applies to the form/multipart branch.
 func (r *request) writeNonStreamPayload(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
 	r.header.Set(runtime.HeaderContentType, mediaType)
 	producer := producers[mediaType]
@@ -651,6 +762,7 @@ func payloadContentType(payload any, fallback string) string {
 			return ct
 		}
 	}
+
 	return fallback
 }
 
@@ -675,6 +787,7 @@ func streamFallbackMime(picked string, candidates []string, producers map[string
 	if strings.EqualFold(picked, runtime.DefaultMime) {
 		return picked
 	}
+
 	for _, c := range candidates {
 		if strings.EqualFold(c, runtime.DefaultMime) {
 			if _, ok := producers[runtime.DefaultMime]; ok {
@@ -682,6 +795,7 @@ func streamFallbackMime(picked string, candidates []string, producers map[string
 			}
 		}
 	}
+
 	return picked
 }
 

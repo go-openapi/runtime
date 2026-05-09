@@ -129,7 +129,7 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
@@ -149,7 +149,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
@@ -183,7 +183,7 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.buildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -213,7 +213,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.XMLMime)
 
-	req, err := r.BuildHTTP(runtime.XMLMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.XMLMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -240,7 +240,7 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.TextMime)
 
-	req, err := r.BuildHTTP(runtime.TextMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.TextMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -264,7 +264,7 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -287,7 +287,7 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
 
-	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -311,7 +311,7 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -336,7 +336,7 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -369,7 +369,7 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -415,7 +415,7 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	})
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -472,7 +472,7 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	})
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
-	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -526,7 +526,7 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 	})
 	r := newRequest(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -565,7 +565,7 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -583,7 +583,7 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -603,7 +603,7 @@ func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?foo=bar", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?foo=bar", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -621,7 +621,7 @@ func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/?foo=bar", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -638,7 +638,7 @@ func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -655,7 +655,7 @@ func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testin
 	})
 	r := newRequest(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil)
+	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, req)
 
@@ -742,6 +742,132 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 	require.EqualT(t, "test result", actual)
 }
 
+// TestBuildRequest_BuildHTTP_ParametrizedFormMimes verifies that
+// isMultipart correctly handles legal RFC 7231 parameters and case
+// variants on the form mime types — i.e. it strips `; boundary=…`,
+// `; charset=…`, etc. before comparing against the canonical constants.
+//
+// Without the fix, three things go wrong:
+//   - `multipart/form-data; boundary=xyz` with no files routes to the
+//     buffered/urlencoded flow, producing a urlencoded body with a
+//     multipart Content-Type header.
+//   - `application/x-www-form-urlencoded; charset=utf-8` with file
+//     fields silently switches to multipart, undoing the urlencoded
+//     short-circuit that #286 added.
+//   - Mixed-case `Multipart/Form-Data` misses the multipart compare
+//     (it's exact, not case-insensitive).
+func TestBuildRequest_BuildHTTP_ParametrizedFormMimes(t *testing.T) {
+	t.Run("multipart with boundary param, no files", func(t *testing.T) {
+		reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+			return req.SetFormParam("name", "fido")
+		})
+		r := newRequest(http.MethodPost, "/", reqWrtr)
+
+		// A caller-supplied boundary that the runtime would normally
+		// add itself — the dispatch must still recognize the base mime
+		// as multipart and route to the streaming flow.
+		mt := runtime.MultipartFormMime + "; boundary=caller-supplied"
+		req, err := r.BuildHTTP(mt, "", testProducers, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, req)
+
+		// Streaming flow taken: req.Body is a pipe reader, and the
+		// runtime emitted its own boundary (mangleContentType
+		// overwrites the caller's parameter).
+		ct := req.Header.Get(runtime.HeaderContentType)
+		assert.TrueT(t, strings.HasPrefix(ct, runtime.MultipartFormMime+"; boundary="),
+			"expected multipart Content-Type with runtime boundary, got %q", ct)
+
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `name="name"`)
+		assert.Contains(t, string(body), "fido")
+	})
+
+	t.Run("urlencoded with charset param, with files", func(t *testing.T) {
+		reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+			return req.SetFileParam("upload", runtime.NamedReader("doc.txt", strings.NewReader("abc")))
+		})
+		r := newRequest(http.MethodPost, "/", reqWrtr)
+
+		// Per #286, urlencoded-with-files is honored: the file content
+		// travels inline as a regular form value. The charset param
+		// must not break the short-circuit.
+		mt := runtime.URLencodedFormMime + "; charset=utf-8"
+		req, err := r.BuildHTTP(mt, "", testProducers, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, req)
+
+		// Buffered/urlencoded flow taken: CT is set verbatim to the
+		// caller's mediaType (params preserved); body is the inlined
+		// form value.
+		assert.EqualT(t, mt, req.Header.Get(runtime.HeaderContentType))
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		assert.EqualT(t, "upload=abc", string(body))
+	})
+
+	t.Run("multipart in mixed case", func(t *testing.T) {
+		reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+			return req.SetFormParam("name", "fido")
+		})
+		r := newRequest(http.MethodPost, "/", reqWrtr)
+
+		req, err := r.BuildHTTP("Multipart/Form-Data", "", testProducers, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, req)
+
+		// Case-insensitive recognition: streaming flow taken.
+		ct := req.Header.Get(runtime.HeaderContentType)
+		assert.TrueT(t, strings.HasPrefix(ct, runtime.MultipartFormMime+"; boundary="),
+			"expected multipart Content-Type with boundary, got %q", ct)
+	})
+}
+
+// TestBuildRequest_BuildHTTP_EmptyForm verifies that a request with
+// neither form fields, file fields, nor payload routes through the
+// buffered flow regardless of mediaType — and produces a well-formed
+// no-body request. In particular, the multipart mime case must NOT
+// engage the streaming flow when there is nothing to stream (which
+// would spawn an idle goroutine and produce a pipe-backed body).
+func TestBuildRequest_BuildHTTP_EmptyForm(t *testing.T) {
+	cases := []struct {
+		name      string
+		mediaType string
+	}{
+		{"empty + multipart mime", runtime.MultipartFormMime},
+		{"empty + urlencoded mime", runtime.URLencodedFormMime},
+		{"empty + json mime", runtime.JSONMime},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+				_ = req.SetQueryParam("hello", "world")
+				_ = req.SetPathParam("id", "1234")
+				return nil
+			})
+			r := newRequest(http.MethodPost, "/flats/{id}/", reqWrtr)
+
+			req, err := r.BuildHTTP(tc.mediaType, "", testProducers, nil, nil)
+			require.NoError(t, err)
+			require.NotNil(t, req)
+
+			// No body source: confirms the streaming flow was not taken
+			// (otherwise req.Body would be a pipe reader).
+			assert.Nil(t, req.Body)
+
+			// No Content-Type: there is no body to describe and the
+			// trailing fallback only fires when body != nil.
+			assert.Empty(t, req.Header.Get(runtime.HeaderContentType))
+
+			// URL/query wiring still applies.
+			assert.EqualT(t, "/flats/1234/", req.URL.Path)
+			assert.EqualT(t, "world", req.URL.Query().Get("hello"))
+		})
+	}
+}
+
 // observableFile is a NamedReadCloser that signals on Close and never
 // blocks on Read. Used to verify that error paths in buildHTTP close
 // the body source — and, for multipart, that the spawned writer
@@ -792,7 +918,7 @@ func TestBuildRequest_BuildHTTP_MultipartGoroutineCleanupOnAuthError(t *testing.
 	})
 
 	r := newRequest(http.MethodPost, "/upload", reqWrtr)
-	req, err := r.buildHTTP(runtime.MultipartFormMime, "", testProducers, nil, auth)
+	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, auth)
 	require.ErrorIs(t, err, authErr)
 	require.Nil(t, req)
 
@@ -842,7 +968,7 @@ func TestBuildRequest_BuildHTTP_StreamPayloadClosedOnAuthError(t *testing.T) {
 	})
 
 	r := newRequest(http.MethodPost, "/stream", reqWrtr)
-	req, err := r.buildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
 	require.ErrorIs(t, err, authErr)
 	require.Nil(t, req)
 

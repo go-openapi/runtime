@@ -93,7 +93,7 @@ func runBuildHTTPCase(tc buildHTTPCase) func(*testing.T) {
 
 		r := newRequest(method, "/", writer)
 		r.consumes = tc.consumes
-		req, err := r.buildHTTP(tc.mediaType, "/", producers, strfmt.Default, nil)
+		req, err := r.BuildHTTP(tc.mediaType, "/", producers, strfmt.Default, nil)
 		if tc.wantErr != "" {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantErr)
