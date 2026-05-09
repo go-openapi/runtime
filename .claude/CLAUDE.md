@@ -12,12 +12,13 @@ See [docs/MAINTAINERS.md](../docs/MAINTAINERS.md) for CI/CD, release process, an
 
 ### Modules and Package layout
 
-This is a mono-repo with a `go.work` workspace containing two modules:
+This is a mono-repo with a `go.work` workspace containing three modules:
 
 | Module | Purpose |
 |--------|---------|
 | `.` (root) | Core runtime library |
-| `client-middleware/opentracing` | Optional OpenTracing middleware for client transport |
+| `server-middleware` | Standalone, dependency-free server middleware: `mediatype`, `negotiate`, `negotiate/header`, `docui`. No transitive dependency on `go-openapi/spec`, `loads`, or `validate`. |
+| `client-middleware/opentracing` | Optional OpenTracing middleware for client transport (compatibility module; new code should use the OpenTelemetry support built into `client.Runtime`). |
 
 Packages in the root module:
 
@@ -25,9 +26,9 @@ Packages in the root module:
 |---------|----------|
 | `runtime` (root) | Core interfaces (`Consumer`, `Producer`, `Authenticator`, `Authorizer`, `OperationHandler`), content-type handlers (JSON, XML, CSV, text, bytestream), HTTP request/response helpers |
 | `client` | HTTP client transport: `Runtime` with TLS, timeouts, proxy, keepalive, OpenTelemetry tracing |
-| `middleware` | Server-side request lifecycle: routing, content negotiation, parameter binding, validation, security, Swagger UI / RapiDoc serving |
+| `middleware` | Server-side request lifecycle: routing, parameter binding, validation, security, operation execution. Doc-UI and negotiation primitives have moved to `server-middleware/*`; the legacy entry points (`Spec`, `SwaggerUI`, `RapiDoc`, `Redoc`, `NegotiateContentType`, …) remain as deprecated shims in `seam.go`. |
 | `middleware/denco` | Internal path-pattern router |
-| `middleware/header` | HTTP header parsing utilities |
+| `middleware/header` | Deprecated shim — re-exports `server-middleware/negotiate/header` |
 | `middleware/untyped` | Untyped (reflection-based) API request/response handling |
 | `security` | Auth scheme implementations: Basic, API Key, Bearer/OAuth2 (with `*Ctx` context-aware variants) |
 | `logger` | `Logger` interface with `Printf`/`Debugf`; debug enabled via `SWAGGER_DEBUG` or `DEBUG` env vars |
@@ -59,7 +60,12 @@ Server middleware (`middleware` package):
 
 - `Context` — request lifecycle manager (routes, binds, validates, authenticates, executes)
 - `NewRouter()` — builds a router from an analyzed OpenAPI spec
-- `Spec()`, `SwaggerUI()`, `RapiDoc()` — spec and documentation serving middleware
+
+Standalone server middleware (`server-middleware` module):
+
+- `mediatype.MediaType`, `mediatype.Set` — typed RFC 7231 media-type values + asymmetric matching
+- `negotiate.ContentType()`, `negotiate.ContentEncoding()` — `Accept` / `Accept-Encoding` selection (honours MIME parameters by default; opt out with `WithIgnoreParameters`)
+- `docui.SwaggerUI()`, `docui.RapiDoc()`, `docui.Redoc()`, `docui.ServeSpec()` — stdlib-only doc-UI and spec-serving handlers
 
 ### Dependencies
 
@@ -91,3 +97,7 @@ Key direct dependencies (`go.mod`):
   each stage composable via `middleware.Builder`.
 - **OpenTracing kept in a separate module**: avoids pulling the OpenTracing dependency
   into consumers that only need the core runtime or use OpenTelemetry directly.
+- **`server-middleware` extracted as a separate module**: lets any `net/http` application
+  reuse the negotiation, media-type, and doc-UI primitives without inheriting the OpenAPI
+  spec/loads/validate dependency tree. The root `middleware` package keeps deprecated
+  shims for source compatibility.
