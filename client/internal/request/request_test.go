@@ -5,6 +5,7 @@ package request
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -123,6 +124,79 @@ func TestBuildRequest_SetBody(t *testing.T) {
 
 	_ = r.SetBodyParam(bd)
 	assert.Equal(t, bd, r.payload)
+}
+
+func TestBuildRequest_BuildHTTPContext_PropagatesParentContext(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		_ = req.SetTimeout(0) // disable per-request timeout: verify parent ctx alone flows through
+		return nil
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	type ctxKey struct{}
+	parent := context.WithValue(t.Context(), ctxKey{}, "marker")
+
+	req, cancel, err := r.BuildHTTPContext(parent, runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, cancel)
+	t.Cleanup(cancel)
+
+	assert.EqualT(t, "marker", req.Context().Value(ctxKey{}))
+	_, hasDeadline := req.Context().Deadline()
+	assert.FalseT(t, hasDeadline, "no per-request timeout, no parent deadline -> request ctx must have no deadline")
+}
+
+func TestBuildRequest_BuildHTTPContext_CancelPropagates(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		_ = req.SetTimeout(0)
+		return nil
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, req.Context().Err())
+
+	cancel()
+	require.ErrorIs(t, req.Context().Err(), context.Canceled)
+}
+
+func TestBuildRequest_BuildHTTPContext_AppliesPerRequestTimeout(t *testing.T) {
+	const writerTimeout = 250 * time.Millisecond
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		// ClientRequestWriter override fires inside BuildHTTP; the derived
+		// ctx must observe this final value, not the runtime default.
+		return req.SetTimeout(writerTimeout)
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	before := time.Now()
+	req, cancel, err := r.BuildHTTPContext(context.Background(), runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(cancel)
+
+	deadline, ok := req.Context().Deadline()
+	require.TrueT(t, ok, "expected request ctx to carry a deadline from the per-request timeout")
+	delta := deadline.Sub(before)
+	// Loose bounds — we just want to confirm it's the writerTimeout-derived deadline,
+	// not the 30s DefaultTimeout that prepareRequest seeded.
+	assert.TrueT(t, delta >= writerTimeout && delta < writerTimeout+time.Second,
+		"deadline should be ~%v from now, got %v", writerTimeout, delta)
+}
+
+func TestBuildRequest_BuildHTTP_LegacyNoDeadlineInContext(t *testing.T) {
+	// Legacy BuildHTTP must not bake a deadline into the request context, even when
+	// the writer sets a per-request timeout: callers of the legacy entry point have
+	// no cancel to defer, so applying a timeout here would leak the timer.
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetTimeout(50 * time.Millisecond)
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	_, hasDeadline := req.Context().Deadline()
+	assert.FalseT(t, hasDeadline, "legacy BuildHTTP must not embed a deadline in req.Context()")
 }
 
 func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {

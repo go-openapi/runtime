@@ -303,13 +303,58 @@ func (r *Request) BuildHTTP(mediaType, basePath string, producers map[string]run
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
 	}
+	return r.assembleHTTPBody(context.Background(), mediaType, basePath, producers, registry, auth)
+}
 
+// BuildHTTPContext is the context-aware variant of [Request.BuildHTTP].
+//
+// The returned [http.Request] carries a context derived from parentCtx that:
+//
+//   - inherits any deadline or cancellation already set on parentCtx;
+//   - additionally honors the per-request timeout set via [Request.SetTimeout]
+//     (the [ClientRequestWriter] may override the runtime default during
+//     WriteToRequest, which is why the derivation happens here rather than
+//     at the call site).
+//
+// The returned cancel must be invoked by the caller (typically deferred)
+// once the response has been fully read; otherwise resources held by the
+// derived context — including any timeout timer — are leaked.
+//
+// On error the cancel is invoked internally and a nil cancel is returned.
+func (r *Request) BuildHTTPContext(parentCtx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, context.CancelFunc, error) {
+	if err := r.writer.WriteToRequest(r, registry); err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := deriveRequestContext(parentCtx, r.timeout)
+	httpReq, err := r.assembleHTTPBody(ctx, mediaType, basePath, producers, registry, auth)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return httpReq, cancel, nil
+}
+
+// assembleHTTPBody is the post-WriteToRequest path shared by [Request.BuildHTTP]
+// and [Request.BuildHTTPContext]: it dispatches to the buffered or streaming
+// flow and threads ctx down to [http.NewRequestWithContext].
+func (r *Request) assembleHTTPBody(ctx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	r.buf = bytes.NewBuffer(nil)
 
 	if r.usesStreamingBody(mediaType) {
-		return r.buildStreamingRequest(mediaType, basePath, producers, registry, auth)
+		return r.buildStreamingRequest(ctx, mediaType, basePath, producers, registry, auth)
 	}
-	return r.buildBufferedRequest(mediaType, basePath, producers, registry, auth)
+	return r.buildBufferedRequest(ctx, mediaType, basePath, producers, registry, auth)
+}
+
+// deriveRequestContext returns a child of parent bounded by timeout.
+// If timeout == 0 the child is only canceled when the caller invokes
+// cancel; any deadline already on parent is preserved. If timeout > 0
+// the child uses the shortest of timeout and parent's existing deadline.
+func deriveRequestContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout == 0 {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, timeout)
 }
 
 // usesStreamingBody reports whether the request body must be assembled
@@ -368,7 +413,7 @@ func (r *Request) isMultipart(mediaType string) bool {
 //
 // Auth is trivial in this flow because the buffer is already populated when the auth helper
 // asks for the body via r.GetBody().
-func (r *Request) buildBufferedRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+func (r *Request) buildBufferedRequest(ctx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	var body io.Reader
 	var err error
 
@@ -392,7 +437,7 @@ func (r *Request) buildBufferedRequest(mediaType, basePath string, producers map
 		}
 	}
 
-	return r.assembleRequest(basePath, body)
+	return r.assembleRequest(ctx, basePath, body)
 }
 
 // buildStreamingRequest assembles a request whose body is a stream —
@@ -409,7 +454,7 @@ func (r *Request) buildBufferedRequest(mediaType, basePath string, producers map
 // (it would otherwise park forever on pw.Write with no reader).
 //
 // For stream payloads it closes the user-provided io.ReadCloser.
-func (r *Request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
+func (r *Request) buildStreamingRequest(ctx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
 	var body io.Reader
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
 		body = r.writeMultipartBody(mediaType)
@@ -435,19 +480,19 @@ func (r *Request) buildStreamingRequest(mediaType, basePath string, producers ma
 		return nil, err
 	}
 
-	return r.assembleRequest(basePath, body)
+	return r.assembleRequest(ctx, basePath, body)
 }
 
 // assembleRequest is the shared tail of both flows: build the URL
 // path, create the http.Request, merge static query parameters, and
 // finalize headers/query.
-func (r *Request) assembleRequest(basePath string, body io.Reader) (*http.Request, error) {
+func (r *Request) assembleRequest(ctx context.Context, basePath string, body io.Reader) (*http.Request, error) {
 	urlPath, staticQueryParams, err := r.resolveURLPath(basePath)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), r.method, urlPath, body)
+	req, err := http.NewRequestWithContext(ctx, r.method, urlPath, body)
 	if err != nil {
 		return nil, err
 	}
