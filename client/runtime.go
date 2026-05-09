@@ -131,72 +131,70 @@ func (r *Runtime) EnableConnectionReuse() {
 	)
 }
 
+// CreateHTTPRequestContext creates the requests and bind the parameters, but does not send it over the wire
+// like [Runtime.SubmitContext].
+//
+// The [http.Request] is complete with authentication, headers and body (including streamed body) and ready for callers
+// to submit it to a [http.Client] of their choice, then consume the [http.Response].
+//
+// Most users would simply use [Runtime.SubmitContext], which wraps all these operations in one call.
+func (r *Runtime) CreateHTTPRequestContext(ctx context.Context, operation *runtime.ClientOperation) (req *http.Request, cancel context.CancelFunc, err error) {
+	req, cancel, err = r.createHTTPRequestContext(ctx, operation)
+	return
+}
+
+// CreateHttpRequestContext is like [Runtime.CreateHTTPRequestContext], but picks its context from the
+// [ClientOperation.Context] or from the [Runtime.Context] is they are defined.
+//
+// # Change in behavior with v0.30.0.
+//
+// Callers who define a non-zero timeout set by the [ClientOperation.Params] ([runtime.ClientRequestWriter]),
+// MUST move to [CreateHTTPRequestContext] in order to retrieve the proper cancellation function,
+// and thus avoid a systematic leak of the context cancellation channel.
+//
+// In previous versions, the value of this timeout was simply ignored here (was only honored by [Runtime.Submit].
+//
+// Callers not using timeouts this way are not affected.
+//
+// Deprecated: use [CreateHTTPRequestContext] instead, with appropriate control of the request cancellation.
 func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
-	_, req, err = r.createHttpRequest(operation)
+	req, _, err = r.createHTTPRequestContext(context.Background(), operation)
 	return
 }
 
 // Submit a request and when there is a body on success it will turn that into the result
 // all other things are turned into an api error for swagger which retains the status code.
+//
+// This call inherits the context possibly put in the operation, otherwise the one possibly put in the [Runtime].
+// If none are set, use [context.Background].
+//
+// Any timeout set by parameters is honored.
 func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
-	_, readResponse, _ := operation.Params, operation.Reader, operation.AuthInfo
+	return r.SubmitContext(r.ensureContext(operation), operation)
+}
 
-	request, req, err := r.createHttpRequest(operation)
+// SubmitContext submits a request and returns the result.
+//
+// Errors are turned into an api error for swagger which retains the status code.
+//
+// Unlike [Submit], [SubmitContext] only injects the context provided by the caller:
+// contexts possibly cached in operation or runtime are ignored.
+//
+// On the other hand, a timeout set by parameters is honored.
+func (r *Runtime) SubmitContext(parentCtx context.Context, operation *runtime.ClientOperation) (any, error) {
+	req, cancel, err := r.createHTTPRequestContext(parentCtx, operation)
 	if err != nil {
 		return nil, err
 	}
-
-	r.clientOnce.Do(func() {
-		r.client = &http.Client{
-			Transport: r.Transport,
-			Jar:       r.Jar,
-		}
-	})
-
-	if r.Debug {
-		b, err2 := httputil.DumpRequestOut(req, true)
-		if err2 != nil {
-			return nil, err2
-		}
-		r.logger.Debugf("%s\n", string(b))
-	}
-
-	var parentCtx context.Context
-	switch {
-	case operation.Context != nil:
-		parentCtx = operation.Context
-	case r.Context != nil:
-		parentCtx = r.Context
-	default:
-		parentCtx = context.Background()
-	}
-
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
-
-	timeout := request.GetTimeout()
-	if timeout == 0 {
-		// There may be a deadline in the context passed to the operation.
-		// Otherwise, there is no timeout set.
-		ctx, cancel = context.WithCancel(parentCtx)
-	} else {
-		// Sets the timeout passed from request params (by default runtime.DefaultTimeout).
-		// If there is already a deadline in the parent context, the shortest will
-		// apply.
-		ctx, cancel = context.WithTimeout(parentCtx, timeout)
-	}
 	defer cancel()
 
-	var client *http.Client
-	if operation.Client != nil {
-		client = operation.Client
-	} else {
-		client = r.client
+	r.ensureClient()
+
+	if err := r.dumpRequest(req); err != nil {
+		return nil, err
 	}
-	req = req.WithContext(ctx)
-	res, err := client.Do(req) // make requests, by default follows 10 redirects before failing
+
+	res, err := r.pickClient(operation).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -207,31 +205,16 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
 		ct = r.DefaultMediaType
 	}
 
-	if r.Debug {
-		printBody := true
-		if ct == runtime.DefaultMime {
-			printBody = false // Spare the terminal from a binary blob.
-		}
-		b, err2 := httputil.DumpResponse(res, printBody)
-		if err2 != nil {
-			return nil, err2
-		}
-		r.logger.Debugf("%s\n", string(b))
+	if err := r.dumpResponse(res, ct); err != nil {
+		return nil, err
 	}
 
-	mt, _, err := mime.ParseMediaType(ct)
+	cons, err := r.resolveConsumer(ct)
 	if err != nil {
-		return nil, fmt.Errorf("parse content type: %s", err)
+		return nil, err
 	}
 
-	cons, ok := r.Consumers[mt]
-	if !ok {
-		if cons, ok = r.Consumers["*/*"]; !ok {
-			// scream about not knowing what to do
-			return nil, fmt.Errorf("no consumer: %q", ct)
-		}
-	}
-	return readResponse.ReadResponse(r.response(res), cons)
+	return operation.Reader.ReadResponse(r.response(res), cons)
 }
 
 // SetDebug changes the debug flag.
@@ -256,6 +239,17 @@ func (r *Runtime) SetResponseReader(f ClientResponseFunc) {
 		return
 	}
 	r.response = f
+}
+
+func (r *Runtime) ensureContext(operation *runtime.ClientOperation) context.Context {
+	switch {
+	case operation.Context != nil:
+		return operation.Context
+	case r.Context != nil:
+		return r.Context
+	default:
+		return context.Background()
+	}
 }
 
 func (r *Runtime) pickScheme(schemes []string) string {
@@ -294,18 +288,110 @@ func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
 	return left
 }
 
-// takes a client operation and creates equivalent http.Request.
-func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request.Request, *http.Request, error) { //nolint:revive
+// ensureClient lazily initializes r.client from r.Transport and r.Jar
+// on first use. Safe under concurrent calls via sync.Once.
+func (r *Runtime) ensureClient() {
+	r.clientOnce.Do(func() {
+		r.client = &http.Client{
+			Transport: r.Transport,
+			Jar:       r.Jar,
+		}
+	})
+}
+
+// pickClient returns the http.Client to use for this operation: the
+// per-operation override if set, else the runtime's shared client.
+func (r *Runtime) pickClient(operation *runtime.ClientOperation) *http.Client {
+	if operation.Client != nil {
+		return operation.Client
+	}
+	return r.client
+}
+
+// dumpRequest writes the outgoing request to the debug logger when
+// r.Debug is enabled. No-op otherwise. Returns the dump error so the
+// caller can decide whether to abort the submit.
+func (r *Runtime) dumpRequest(req *http.Request) error {
+	if !r.Debug {
+		return nil
+	}
+	b, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		return err
+	}
+	r.logger.Debugf("%s\n", string(b))
+	return nil
+}
+
+// dumpResponse writes the incoming response to the debug logger when
+// r.Debug is enabled. The body is omitted for runtime.DefaultMime
+// (binary blob). No-op otherwise.
+func (r *Runtime) dumpResponse(res *http.Response, ct string) error {
+	if !r.Debug {
+		return nil
+	}
+	printBody := ct != runtime.DefaultMime // Spare the terminal from a binary blob.
+	b, err := httputil.DumpResponse(res, printBody)
+	if err != nil {
+		return err
+	}
+	r.logger.Debugf("%s\n", string(b))
+	return nil
+}
+
+// resolveConsumer parses ct and returns the registered Consumer for
+// that media type, falling back to the "*/*" entry if any.
+func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
+	mt, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return nil, fmt.Errorf("parse content type: %s", err)
+	}
+	cons, ok := r.Consumers[mt]
+	if ok {
+		return cons, nil
+	}
+	if cons, ok = r.Consumers["*/*"]; ok {
+		return cons, nil
+	}
+	// scream about not knowing what to do
+	return nil, fmt.Errorf("no consumer: %q", ct)
+}
+
+// createHTTPRequestContext is the context-aware builder of a [http.Request].
+//
+// The returned [http.Request] carries a context derived from parentCtx that
+// honors the per-request timeout set during WriteToRequest. Callers must
+// invoke cancel once the response is fully read.
+func (r *Runtime) createHTTPRequestContext(parentCtx context.Context, operation *runtime.ClientOperation) (*http.Request, context.CancelFunc, error) {
+	req, cmt, auth, err := r.prepareRequest(operation)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	httpReq, cancel, err := req.BuildHTTPContext(parentCtx, cmt, r.BasePath, r.Producers, r.Formats, auth)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r.applyHostScheme(httpReq, operation)
+
+	return httpReq, cancel, nil
+}
+
+// prepareRequest performs the operation-to-request setup that is
+// independent of how the http.Request is finally assembled: parameters,
+// headers, default authentication, and consumes-media-type selection.
+func (r *Runtime) prepareRequest(operation *runtime.ClientOperation) (*request.Request, string, runtime.ClientAuthInfoWriter, error) {
 	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
 
 	req := request.New(operation.Method, operation.PathPattern, params)
-	_ = req.SetTimeout(DefaultTimeout)
+	_ = req.SetTimeout(DefaultTimeout) // the timeout may be overridden by ClientRequestWriter
 	req.SetConsumes(operation.ConsumesMediaTypes)
 
 	accept := make([]string, 0, len(operation.ProducesMediaTypes))
 	accept = append(accept, operation.ProducesMediaTypes...)
 	if err := req.SetHeaderParam(runtime.HeaderAccept, accept...); err != nil {
-		return nil, nil, err
+		return nil, "", nil, err
 	}
 
 	if auth == nil && r.DefaultAuthentication != nil {
@@ -319,19 +405,18 @@ func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*reques
 
 	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.Producers, r.DefaultMediaType)
 	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
-		return nil, nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
+		return nil, "", nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
 	}
 
-	httpReq, err := req.BuildHTTP(cmt, r.BasePath, r.Producers, r.Formats, auth)
-	if err != nil {
-		return nil, nil, err
-	}
+	return req, cmt, auth, nil
+}
 
+// applyHostScheme stamps the runtime's host and the operation-selected
+// scheme onto the freshly built http.Request.
+func (r *Runtime) applyHostScheme(httpReq *http.Request, operation *runtime.ClientOperation) {
 	httpReq.URL.Scheme = r.pickScheme(operation.Schemes)
 	httpReq.URL.Host = r.Host
 	httpReq.Host = r.Host
-
-	return req, httpReq, nil
 }
 
 // pickConsumesMediaType selects which Content-Type the client will send.

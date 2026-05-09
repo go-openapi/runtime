@@ -5,6 +5,7 @@ package request
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -32,10 +33,16 @@ var testProducers = map[string]runtime.Producer{
 	runtime.TextMime: runtime.TextProducer(),
 }
 
+// Test-only constants shared across the package's *_test.go files,
+
 const (
-	testFile1      = "request.go"
-	testFile2      = "request_test.go"
-	defaultTimeout = 10 * time.Second
+	valBirdWatching = "Bird watching"
+	valJohn         = "John"
+	valOrganTrail   = "Organ trail"
+	valTom          = "Tom"
+	testFile1       = "request.go"
+	testFile2       = "request_test.go"
+	defaultTimeout  = 10 * time.Second
 )
 
 func TestBuildRequest_SetHeaders(t *testing.T) {
@@ -125,6 +132,64 @@ func TestBuildRequest_SetBody(t *testing.T) {
 	assert.Equal(t, bd, r.payload)
 }
 
+func TestBuildRequest_BuildHTTPContext_PropagatesParentContext(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		_ = req.SetTimeout(0) // disable per-request timeout: verify parent ctx alone flows through
+		return nil
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	type ctxKey struct{}
+	parent := context.WithValue(t.Context(), ctxKey{}, "marker")
+
+	req, cancel, err := r.BuildHTTPContext(parent, runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, cancel)
+	t.Cleanup(cancel)
+
+	assert.EqualT(t, "marker", req.Context().Value(ctxKey{}))
+	_, hasDeadline := req.Context().Deadline()
+	assert.FalseT(t, hasDeadline, "no per-request timeout, no parent deadline -> request ctx must have no deadline")
+}
+
+func TestBuildRequest_BuildHTTPContext_CancelPropagates(t *testing.T) {
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		_ = req.SetTimeout(0)
+		return nil
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, req.Context().Err())
+
+	cancel()
+	require.ErrorIs(t, req.Context().Err(), context.Canceled)
+}
+
+func TestBuildRequest_BuildHTTPContext_AppliesPerRequestTimeout(t *testing.T) {
+	const writerTimeout = 250 * time.Millisecond
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		// ClientRequestWriter override fires inside BuildHTTP; the derived
+		// ctx must observe this final value, not the runtime default.
+		return req.SetTimeout(writerTimeout)
+	})
+	r := New(http.MethodGet, "/", reqWrtr)
+
+	before := time.Now()
+	req, cancel, err := r.BuildHTTPContext(context.Background(), runtime.JSONMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(cancel)
+
+	deadline, ok := req.Context().Deadline()
+	require.TrueT(t, ok, "expected request ctx to carry a deadline from the per-request timeout")
+	delta := deadline.Sub(before)
+	// Loose bounds — we just want to confirm it's the writerTimeout-derived deadline,
+	// not the 30s DefaultTimeout that prepareRequest seeded.
+	assert.TrueT(t, delta >= writerTimeout && delta < writerTimeout+time.Second,
+		"deadline should be ~%v from now, got %v", writerTimeout, delta)
+}
+
 func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(nil)
@@ -135,8 +200,9 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 	})
 	r := New(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -156,8 +222,9 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get(strings.ToLower("X-Rate-Limit")))
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -190,8 +257,9 @@ func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, auth)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -220,8 +288,9 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.XMLMime)
 
-	req, err := r.BuildHTTP(runtime.XMLMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.XMLMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -247,8 +316,9 @@ func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.TextMime)
 
-	req, err := r.BuildHTTP(runtime.TextMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.TextMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -271,8 +341,9 @@ func TestBuildRequest_BuildHTTP_Form(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -294,8 +365,9 @@ func TestBuildRequest_BuildHTTP_Form_URLEncoded(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
 
-	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.URLencodedFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -318,8 +390,9 @@ func TestBuildRequest_BuildHTTP_Form_Content_Length(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -343,8 +416,9 @@ func TestBuildRequest_BuildHTTP_FormMultipart(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.MultipartFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -376,8 +450,9 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.MultipartFormMime)
 
-	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.MultipartFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -403,11 +478,12 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
+	tmpDir := t.TempDir()
 	cont, err := os.ReadFile(testFile1)
 	require.NoError(t, err)
 	cont2, err := os.ReadFile(testFile2)
 	require.NoError(t, err)
-	emptyFile, err := os.CreateTemp("", "empty") //nolint:usetesting
+	emptyFile, err := os.CreateTemp(tmpDir, "empty")
 	require.NoError(t, err)
 
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
@@ -422,8 +498,9 @@ func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
 	})
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -478,8 +555,9 @@ func TestBuildRequest_BuildHTTP_Files_URLEncoded(t *testing.T) {
 	})
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.URLencodedFormMime)
-	req, err := r.BuildHTTP(runtime.URLencodedFormMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.URLencodedFormMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -532,8 +610,9 @@ func TestBuildRequest_BuildHTTP_File_ContentType(t *testing.T) {
 	})
 	r := New(http.MethodGet, "/flats/{id}/", reqWrtr)
 	_ = r.SetHeaderParam(runtime.HeaderContentType, runtime.JSONMime)
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "/flats/1234/", req.URL.Path)
@@ -571,8 +650,9 @@ func TestBuildRequest_BuildHTTP_BasePath(t *testing.T) {
 	})
 	r := New(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -589,8 +669,9 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	})
 	r := New(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "200", req.Header.Get("X-Rate-Limit"))
@@ -609,8 +690,9 @@ func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	})
 	r := New(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?foo=bar", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath?foo=bar", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -627,8 +709,9 @@ func TestBuildRequest_BuildHTTP_PathPatternWithQueryParameters(t *testing.T) {
 	})
 	r := New(http.MethodPost, "/flats/{id}/?foo=bar", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -644,8 +727,9 @@ func TestBuildRequest_BuildHTTP_StaticParametersPathPatternPrevails(t *testing.T
 	})
 	r := New(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "world", req.URL.Query().Get("hello"))
@@ -661,8 +745,9 @@ func TestBuildRequest_BuildHTTP_StaticParametersConflictClientPrevails(t *testin
 	})
 	r := New(http.MethodPost, "/flats/{id}/?hello=world", reqWrtr)
 
-	req, err := r.BuildHTTP(runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "/basepath?hello=kitty", testProducers, nil, nil)
 	require.NoError(t, err)
+	t.Cleanup(cancel)
 	require.NotNil(t, req)
 
 	assert.EqualT(t, "there", req.URL.Query().Get("hello"))
@@ -694,8 +779,9 @@ func TestBuildRequest_BuildHTTP_ParametrizedFormMimes(t *testing.T) {
 		// add itself — the dispatch must still recognize the base mime
 		// as multipart and route to the streaming flow.
 		mt := runtime.MultipartFormMime + "; boundary=caller-supplied"
-		req, err := r.BuildHTTP(mt, "", testProducers, nil, nil)
+		req, cancel, err := r.BuildHTTPContext(t.Context(), mt, "", testProducers, nil, nil)
 		require.NoError(t, err)
+		t.Cleanup(cancel)
 		require.NotNil(t, req)
 
 		// Streaming flow taken: req.Body is a pipe reader, and the
@@ -721,8 +807,9 @@ func TestBuildRequest_BuildHTTP_ParametrizedFormMimes(t *testing.T) {
 		// travels inline as a regular form value. The charset param
 		// must not break the short-circuit.
 		mt := runtime.URLencodedFormMime + "; charset=utf-8"
-		req, err := r.BuildHTTP(mt, "", testProducers, nil, nil)
+		req, cancel, err := r.BuildHTTPContext(t.Context(), mt, "", testProducers, nil, nil)
 		require.NoError(t, err)
+		t.Cleanup(cancel)
 		require.NotNil(t, req)
 
 		// Buffered/urlencoded flow taken: CT is set verbatim to the
@@ -740,8 +827,9 @@ func TestBuildRequest_BuildHTTP_ParametrizedFormMimes(t *testing.T) {
 		})
 		r := New(http.MethodPost, "/", reqWrtr)
 
-		req, err := r.BuildHTTP("Multipart/Form-Data", "", testProducers, nil, nil)
+		req, cancel, err := r.BuildHTTPContext(t.Context(), "Multipart/Form-Data", "", testProducers, nil, nil)
 		require.NoError(t, err)
+		t.Cleanup(cancel)
 		require.NotNil(t, req)
 
 		// Case-insensitive recognition: streaming flow taken.
@@ -776,8 +864,9 @@ func TestBuildRequest_BuildHTTP_EmptyForm(t *testing.T) {
 			})
 			r := New(http.MethodPost, "/flats/{id}/", reqWrtr)
 
-			req, err := r.BuildHTTP(tc.mediaType, "", testProducers, nil, nil)
+			req, cancel, err := r.BuildHTTPContext(t.Context(), tc.mediaType, "", testProducers, nil, nil)
 			require.NoError(t, err)
+			t.Cleanup(cancel)
 			require.NotNil(t, req)
 
 			// No body source: confirms the streaming flow was not taken
@@ -845,8 +934,9 @@ func TestBuildRequest_BuildHTTP_MultipartGoroutineCleanupOnAuthError(t *testing.
 	})
 
 	r := New(http.MethodPost, "/upload", reqWrtr)
-	req, err := r.BuildHTTP(runtime.MultipartFormMime, "", testProducers, nil, auth)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.MultipartFormMime, "", testProducers, nil, auth)
 	require.ErrorIs(t, err, authErr)
+	t.Cleanup(cancel)
 	require.Nil(t, req)
 
 	// The multipart goroutine must terminate (its deferred file-close
@@ -895,13 +985,56 @@ func TestBuildRequest_BuildHTTP_StreamPayloadClosedOnAuthError(t *testing.T) {
 	})
 
 	r := New(http.MethodPost, "/stream", reqWrtr)
-	req, err := r.BuildHTTP(runtime.JSONMime, "", testProducers, nil, auth)
+	req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, "", testProducers, nil, auth)
 	require.ErrorIs(t, err, authErr)
+	t.Cleanup(cancel)
 	require.Nil(t, req)
 
 	select {
 	case <-payload.closed:
 	case <-time.After(2 * time.Second):
 		t.Fatal("stream payload leaked: ReadCloser was never closed after auth error")
+	}
+}
+
+// TestBuildRequest_BuildHTTPContext_MultipartCancelAbortsUpload verifies that
+// canceling the parent context aborts an in-flight multipart upload: the
+// pipe consumer surfaces context.Canceled and the spawned writer goroutine
+// terminates, running its deferred file-close.
+//
+// Without ctx wiring inside streamMultipartParts, cancellation would only
+// take effect once the http transport noticed and closed the body reader,
+// which is too late for an upload that has not yet been handed to a
+// transport (e.g. test code reading req.Body directly).
+func TestBuildRequest_BuildHTTPContext_MultipartCancelAbortsUpload(t *testing.T) {
+	// 4 MiB ensures io.Copy iterates over multiple buffer-sized Reads,
+	// so the ctxReader gets several chances to observe cancellation.
+	file := newObservableFile("big.bin", bytes.Repeat([]byte("x"), 4<<20))
+
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetFileParam("upload", file)
+	})
+
+	r := New(http.MethodPost, "/upload", reqWrtr)
+
+	parentCtx, parentCancel := context.WithCancel(context.Background())
+
+	req, cancel, err := r.BuildHTTPContext(parentCtx, runtime.MultipartFormMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(cancel)
+
+	// Cancel before draining the body. The streaming goroutine may already
+	// have parked on a pw.Write inside the part header; once we begin
+	// reading, the next ctxReader.Read sees the canceled ctx and the pipe
+	// is closed with context.Canceled.
+	parentCancel()
+
+	_, err = io.ReadAll(req.Body)
+	require.ErrorIs(t, err, context.Canceled)
+
+	select {
+	case <-file.closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("multipart goroutine did not close file after cancellation")
 	}
 }
