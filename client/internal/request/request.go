@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2015-2025 go-swagger maintainers
 // SPDX-License-Identifier: Apache-2.0
 
-package client
+package request
 
 import (
 	"bytes"
@@ -24,11 +24,10 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
+var _ runtime.ClientRequest = new(Request) // ensure compliance to the interface
 
 // Request represents a swagger client request.
-//
-// A [Request] binds parameters to a HTTP request.
+// It binds parameters to a HTTP request.
 //
 // The main purpose of this struct is to hide the machinery of adding OpenAPI v2 parameters to a transport request.
 //
@@ -41,15 +40,17 @@ var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
 // The binding of parameters is carried out by method [request.BuildHTTP].
 //
 // It analyzes parameters, which may come in different flavors:
-// * a file or multipart form containing a file
-// * a body which is a [io.Reader]
-// * a buffered body (regular schema body, including urlencoded form)
+//
+//   - a file or multipart form containing a file
+//   - a body which is a [io.Reader]
+//   - a buffered body (regular schema body, including urlencoded form)
 //
 // In all cases, we may also have query or path parameters encoded in the URL, or header parameters.
 //
 // The result is a [http.Request], with the following properties:
-// * file, multipart form or io.Reader body: a streaming request with an attached go routine that consumes the [io.Reader].
-// * buffered body: a simple request
+//
+//   - file, multipart form or io.Reader body: a streaming request with an attached go routine that consumes the [io.Reader].
+//   - buffered body: a simple request
 //
 // In all cases, it is left to the caller to set the request's [context.Context]: [request.BuildHTTP] only builds
 // requests with [context.Background].
@@ -59,7 +60,7 @@ var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
 // Authentication is built in the request by using a [runtime.ClientAuthInfoWriter].
 // This helper may need to inspect the body of the request before sending authentication info.
 // To cover that case, streaming bodies use a copy of the body [io.Reader] for the [runtime.ClientAuthInfoWriter]
-// to consume if need be.
+// to consume if it wants to.
 //
 // # Content negotiation
 //
@@ -71,13 +72,14 @@ var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
 // The natural way to define the `Content-Type` header is to use the `contentType` parameter to switch to the map of
 // available body producers.
 //
-// For buffered requests, this setting override any possibly `Content-Type` header set by calling `SetHeaderParam`.
+// For buffered requests, this setting override any `Content-Type` header possibly set by calling [Request.SetHeaderParam].
 //
-// For streamed requests, users may want more flexibility. Rhe `Content-Type` header of a streamed request is defined
-// using the following sequence:
+// For streamed requests, users may want more flexibility, as we enter custom territory, with use-cases not supported by OpenAPI v2.
+//
+// The `Content-Type` header of a streamed request is defined using the following sequence:
 //
 //  1. if the caller sets an explicit value already in header — the user set it via
-//     SetHeaderParam during WriteToRequest, and we treat that as an intentional escape hatch
+//     [Request.SetHeaderParam] during WriteToRequest, and we treat that as an intentional escape hatch
 //  2. use payload's [runtime.ContentTyper] declaration (in this case, the produced payload knows its content type)
 //  3. use `application/octet-stream` if it is available in the registered producers
 //  4. otherwise ser the picker's mediaType
@@ -94,7 +96,7 @@ var _ runtime.ClientRequest = new(request) // ensure compliance to the interface
 // # Future evolutions
 //
 // There might be other similar structs that convert to other transports.
-type request struct {
+type Request struct {
 	pathPattern string
 	method      string
 	writer      runtime.ClientRequestWriter
@@ -114,29 +116,29 @@ type request struct {
 	timeout  time.Duration
 	buf      *bytes.Buffer
 
-	getBody func(r *request) []byte
+	getBody func(r *Request) []byte
 }
 
-// newRequest creates a new http client [request] to handle OpenAPI v2 parameters.
-func newRequest(method, pathPattern string, writer runtime.ClientRequestWriter) *request {
-	return &request{
+// New creates a new http client [Request] to handle OpenAPI v2 parameters.
+func New(method, pathPattern string, writer runtime.ClientRequestWriter) *Request {
+	return &Request{
 		pathPattern: pathPattern,
 		method:      method,
 		writer:      writer,
 		header:      make(http.Header),
 		query:       make(url.Values),
-		timeout:     DefaultTimeout,
+		timeout:     0,
 		getBody:     getRequestBuffer,
 	}
 }
 
 // GetMethod yields the method being used.
-func (r *request) GetMethod() string {
+func (r *Request) GetMethod() string {
 	return r.method
 }
 
 // GetPath yields the URL path being used.
-func (r *request) GetPath() string {
+func (r *Request) GetPath() string {
 	pth := r.pathPattern
 	for k, v := range r.pathParams {
 		pth = strings.ReplaceAll(pth, "{"+k+"}", v)
@@ -148,7 +150,7 @@ func (r *request) GetPath() string {
 // GetBody returns the request body, if any.
 //
 // For streaming requests, this is a copy of the original [io.Reader].
-func (r *request) GetBody() []byte {
+func (r *Request) GetBody() []byte {
 	return r.getBody(r)
 }
 
@@ -158,7 +160,7 @@ func (r *request) GetBody() []byte {
 //
 //   - when there is only 1 value provided, it will set it.
 //   - when there are several values provided, it will add all of those (no overriding).
-func (r *request) SetHeaderParam(name string, values ...string) error {
+func (r *Request) SetHeaderParam(name string, values ...string) error {
 	if r.header == nil {
 		r.header = make(http.Header)
 	}
@@ -168,7 +170,7 @@ func (r *request) SetHeaderParam(name string, values ...string) error {
 }
 
 // GetHeaderParams returns all headers currently set for the request.
-func (r *request) GetHeaderParams() http.Header {
+func (r *Request) GetHeaderParams() http.Header {
 	return r.header
 }
 
@@ -176,7 +178,7 @@ func (r *request) GetHeaderParams() http.Header {
 //
 //   - when there is only 1 value provided, it will set it.
 //   - when there are several values provided, it will add all of those (no overriding).
-func (r *request) SetQueryParam(name string, values ...string) error {
+func (r *Request) SetQueryParam(name string, values ...string) error {
 	if r.query == nil {
 		r.query = make(url.Values)
 	}
@@ -186,7 +188,7 @@ func (r *request) SetQueryParam(name string, values ...string) error {
 }
 
 // GetQueryParams returns a copy of all query params currently set for the request.
-func (r *request) GetQueryParams() url.Values {
+func (r *Request) GetQueryParams() url.Values {
 	result := make(url.Values, len(r.query))
 	for key, values := range r.query {
 		result[key] = append([]string{}, values...)
@@ -199,7 +201,7 @@ func (r *request) GetQueryParams() url.Values {
 //
 //   - when there is only 1 value provided, it will set it.
 //   - when there are several values provided, it will add all of those (no overriding).
-func (r *request) SetFormParam(name string, values ...string) error {
+func (r *Request) SetFormParam(name string, values ...string) error {
 	if r.formFields == nil {
 		r.formFields = make(url.Values)
 	}
@@ -209,7 +211,7 @@ func (r *request) SetFormParam(name string, values ...string) error {
 }
 
 // SetPathParam adds a path param to the request.
-func (r *request) SetPathParam(name string, value string) error {
+func (r *Request) SetPathParam(name string, value string) error {
 	if r.pathParams == nil {
 		r.pathParams = make(map[string]string)
 	}
@@ -224,7 +226,7 @@ func (r *request) SetPathParam(name string, value string) error {
 // Files must implement [runtime.NamedReadCloser].
 //
 // [runtime.File] is proposed as the default concrete implementation.
-func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) error {
+func (r *Request) SetFileParam(name string, files ...runtime.NamedReadCloser) error {
 	for _, file := range files {
 		if actualFile, ok := file.(*os.File); ok {
 			fi, err := os.Stat(actualFile.Name())
@@ -252,29 +254,39 @@ func (r *request) SetFileParam(name string, files ...runtime.NamedReadCloser) er
 }
 
 // GetFileParam yields all file parameters.
-func (r *request) GetFileParam() map[string][]runtime.NamedReadCloser {
+func (r *Request) GetFileParam() map[string][]runtime.NamedReadCloser {
 	return r.fileFields
 }
 
 // SetBodyParam sets a body parameter on the request.
 //
 // This does not yet serialize the object: actual serialization happens as late as possible.
-func (r *request) SetBodyParam(payload any) error {
+func (r *Request) SetBodyParam(payload any) error {
 	r.payload = payload
 
 	return nil
 }
 
 // GetBodyParam returns the body payload.
-func (r *request) GetBodyParam() any {
+func (r *Request) GetBodyParam() any {
 	return r.payload
 }
 
+// GetTimeout sets the timeout for a request.
+func (r *Request) GetTimeout() time.Duration {
+	return r.timeout
+}
+
 // SetTimeout sets the timeout for a request.
-func (r *request) SetTimeout(timeout time.Duration) error {
+func (r *Request) SetTimeout(timeout time.Duration) error {
 	r.timeout = timeout
 
 	return nil
+}
+
+// SetConsumes sets the list of registered consumed content for a request.
+func (r *Request) SetConsumes(consumers []string) {
+	r.consumes = consumers
 }
 
 // BuildHTTP dispatches to one of two end-to-end builders based on whether:
@@ -287,7 +299,7 @@ func (r *request) SetTimeout(timeout time.Duration) error {
 //
 // The split mirrors the auth question: streaming bodies require a lazy body-copy closure during AuthenticateRequest,
 // whereas buffered bodies do not.
-func (r *request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+func (r *Request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
 		return nil, err
 	}
@@ -305,7 +317,7 @@ func (r *request) BuildHTTP(mediaType, basePath string, producers map[string]run
 // for stream payloads).
 //
 // The complementary case is a fully buffered body in r.buf — urlencoded form, producer output, or no body at all.
-func (r *request) usesStreamingBody(mediaType string) bool {
+func (r *Request) usesStreamingBody(mediaType string) bool {
 	if (len(r.formFields) > 0 || len(r.fileFields) > 0) && r.isMultipart(mediaType) {
 		return true
 	}
@@ -317,7 +329,7 @@ func (r *request) usesStreamingBody(mediaType string) bool {
 	return false
 }
 
-func (r *request) isMultipart(mediaType string) bool {
+func (r *Request) isMultipart(mediaType string) bool {
 	// Strip media-type parameters before comparing: callers may legally
 	// pass `multipart/form-data; boundary=…` or
 	// `application/x-www-form-urlencoded; charset=utf-8` per RFC 7231,
@@ -356,7 +368,7 @@ func (r *request) isMultipart(mediaType string) bool {
 //
 // Auth is trivial in this flow because the buffer is already populated when the auth helper
 // asks for the body via r.GetBody().
-func (r *request) buildBufferedRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
+func (r *Request) buildBufferedRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
 	var body io.Reader
 	var err error
 
@@ -397,7 +409,7 @@ func (r *request) buildBufferedRequest(mediaType, basePath string, producers map
 // (it would otherwise park forever on pw.Write with no reader).
 //
 // For stream payloads it closes the user-provided io.ReadCloser.
-func (r *request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
+func (r *Request) buildStreamingRequest(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
 	var body io.Reader
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
 		body = r.writeMultipartBody(mediaType)
@@ -429,7 +441,7 @@ func (r *request) buildStreamingRequest(mediaType, basePath string, producers ma
 // assembleRequest is the shared tail of both flows: build the URL
 // path, create the http.Request, merge static query parameters, and
 // finalize headers/query.
-func (r *request) assembleRequest(basePath string, body io.Reader) (*http.Request, error) {
+func (r *Request) assembleRequest(basePath string, body io.Reader) (*http.Request, error) {
 	urlPath, staticQueryParams, err := r.resolveURLPath(basePath)
 	if err != nil {
 		return nil, err
@@ -460,7 +472,7 @@ func (r *request) assembleRequest(basePath string, body io.Reader) (*http.Reques
 // The path is assembled from basePath + pathPattern with path-param
 // substitution and trailing-slash preservation when the original
 // pathPattern carried one.
-func (r *request) resolveURLPath(basePath string) (string, url.Values, error) {
+func (r *Request) resolveURLPath(basePath string) (string, url.Values, error) {
 	basePathURL, err := url.Parse(basePath)
 	if err != nil {
 		return "", nil, err
@@ -509,14 +521,14 @@ func (r *request) resolveURLPath(basePath string) (string, url.Values, error) {
 // interfered with auth.
 //
 // No-op when auth is nil; returns body unchanged.
-func (r *request) applyAuthWithBodyCopy(auth runtime.ClientAuthInfoWriter, body io.Reader, registry strfmt.Registry) (io.Reader, error) {
+func (r *Request) applyAuthWithBodyCopy(auth runtime.ClientAuthInfoWriter, body io.Reader, registry strfmt.Registry) (io.Reader, error) {
 	if auth == nil {
 		return body, nil
 	}
 
 	var copyErr error
 	var copied bool
-	r.getBody = func(r *request) []byte {
+	r.getBody = func(r *Request) []byte {
 		if copied {
 			return getRequestBuffer(r)
 		}
@@ -559,7 +571,7 @@ func (r *request) applyAuthWithBodyCopy(auth runtime.ClientAuthInfoWriter, body 
 // mergeStaticQuery overlays staticQuery onto r.query. On conflict r.query
 // wins — the parameters set by the client take precedence over the ones
 // extracted from basePath / pathPattern.
-func (r *request) mergeStaticQuery(staticQuery url.Values) error {
+func (r *Request) mergeStaticQuery(staticQuery url.Values) error {
 	originalParams := r.GetQueryParams()
 	for k, v := range staticQuery {
 		if _, present := originalParams[k]; present {
@@ -583,7 +595,7 @@ func (r *request) mergeStaticQuery(staticQuery url.Values) error {
 // usual. This buffers the entire payload and does not preserve a
 // per-file Content-Type — multipart/form-data is preferred when both
 // are advertised by the operation.
-func (r *request) writeURLEncodedBody(mediaType string) (io.Reader, error) {
+func (r *Request) writeURLEncodedBody(mediaType string) (io.Reader, error) {
 	r.header.Set(runtime.HeaderContentType, mediaType)
 	values := url.Values{}
 	for k, vs := range r.formFields {
@@ -613,7 +625,7 @@ func (r *request) writeURLEncodedBody(mediaType string) (io.Reader, error) {
 // The goroutine owns the pipe writer's lifecycle: it closes the
 // multipart writer (flushing the closing boundary) and the pipe writer
 // when it finishes or hits an error.
-func (r *request) writeMultipartBody(mediaType string) io.Reader {
+func (r *Request) writeMultipartBody(mediaType string) io.Reader {
 	pr, pw := io.Pipe()
 	mp := multipart.NewWriter(pw)
 	r.header.Set(runtime.HeaderContentType, mangleContentType(mediaType, mp.Boundary()))
@@ -627,7 +639,7 @@ func (r *request) writeMultipartBody(mediaType string) io.Reader {
 // closing mp and pw when done.
 //
 // Errors are reported by closing pw with the error so the consumer of pr observes them on its next Read.
-func (r *request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) {
+func (r *Request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) {
 	defer func() {
 		mp.Close()
 		pw.Close()
@@ -695,7 +707,7 @@ func (r *request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 //
 // Caller must ensure r.payload satisfies io.Reader (see
 // [request.usesStreamingBody]).
-func (r *request) writeStreamPayload(mediaType string, producers map[string]runtime.Producer) io.Reader {
+func (r *Request) writeStreamPayload(mediaType string, producers map[string]runtime.Producer) io.Reader {
 	setStreamContentType(r.header, r.payload, mediaType, r.consumes, producers)
 	if rdr, ok := r.payload.(io.ReadCloser); ok {
 		return rdr
@@ -712,7 +724,7 @@ func (r *request) writeStreamPayload(mediaType string, producers map[string]runt
 // the wire header would otherwise misrepresent the body.
 //
 // The same reasoning applies to the form/multipart branch.
-func (r *request) writeNonStreamPayload(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
+func (r *Request) writeNonStreamPayload(mediaType string, producers map[string]runtime.Producer) (io.Reader, error) {
 	r.header.Set(runtime.HeaderContentType, mediaType)
 	producer := producers[mediaType]
 	if err := producer.Produce(r.buf, r.payload); err != nil {
@@ -729,7 +741,7 @@ func escapeQuotes(s string) string {
 // stream payload (io.Reader / io.ReadCloser). Priority:
 //
 //  1. an explicit value already in header — the user set it via
-//     SetHeaderParam during WriteToRequest, and we treat that as an
+//     SetHeaderParam during [ClientRequestWriter.WriteToRequest], and we treat that as an
 //     intentional escape hatch;
 //  2. payload's [runtime.ContentTyper] declaration;
 //  3. [streamFallbackMime] (Stage-2 octet-stream upgrade);
@@ -799,7 +811,7 @@ func streamFallbackMime(picked string, candidates []string, producers map[string
 	return picked
 }
 
-func getRequestBuffer(r *request) []byte {
+func getRequestBuffer(r *Request) []byte {
 	if r.buf == nil {
 		return nil
 	}
@@ -815,5 +827,6 @@ func logClose(err error, pw *io.PipeWriter) {
 }
 
 func mangleContentType(_, boundary string) string {
+	// Proposal for enhancement: honor caller's boundary if specified
 	return "multipart/form-data; boundary=" + boundary
 }

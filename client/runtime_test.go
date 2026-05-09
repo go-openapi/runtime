@@ -1261,6 +1261,85 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 }
 
+type testReqFn func(*testing.T, *http.Request)
+
+type testRoundTripper struct {
+	tr          http.RoundTripper
+	testFn      testReqFn
+	testHarness *testing.T
+}
+
+func (t *testRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	t.testFn(t.testHarness, req)
+	return t.tr.RoundTrip(req)
+}
+
+func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusCreated)
+		_, err := rw.Write([]byte("test result"))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+	hu, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	client := http.DefaultClient
+	transport := http.DefaultTransport
+
+	client.Transport = &testRoundTripper{
+		tr:          transport,
+		testHarness: t,
+		testFn: func(t *testing.T, req *http.Request) {
+			// Read the body once before sending the request
+			body, e := req.GetBody()
+			require.NoError(t, e)
+			bodyContent, e := io.ReadAll(io.Reader(body))
+			require.NoError(t, e)
+
+			require.Len(t, bodyContent, int(req.ContentLength))
+			require.EqualT(t, "\"test body\"\n", string(bodyContent))
+
+			// Read the body a second time before sending the request
+			body, e = req.GetBody()
+			require.NoError(t, e)
+			bodyContent, e = io.ReadAll(io.Reader(body))
+			require.NoError(t, e)
+			require.Len(t, bodyContent, int(req.ContentLength))
+			require.EqualT(t, "\"test body\"\n", string(bodyContent))
+		},
+	}
+
+	rwrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetBodyParam("test body")
+	})
+
+	operation := &runtime.ClientOperation{
+		ID:          "getSites",
+		Method:      http.MethodPost,
+		PathPattern: "/",
+		Params:      rwrtr,
+		Client:      client,
+		Reader: runtime.ClientResponseReaderFunc(func(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
+			if response.Code() == http.StatusCreated {
+				var res string
+				if e := consumer.Consume(response.Body(), &res); e != nil {
+					return nil, e
+				}
+				return res, nil
+			}
+			return nil, errors.New("unexpected error code")
+		}),
+	}
+
+	openAPIClient := New(hu.Host, "/", []string{schemeHTTP})
+	res, err := openAPIClient.Submit(operation)
+	require.NoError(t, err)
+
+	actual := res.(string)
+	require.EqualT(t, "test result", actual)
+}
+
 func isContextSigned(ctx context.Context, value string) bool {
 	v, ok := ctx.Value(rtKey).(string)
 
