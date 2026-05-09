@@ -980,3 +980,45 @@ func TestBuildRequest_BuildHTTP_StreamPayloadClosedOnAuthError(t *testing.T) {
 		t.Fatal("stream payload leaked: ReadCloser was never closed after auth error")
 	}
 }
+
+// TestBuildRequest_BuildHTTPContext_MultipartCancelAbortsUpload verifies that
+// canceling the parent context aborts an in-flight multipart upload: the
+// pipe consumer surfaces context.Canceled and the spawned writer goroutine
+// terminates, running its deferred file-close.
+//
+// Without ctx wiring inside streamMultipartParts, cancellation would only
+// take effect once the http transport noticed and closed the body reader,
+// which is too late for an upload that has not yet been handed to a
+// transport (e.g. test code reading req.Body directly).
+func TestBuildRequest_BuildHTTPContext_MultipartCancelAbortsUpload(t *testing.T) {
+	// 4 MiB ensures io.Copy iterates over multiple buffer-sized Reads,
+	// so the ctxReader gets several chances to observe cancellation.
+	file := newObservableFile("big.bin", bytes.Repeat([]byte("x"), 4<<20))
+
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		return req.SetFileParam("upload", file)
+	})
+
+	r := New(http.MethodPost, "/upload", reqWrtr)
+
+	parentCtx, parentCancel := context.WithCancel(context.Background())
+
+	req, cancel, err := r.BuildHTTPContext(parentCtx, runtime.MultipartFormMime, "", testProducers, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(cancel)
+
+	// Cancel before draining the body. The streaming goroutine may already
+	// have parked on a pw.Write inside the part header; once we begin
+	// reading, the next ctxReader.Read sees the canceled ctx and the pipe
+	// is closed with context.Canceled.
+	parentCancel()
+
+	_, err = io.ReadAll(req.Body)
+	require.ErrorIs(t, err, context.Canceled)
+
+	select {
+	case <-file.closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("multipart goroutine did not close file after cancellation")
+	}
+}

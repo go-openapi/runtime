@@ -457,7 +457,7 @@ func (r *Request) buildBufferedRequest(ctx context.Context, mediaType, basePath 
 func (r *Request) buildStreamingRequest(ctx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (req *http.Request, retErr error) {
 	var body io.Reader
 	if len(r.formFields) > 0 || len(r.fileFields) > 0 {
-		body = r.writeMultipartBody(mediaType)
+		body = r.writeMultipartBody(ctx, mediaType)
 	} else {
 		body = r.writeStreamPayload(mediaType, producers)
 	}
@@ -670,12 +670,12 @@ func (r *Request) writeURLEncodedBody(mediaType string) (io.Reader, error) {
 // The goroutine owns the pipe writer's lifecycle: it closes the
 // multipart writer (flushing the closing boundary) and the pipe writer
 // when it finishes or hits an error.
-func (r *Request) writeMultipartBody(mediaType string) io.Reader {
+func (r *Request) writeMultipartBody(ctx context.Context, mediaType string) io.Reader {
 	pr, pw := io.Pipe()
 	mp := multipart.NewWriter(pw)
 	r.header.Set(runtime.HeaderContentType, mangleContentType(mediaType, mp.Boundary()))
 
-	go r.streamMultipartParts(mp, pw)
+	go r.streamMultipartParts(ctx, mp, pw)
 
 	return pr
 }
@@ -684,7 +684,12 @@ func (r *Request) writeMultipartBody(mediaType string) io.Reader {
 // closing mp and pw when done.
 //
 // Errors are reported by closing pw with the error so the consumer of pr observes them on its next Read.
-func (r *Request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) {
+//
+// Context cancellation is observed at iteration boundaries (between
+// fields and between files) and during file copy via a context-aware
+// reader. When ctx is canceled the pipe writer is closed with ctx.Err()
+// so the body consumer surfaces the cancellation as the read error.
+func (r *Request) streamMultipartParts(ctx context.Context, mp *multipart.Writer, pw *io.PipeWriter) {
 	defer func() {
 		mp.Close()
 		pw.Close()
@@ -692,6 +697,10 @@ func (r *Request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 
 	for fn, v := range r.formFields {
 		for _, vi := range v {
+			if err := ctx.Err(); err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
 			if err := mp.WriteField(fn, vi); err != nil {
 				logClose(err, pw)
 				return
@@ -709,6 +718,11 @@ func (r *Request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 
 	for fn, f := range r.fileFields {
 		for _, fi := range f {
+			if err := ctx.Err(); err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+
 			var fileContentType string
 			if p, ok := fi.(runtime.ContentTyper); ok {
 				fileContentType = p.ContentType()
@@ -737,11 +751,29 @@ func (r *Request) streamMultipartParts(mp *multipart.Writer, pw *io.PipeWriter) 
 				logClose(err, pw)
 				return
 			}
-			if _, err := io.Copy(wrtr, fi); err != nil {
+			if _, err := io.Copy(wrtr, &ctxReader{ctx: ctx, r: fi}); err != nil {
 				logClose(err, pw)
+				return
 			}
 		}
 	}
+}
+
+// ctxReader wraps an [io.Reader] with a context check on each Read. Once
+// ctx is done, subsequent Reads return ctx.Err() instead of delegating
+// to the underlying reader. It does not preempt a Read already in flight
+// — that is the source's responsibility (e.g. *os.File honors Close from
+// another goroutine, network sources honor SetDeadline).
+type ctxReader struct {
+	ctx context.Context //nolint:containedctx  // io.Reader's Read method has no ctx parameter, so the wrapper must carry it on the struct
+	r   io.Reader
+}
+
+func (cr *ctxReader) Read(p []byte) (int, error) {
+	if err := cr.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return cr.r.Read(p)
 }
 
 // writeStreamPayload handles a stream payload (io.Reader /
