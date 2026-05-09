@@ -13,7 +13,8 @@ This is a mono-repo with a `go.work` workspace:
 | Module | Purpose |
 |--------|---------|
 | `.` (root) | Core runtime library |
-| `client-middleware/opentracing` | Optional OpenTracing middleware for client transport |
+| `server-middleware` | Standalone, dependency-free server middleware (`mediatype`, `negotiate`, `negotiate/header`, `docui`) |
+| `client-middleware/opentracing` | OpenTracing middleware for client transport (compatibility module; prefer the OpenTelemetry support built into `client.Runtime`) |
 
 ## Package Layout
 
@@ -21,9 +22,9 @@ This is a mono-repo with a `go.work` workspace:
 |---------|----------|
 | `runtime` (root) | Core interfaces (`Consumer`, `Producer`, `Authenticator`, `Authorizer`, `OperationHandler`), content-type handlers (JSON, XML, CSV, text, bytestream), HTTP helpers |
 | `client` | HTTP client transport (`Runtime`) with TLS, timeouts, proxy, keepalive, OpenTelemetry |
-| `middleware` | Server request lifecycle: routing, content negotiation, parameter binding, validation, security, Swagger UI / RapiDoc |
+| `middleware` | Server request lifecycle: routing, parameter binding, validation, security, operation execution. Doc-UI and negotiation primitives moved to `server-middleware/*`; legacy entry points remain as deprecated shims in `seam.go`. |
 | `middleware/denco` | Internal path-pattern router |
-| `middleware/header` | HTTP header parsing utilities |
+| `middleware/header` | Deprecated shim — re-exports `server-middleware/negotiate/header` |
 | `middleware/untyped` | Untyped (reflection-based) API handling |
 | `security` | Auth implementations: Basic, API Key, Bearer/OAuth2 (with `*Ctx` variants) |
 | `logger` | `Logger` interface; debug via `SWAGGER_DEBUG` or `DEBUG` env vars |
@@ -47,6 +48,7 @@ This is a mono-repo with a `go.work` workspace:
 - Security functions come in pairs (`BasicAuth` / `BasicAuthCtx`) for context propagation.
 - Server middleware pipeline: Router → Binder → Validator → Security → Executor → Responder.
 - OpenTracing lives in a separate module to avoid pulling its dependency into the core.
+- `server-middleware` is a separate module so any `net/http` app can use negotiation, media-type, and doc-UI primitives without inheriting the OpenAPI spec/loads/validate tree.
 
 ## Dependencies
 
