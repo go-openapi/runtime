@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/runtime/client/internal/request"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/testify/v2/assert"
 	"github.com/go-openapi/testify/v2/require"
@@ -35,6 +36,21 @@ const (
 	vendorMime1 = "application/x-vendor1"
 	vendorMime2 = "application/x-vendor2"
 )
+
+func TestBuildHTTP_ContentNegotiation(t *testing.T) {
+	runBuildHTTPCases(t, payloadStructCases())
+	runBuildHTTPCases(t, payloadReaderCases())
+	runBuildHTTPCases(t, payloadByteSliceCases())
+	runBuildHTTPCases(t, formFieldCases())
+	runBuildHTTPCases(t, fileFieldCases())
+	runBuildHTTPCases(t, formAndFileFieldCases())
+	runBuildHTTPCases(t, noBodyCases())
+	runBuildHTTPCases(t, missingProducerCases())
+}
+
+func TestSubmit_ContentNegotiation(t *testing.T) {
+	runSubmitCases(t, submitWiringCases())
+}
 
 // buildHTTPCase exercises (*request).buildHTTP directly: the picker
 // has already chosen mediaType.
@@ -71,6 +87,7 @@ type submitCase struct {
 
 func runBuildHTTPCases(t *testing.T, cases iter.Seq[buildHTTPCase]) {
 	t.Helper()
+
 	for tc := range cases {
 		t.Run(tc.name, runBuildHTTPCase(tc))
 	}
@@ -91,9 +108,9 @@ func runBuildHTTPCase(tc buildHTTPCase) func(*testing.T) {
 			producers = New("example.com", "/", []string{schemeHTTP}).Producers
 		}
 
-		r := newRequest(method, "/", writer)
-		r.consumes = tc.consumes
-		req, err := r.buildHTTP(tc.mediaType, "/", producers, strfmt.Default, nil)
+		r := request.New(method, "/", writer)
+		r.SetConsumes(tc.consumes)
+		req, err := r.BuildHTTP(tc.mediaType, "/", producers, strfmt.Default, nil)
 		if tc.wantErr != "" {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantErr)
@@ -315,23 +332,6 @@ func bodyEmpty() func(t *testing.T, body []byte) {
 		t.Helper()
 		assert.Empty(t, body)
 	}
-}
-
-// --- test entry points ----------------------------------------------
-
-func TestBuildHTTP_ContentNegotiation(t *testing.T) {
-	runBuildHTTPCases(t, payloadStructCases())
-	runBuildHTTPCases(t, payloadReaderCases())
-	runBuildHTTPCases(t, payloadByteSliceCases())
-	runBuildHTTPCases(t, formFieldCases())
-	runBuildHTTPCases(t, fileFieldCases())
-	runBuildHTTPCases(t, formAndFileFieldCases())
-	runBuildHTTPCases(t, noBodyCases())
-	runBuildHTTPCases(t, missingProducerCases())
-}
-
-func TestSubmit_ContentNegotiation(t *testing.T) {
-	runSubmitCases(t, submitWiringCases())
 }
 
 // --- case families ---------------------------------------------------
