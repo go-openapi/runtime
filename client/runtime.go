@@ -132,35 +132,13 @@ func (r *Runtime) EnableConnectionReuse() {
 }
 
 func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
-	_, req, err = r.createHttpRequest(operation)
+	_, req, err = r.createHTTPRequest(operation)
 	return
 }
 
 // Submit a request and when there is a body on success it will turn that into the result
 // all other things are turned into an api error for swagger which retains the status code.
 func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
-	_, readResponse, _ := operation.Params, operation.Reader, operation.AuthInfo
-
-	request, req, err := r.createHttpRequest(operation)
-	if err != nil {
-		return nil, err
-	}
-
-	r.clientOnce.Do(func() {
-		r.client = &http.Client{
-			Transport: r.Transport,
-			Jar:       r.Jar,
-		}
-	})
-
-	if r.Debug {
-		b, err2 := httputil.DumpRequestOut(req, true)
-		if err2 != nil {
-			return nil, err2
-		}
-		r.logger.Debugf("%s\n", string(b))
-	}
-
 	var parentCtx context.Context
 	switch {
 	case operation.Context != nil:
@@ -171,32 +149,28 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
 		parentCtx = context.Background()
 	}
 
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
+	return r.SubmitContext(parentCtx, operation)
+}
 
-	timeout := request.GetTimeout()
-	if timeout == 0 {
-		// There may be a deadline in the context passed to the operation.
-		// Otherwise, there is no timeout set.
-		ctx, cancel = context.WithCancel(parentCtx)
-	} else {
-		// Sets the timeout passed from request params (by default runtime.DefaultTimeout).
-		// If there is already a deadline in the parent context, the shortest will
-		// apply.
-		ctx, cancel = context.WithTimeout(parentCtx, timeout)
+// SubmitContext submits a request and returns the result.
+//
+// Errors are turned into an api error for swagger which retains the status code.
+func (r *Runtime) SubmitContext(parentCtx context.Context, operation *runtime.ClientOperation) (any, error) {
+	request, req, err := r.createHTTPRequest(operation) //nolint:contextcheck  // parentCtx is bound below via req.WithContext; threading it through createHTTPRequest is a separate refactor
+	if err != nil {
+		return nil, err
 	}
+
+	r.ensureClient()
+
+	if err := r.dumpRequest(req); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := deriveRequestContext(parentCtx, request.GetTimeout())
 	defer cancel()
 
-	var client *http.Client
-	if operation.Client != nil {
-		client = operation.Client
-	} else {
-		client = r.client
-	}
-	req = req.WithContext(ctx)
-	res, err := client.Do(req) // make requests, by default follows 10 redirects before failing
+	res, err := r.pickClient(operation).Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -207,31 +181,16 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
 		ct = r.DefaultMediaType
 	}
 
-	if r.Debug {
-		printBody := true
-		if ct == runtime.DefaultMime {
-			printBody = false // Spare the terminal from a binary blob.
-		}
-		b, err2 := httputil.DumpResponse(res, printBody)
-		if err2 != nil {
-			return nil, err2
-		}
-		r.logger.Debugf("%s\n", string(b))
+	if err := r.dumpResponse(res, ct); err != nil {
+		return nil, err
 	}
 
-	mt, _, err := mime.ParseMediaType(ct)
+	cons, err := r.resolveConsumer(ct)
 	if err != nil {
-		return nil, fmt.Errorf("parse content type: %s", err)
+		return nil, err
 	}
 
-	cons, ok := r.Consumers[mt]
-	if !ok {
-		if cons, ok = r.Consumers["*/*"]; !ok {
-			// scream about not knowing what to do
-			return nil, fmt.Errorf("no consumer: %q", ct)
-		}
-	}
-	return readResponse.ReadResponse(r.response(res), cons)
+	return operation.Reader.ReadResponse(r.response(res), cons)
 }
 
 // SetDebug changes the debug flag.
@@ -294,12 +253,92 @@ func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
 	return left
 }
 
+// ensureClient lazily initializes r.client from r.Transport and r.Jar
+// on first use. Safe under concurrent calls via sync.Once.
+func (r *Runtime) ensureClient() {
+	r.clientOnce.Do(func() {
+		r.client = &http.Client{
+			Transport: r.Transport,
+			Jar:       r.Jar,
+		}
+	})
+}
+
+// pickClient returns the http.Client to use for this operation: the
+// per-operation override if set, else the runtime's shared client.
+func (r *Runtime) pickClient(operation *runtime.ClientOperation) *http.Client {
+	if operation.Client != nil {
+		return operation.Client
+	}
+	return r.client
+}
+
+// dumpRequest writes the outgoing request to the debug logger when
+// r.Debug is enabled. No-op otherwise. Returns the dump error so the
+// caller can decide whether to abort the submit.
+func (r *Runtime) dumpRequest(req *http.Request) error {
+	if !r.Debug {
+		return nil
+	}
+	b, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		return err
+	}
+	r.logger.Debugf("%s\n", string(b))
+	return nil
+}
+
+// dumpResponse writes the incoming response to the debug logger when
+// r.Debug is enabled. The body is omitted for runtime.DefaultMime
+// (binary blob). No-op otherwise.
+func (r *Runtime) dumpResponse(res *http.Response, ct string) error {
+	if !r.Debug {
+		return nil
+	}
+	printBody := ct != runtime.DefaultMime // Spare the terminal from a binary blob.
+	b, err := httputil.DumpResponse(res, printBody)
+	if err != nil {
+		return err
+	}
+	r.logger.Debugf("%s\n", string(b))
+	return nil
+}
+
+// resolveConsumer parses ct and returns the registered Consumer for
+// that media type, falling back to the "*/*" entry if any.
+func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
+	mt, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return nil, fmt.Errorf("parse content type: %s", err)
+	}
+	cons, ok := r.Consumers[mt]
+	if ok {
+		return cons, nil
+	}
+	if cons, ok = r.Consumers["*/*"]; ok {
+		return cons, nil
+	}
+	// scream about not knowing what to do
+	return nil, fmt.Errorf("no consumer: %q", ct)
+}
+
+// deriveRequestContext returns a child of parent bounded by timeout.
+// If timeout == 0 the child is only canceled when the caller invokes
+// cancel; any deadline already on parent is preserved. If timeout > 0
+// the child uses the shortest of timeout and parent's existing deadline.
+func deriveRequestContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout == 0 {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, timeout)
+}
+
 // takes a client operation and creates equivalent http.Request.
-func (r *Runtime) createHttpRequest(operation *runtime.ClientOperation) (*request.Request, *http.Request, error) { //nolint:revive
+func (r *Runtime) createHTTPRequest(operation *runtime.ClientOperation) (*request.Request, *http.Request, error) {
 	params, _, auth := operation.Params, operation.Reader, operation.AuthInfo
 
 	req := request.New(operation.Method, operation.PathPattern, params)
-	_ = req.SetTimeout(DefaultTimeout)
+	_ = req.SetTimeout(DefaultTimeout) // the timeout may be overridden by ClientRequestWriter
 	req.SetConsumes(operation.ConsumesMediaTypes)
 
 	accept := make([]string, 0, len(operation.ProducesMediaTypes))

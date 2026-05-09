@@ -395,7 +395,7 @@ func payloadStructCases() iter.Seq[buildHTTPCase] {
 //
 // Cases with empty consumes exercise the buildHTTP-direct entry point
 // (i.e. external callers of BuildHTTP that have already picked a mime
-// without going through createHttpRequest).
+// without going through createHTTPRequest).
 func payloadReaderCases() iter.Seq[buildHTTPCase] {
 	return slices.Values([]buildHTTPCase{
 		{

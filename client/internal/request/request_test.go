@@ -403,11 +403,12 @@ func TestBuildRequest_BuildHTTP_FormMultiples(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Files(t *testing.T) {
+	tmpDir := t.TempDir()
 	cont, err := os.ReadFile(testFile1)
 	require.NoError(t, err)
 	cont2, err := os.ReadFile(testFile2)
 	require.NoError(t, err)
-	emptyFile, err := os.CreateTemp("", "empty") //nolint:usetesting
+	emptyFile, err := os.CreateTemp(tmpDir, "empty")
 	require.NoError(t, err)
 
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
