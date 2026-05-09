@@ -95,6 +95,7 @@ func runBuildHTTPCases(t *testing.T, cases iter.Seq[buildHTTPCase]) {
 
 func runBuildHTTPCase(tc buildHTTPCase) func(*testing.T) {
 	return func(t *testing.T) {
+		ctx := t.Context()
 		method := tc.method
 		if method == "" {
 			method = http.MethodPost
@@ -110,7 +111,9 @@ func runBuildHTTPCase(tc buildHTTPCase) func(*testing.T) {
 
 		r := request.New(method, "/", writer)
 		r.SetConsumes(tc.consumes)
-		req, err := r.BuildHTTP(tc.mediaType, "/", producers, strfmt.Default, nil)
+		req, cancel, err := r.BuildHTTPContext(ctx, tc.mediaType, "/", producers, strfmt.Default, nil)
+		defer cancel()
+
 		if tc.wantErr != "" {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantErr)

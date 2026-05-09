@@ -37,7 +37,7 @@ var _ runtime.ClientRequest = new(Request) // ensure compliance to the interface
 //
 // # Request binding
 //
-// The binding of parameters is carried out by method [request.BuildHTTP].
+// The binding of parameters is carried out by method [Request.BuildHTTPContext].
 //
 // It analyzes parameters, which may come in different flavors:
 //
@@ -52,8 +52,8 @@ var _ runtime.ClientRequest = new(Request) // ensure compliance to the interface
 //   - file, multipart form or io.Reader body: a streaming request with an attached go routine that consumes the [io.Reader].
 //   - buffered body: a simple request
 //
-// In all cases, it is left to the caller to set the request's [context.Context]: [request.BuildHTTP] only builds
-// requests with [context.Background].
+// The caller passes the parent [context.Context] to [Request.BuildHTTPContext] and receives back a cancel
+// function to release the resources held by the derived request context once the response is consumed.
 //
 // # Authentication
 //
@@ -289,7 +289,9 @@ func (r *Request) SetConsumes(consumers []string) {
 	r.consumes = consumers
 }
 
-// BuildHTTP dispatches to one of two end-to-end builders based on whether:
+// BuildHTTPContext binds the request parameters and returns a ready-to-send [http.Request].
+//
+// Dispatch picks one of two end-to-end builders based on whether:
 //
 //   - the body source is a stream (multipart pipe or stream payload)
 //   - or a buffer (urlencoded form, producer output, or no body)
@@ -299,20 +301,12 @@ func (r *Request) SetConsumes(consumers []string) {
 //
 // The split mirrors the auth question: streaming bodies require a lazy body-copy closure during AuthenticateRequest,
 // whereas buffered bodies do not.
-func (r *Request) BuildHTTP(mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
-	if err := r.writer.WriteToRequest(r, registry); err != nil {
-		return nil, err
-	}
-	return r.assembleHTTPBody(context.Background(), mediaType, basePath, producers, registry, auth)
-}
-
-// BuildHTTPContext is the context-aware variant of [Request.BuildHTTP].
 //
 // The returned [http.Request] carries a context derived from parentCtx that:
 //
 //   - inherits any deadline or cancellation already set on parentCtx;
 //   - additionally honors the per-request timeout set via [Request.SetTimeout]
-//     (the [ClientRequestWriter] may override the runtime default during
+//     (the [runtime.ClientRequestWriter] may override the runtime default during
 //     WriteToRequest, which is why the derivation happens here rather than
 //     at the call site).
 //
@@ -320,31 +314,33 @@ func (r *Request) BuildHTTP(mediaType, basePath string, producers map[string]run
 // once the response has been fully read; otherwise resources held by the
 // derived context — including any timeout timer — are leaked.
 //
-// On error the cancel is invoked internally and a nil cancel is returned.
+// On error the cancel is invoked internally and a no-op cancel is returned,
+// so callers can defer cancel unconditionally.
 func (r *Request) BuildHTTPContext(parentCtx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, context.CancelFunc, error) {
 	if err := r.writer.WriteToRequest(r, registry); err != nil {
-		return nil, nil, err
+		return nil, noop, err
 	}
+
 	ctx, cancel := deriveRequestContext(parentCtx, r.timeout)
-	httpReq, err := r.assembleHTTPBody(ctx, mediaType, basePath, producers, registry, auth)
+	r.buf = bytes.NewBuffer(nil)
+
+	var (
+		httpReq *http.Request
+		err     error
+	)
+	if r.usesStreamingBody(mediaType) {
+		httpReq, err = r.buildStreamingRequest(ctx, mediaType, basePath, producers, registry, auth)
+	} else {
+		httpReq, err = r.buildBufferedRequest(ctx, mediaType, basePath, producers, registry, auth)
+	}
 	if err != nil {
 		cancel()
-		return nil, nil, err
+		return nil, noop, err
 	}
 	return httpReq, cancel, nil
 }
 
-// assembleHTTPBody is the post-WriteToRequest path shared by [Request.BuildHTTP]
-// and [Request.BuildHTTPContext]: it dispatches to the buffered or streaming
-// flow and threads ctx down to [http.NewRequestWithContext].
-func (r *Request) assembleHTTPBody(ctx context.Context, mediaType, basePath string, producers map[string]runtime.Producer, registry strfmt.Registry, auth runtime.ClientAuthInfoWriter) (*http.Request, error) {
-	r.buf = bytes.NewBuffer(nil)
-
-	if r.usesStreamingBody(mediaType) {
-		return r.buildStreamingRequest(ctx, mediaType, basePath, producers, registry, auth)
-	}
-	return r.buildBufferedRequest(ctx, mediaType, basePath, producers, registry, auth)
-}
+func noop() {}
 
 // deriveRequestContext returns a child of parent bounded by timeout.
 // If timeout == 0 the child is only canceled when the caller invokes

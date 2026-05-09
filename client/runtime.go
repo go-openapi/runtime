@@ -131,30 +131,56 @@ func (r *Runtime) EnableConnectionReuse() {
 	)
 }
 
+// CreateHTTPRequestContext creates the requests and bind the parameters, but does not send it over the wire
+// like [Runtime.SubmitContext].
+//
+// The [http.Request] is complete with authentication, headers and body (including streamed body) and ready for callers
+// to submit it to a [http.Client] of their choice, then consume the [http.Response].
+//
+// Most users would simply use [Runtime.SubmitContext], which wraps all these operations in one call.
+func (r *Runtime) CreateHTTPRequestContext(ctx context.Context, operation *runtime.ClientOperation) (req *http.Request, cancel context.CancelFunc, err error) {
+	req, cancel, err = r.createHTTPRequestContext(ctx, operation)
+	return
+}
+
+// CreateHttpRequestContext is like [Runtime.CreateHTTPRequestContext], but picks its context from the
+// [ClientOperation.Context] or from the [Runtime.Context] is they are defined.
+//
+// # Change in behavior with v0.30.0.
+//
+// Callers who define a non-zero timeout set by the [ClientOperation.Params] ([runtime.ClientRequestWriter]),
+// MUST move to [CreateHTTPRequestContext] in order to retrieve the proper cancellation function,
+// and thus avoid a systematic leak of the context cancellation channel.
+//
+// In previous versions, the value of this timeout was simply ignored here (was only honored by [Runtime.Submit].
+//
+// Callers not using timeouts this way are not affected.
+//
+// Deprecated: use [CreateHTTPRequestContext] instead, with appropriate control of the request cancellation.
 func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
-	_, req, err = r.createHTTPRequest(operation)
+	req, _, err = r.createHTTPRequestContext(context.Background(), operation)
 	return
 }
 
 // Submit a request and when there is a body on success it will turn that into the result
 // all other things are turned into an api error for swagger which retains the status code.
+//
+// This call inherits the context possibly put in the operation, otherwise the one possibly put in the [Runtime].
+// If none are set, use [context.Background].
+//
+// Any timeout set by parameters is honored.
 func (r *Runtime) Submit(operation *runtime.ClientOperation) (any, error) {
-	var parentCtx context.Context
-	switch {
-	case operation.Context != nil:
-		parentCtx = operation.Context
-	case r.Context != nil:
-		parentCtx = r.Context
-	default:
-		parentCtx = context.Background()
-	}
-
-	return r.SubmitContext(parentCtx, operation)
+	return r.SubmitContext(r.ensureContext(operation), operation)
 }
 
 // SubmitContext submits a request and returns the result.
 //
 // Errors are turned into an api error for swagger which retains the status code.
+//
+// Unlike [Submit], [SubmitContext] only injects the context provided by the caller:
+// contexts possibly cached in operation or runtime are ignored.
+//
+// On the other hand, a timeout set by parameters is honored.
 func (r *Runtime) SubmitContext(parentCtx context.Context, operation *runtime.ClientOperation) (any, error) {
 	req, cancel, err := r.createHTTPRequestContext(parentCtx, operation)
 	if err != nil {
@@ -213,6 +239,17 @@ func (r *Runtime) SetResponseReader(f ClientResponseFunc) {
 		return
 	}
 	r.response = f
+}
+
+func (r *Runtime) ensureContext(operation *runtime.ClientOperation) context.Context {
+	switch {
+	case operation.Context != nil:
+		return operation.Context
+	case r.Context != nil:
+		return r.Context
+	default:
+		return context.Background()
+	}
 }
 
 func (r *Runtime) pickScheme(schemes []string) string {
@@ -320,28 +357,9 @@ func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
 	return nil, fmt.Errorf("no consumer: %q", ct)
 }
 
-// createHTTPRequest builds an http.Request from operation. It uses the
-// legacy [request.Request.BuildHTTP] entry point: the resulting request
-// does not carry a context-bound deadline, mirroring the historical
-// behavior of [Runtime.CreateHttpRequest] callers.
-func (r *Runtime) createHTTPRequest(operation *runtime.ClientOperation) (*request.Request, *http.Request, error) {
-	req, cmt, auth, err := r.prepareRequest(operation)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	httpReq, err := req.BuildHTTP(cmt, r.BasePath, r.Producers, r.Formats, auth)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	r.applyHostScheme(httpReq, operation)
-
-	return req, httpReq, nil
-}
-
-// createHTTPRequestContext is the context-aware variant of [Runtime.createHTTPRequest].
-// The returned http.Request carries a context derived from parentCtx that
+// createHTTPRequestContext is the context-aware builder of a [http.Request].
+//
+// The returned [http.Request] carries a context derived from parentCtx that
 // honors the per-request timeout set during WriteToRequest. Callers must
 // invoke cancel once the response is fully read.
 func (r *Runtime) createHTTPRequestContext(parentCtx context.Context, operation *runtime.ClientOperation) (*http.Request, context.CancelFunc, error) {
