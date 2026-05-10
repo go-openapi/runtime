@@ -47,7 +47,7 @@ http.Handle("/docs/", handler)
 
 ## Further reading
 
-- [`docs/MEDIA_TYPES.md`](../docs/MEDIA_TYPES.md) — the full server-side
+- [media-type selection tutorial](https://go-openapi.github.io/runtime/tutorials/media-types/) — the full server-side
   selection algorithm and its asymmetric matching rules.
 - Full API reference on [pkg.go.dev][godoc-url].
 

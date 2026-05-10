@@ -107,6 +107,7 @@ func main() {
 	//       httpcompression.MinSize(512),
 	//       httpcompression.ContentTypes([]string{"application/json"}, false),
 	//   )
+	// snippet:compressionWiring
 	compress, err := httpcompression.DefaultAdapter()
 	if err != nil {
 		log.Fatalf("compression adapter: %v", err)
@@ -120,6 +121,7 @@ func main() {
 	//     code and transport-level middleware).
 	mux := http.NewServeMux()
 	mux.Handle("/", compress(apiHandler))
+	// endsnippet:compressionWiring
 
 	log.Printf("listening on %s", listenAddress)
 	srv := &http.Server{

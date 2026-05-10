@@ -1,7 +1,7 @@
 use (
 	.
 	./client-middleware/opentracing
-	./docs/examples/middleware/compression
+	./docs/examples
 	./server-middleware
 )
 

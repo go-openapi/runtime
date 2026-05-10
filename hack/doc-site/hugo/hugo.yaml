@@ -1,0 +1,148 @@
+baseURL: https://go-openapi.github.io/runtime/
+title: go-openapi runtime
+theme: hugo-relearn
+languageCode: en-us
+
+# Enable features
+enableEmoji: true
+enableGitInfo: true
+enableRobotsTXT: true
+
+# Content configuration
+contentDir: content
+
+# Output formats
+outputs:
+  home:
+    - html
+    - rss
+    - print
+
+# Markup configuration
+markup:
+  goldmark:
+    renderer:
+      unsafe: true  # Allow raw HTML in markdown
+    parser:
+      attribute:
+        title: true
+        block: true
+    renderHooks:
+      image:
+        useEmbedded: always
+  highlight:
+    codeFences: true
+    guessSyntax: false
+    lineNos: false
+    lineNumbersInTable: false
+    noClasses: true
+    style: monokai
+    tabWidth: 4
+
+# Taxonomies are disabled for now
+disableKinds:
+  - taxonomy
+  - term
+# Module mounts
+# Following go-swagger pattern: simple mounts for content and assets
+module:
+  mounts:
+    # Custom layouts (override theme if needed)
+    - source: layouts
+      target: layouts
+
+    # Generated documentation content
+    - source: '../../../docs/doc-site'
+      target: content
+
+    # Runnable Go examples surfaced via the `code` shortcode.
+    # Mount source files plus a few resource extensions used by `//go:embed`
+    # fixtures (e.g. swagger.json, openapi.yaml). go.mod / go.sum stay out.
+    - source: '../../../docs/examples'
+      target: assets/examples
+      files:
+        - '**/*.go'
+        - '**/*.json'
+        - '**/*.yaml'
+        - '**/*.yml'
+
+    # Custom SCSS (for theme customization) + logo
+    - source: themes/runtime-assets
+      target: assets
+
+    # Custom static files (favicon)
+    - source: themes/runtime-static
+      target: static
+
+# Relearn theme parameters
+params:
+  editURL: 'https://github.com/go-openapi/runtime/edit/master/'
+  externalLinkTarget: _blank
+
+  # Repository info
+  sourceRepository: 'https://github.com/go-openapi/runtime'
+
+  # Branding
+  author:
+    name: 'go-openapi maintainers'
+  hideAuthorEmail: true
+
+  # Theme customization
+  themeVariant:
+    - zen-dark
+    - relearn-dark
+    - relearn-light
+  showVisitedLinks: true
+  collapsibleMenu: true
+  disableBreadcrumb: false
+  disableNextPrev: false
+  disableLandingPageButton: true
+  titleSeparator: '|'
+
+  # Features
+  search:
+    disable: false
+    index:
+      disable: false
+    page:
+      disable: false
+    adapter:
+      identifier: lunr
+  disableLanguageSwitchingButton: true
+  disableInlineCopyToClipBoard: false
+
+  # Menu ordering
+  ordersectionsby: 'weight'
+  # Proposal for enhancement: configure versions
+  #versions:
+  #- baseURL: https://go-openapi.github.io/runtime/
+  #  identifier: v2.1.0
+  #  isLatest: true
+  #version: 'v2.1.0'
+
+  # Custom params
+  runtime:
+    goVersion: ''
+    latestRelease: ''
+    versionMessage: ''
+    buildTime: ''
+
+# Menu configuration
+menu:
+  shortcuts:
+    - name: "GitHub"
+      identifier: github
+      url: "https://github.com/go-openapi/runtime"
+      weight: 10
+
+    - name: "go-openapi toolkit"
+      identifier: go-openapi
+      url: "https://github.com/go-openapi"
+      weight: 20
+
+# Privacy settings
+privacy:
+  disqus:
+    disable: true
+  googleAnalytics:
+    disable: true

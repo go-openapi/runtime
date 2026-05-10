@@ -1,4 +1,11 @@
-# Media-type selection
+---
+title: Media-type selection
+weight: 20
+description: |
+  The reference for how the runtime parses, matches, and negotiates
+  HTTP media types on both the server and client sides. Explains the
+  rules behind a 415, a 406, or a 400 you see in production.
+---
 
 How `go-openapi/runtime` parses, matches, and negotiates HTTP media types,
 on both the server and client sides. The reference for the rules behind a
@@ -415,7 +422,7 @@ rt.Consumers["application/problem+json"] = runtime.JSONConsumer()
 rt.Producers["application/problem+json"] = runtime.JSONProducer()
 ```
 
-See [FAQ § custom MIME types](FAQ.md#how-do-i-register-custom-mime-types-eg-applicationproblemjson).
+See [FAQ § custom MIME types](../faq/#how-do-i-register-custom-mime-types-eg-applicationproblemjson).
 
 ### Known gaps
 
@@ -448,7 +455,7 @@ with `struct`/`[]byte` payloads is unaffected by those.
 | Stage-1 producer-capability filter | picker returns the first non-empty entry; if no producer is registered for it, the gate at the call site errors | picker skips entries with no registered producer (and no structural status) and tries the next one; only errors when nothing in `consumes` is registered |
 
 Each delta is verified by a row in the behavioural harness at
-[`client/content_negotiation_test.go`](../client/content_negotiation_test.go).
+[`client/content_negotiation_test.go`](https://github.com/go-openapi/runtime/blob/master/client/content_negotiation_test.go).
 The rows that fail when the harness runs against the v0.29 baseline
 are exactly the rows that exercise these three deltas — there are no
 incidental behaviour changes outside this set. The structural paths

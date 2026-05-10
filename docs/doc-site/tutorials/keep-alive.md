@@ -1,4 +1,12 @@
-# Keep-alive in the runtime client
+---
+title: Keep-alive in the runtime client
+weight: 30
+description: |
+  How `go-openapi/runtime` reuses TCP connections, what the kernel
+  and the HTTP transport actually do for you, and where it goes
+  wrong when there is a NAT gateway, proxy, or firewall between
+  your client and the server.
+---
 
 How `go-openapi/runtime` reuses TCP connections, what the kernel and the
 HTTP transport actually do for you, and where it goes wrong when there

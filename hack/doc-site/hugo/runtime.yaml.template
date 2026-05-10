@@ -1,0 +1,16 @@
+# Dynamic configuration generated at build time
+# This file provides version information extracted from the repository
+
+params:
+  runtime:
+    # Go version requirement (from go.mod)
+    goVersion: '{{ GO_VERSION }}'
+
+    # Latest release tag (from git tags)
+    latestRelease: '{{ LATEST_RELEASE }}'
+
+    # Version message for the documentation set
+    versionMessage: '{{ VERSION_MESSAGE }}'
+
+    # Build timestamp
+    buildTime: '{{ BUILD_TIME }}'
