@@ -681,6 +681,42 @@ func TestBuildRequest_BuildHTTP_EscapedPath(t *testing.T) {
 	assert.EqualT(t, req.URL.RawPath, req.URL.EscapedPath())
 }
 
+// TestBuildRequest_BuildHTTP_RootPathTrailingSlash locks in the fix for
+// issue #101: the bare-root pattern "/" under a non-empty basePath must
+// keep its trailing slash, and the bare-root cases that the pre-fix
+// formula avoided ("" / "/" basePath) must still not produce "//".
+func TestBuildRequest_BuildHTTP_RootPathTrailingSlash(t *testing.T) {
+	const bp = "/basepath"
+	cases := []struct {
+		name        string
+		basePath    string
+		pathPattern string
+		wantPath    string
+	}{
+		{"root pattern under non-empty basePath keeps slash (#101)", bp, "/", bp + "/"},
+		{"root pattern under '/' basePath stays '/'", "/", "/", "/"},
+		{"root pattern under empty basePath stays '/'", "", "/", "/"},
+		{"non-root trailing slash still preserved", bp, "/users/", bp + "/users/"},
+		{"no trailing slash on pattern produces no trailing slash", bp, "/users", bp + "/users"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reqWrtr := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
+				return nil
+			})
+			r := New(http.MethodGet, tc.pathPattern, reqWrtr)
+
+			req, cancel, err := r.BuildHTTPContext(t.Context(), runtime.JSONMime, tc.basePath, testProducers, nil, nil)
+			require.NoError(t, err)
+			t.Cleanup(cancel)
+			require.NotNil(t, req)
+
+			assert.EqualT(t, tc.wantPath, req.URL.Path)
+		})
+	}
+}
+
 func TestBuildRequest_BuildHTTP_BasePathWithQueryParameters(t *testing.T) {
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(nil)
