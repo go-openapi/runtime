@@ -533,14 +533,18 @@ func (r *Request) resolveURLPath(basePath string) (string, url.Values, error) {
 		}
 	}
 
-	reinstateSlash := pathPatternURL.Path != "" && pathPatternURL.Path != "/" &&
-		pathPatternURL.Path[len(pathPatternURL.Path)-1] == '/'
+	// path.Join strips trailing slashes; reinstate one whenever the
+	// pathPattern carried it, including the bare-root case ("/" under a
+	// non-empty basePath, which path.Join would collapse to "/basepath").
+	// The HasSuffix check on urlPath keeps the rewrite idempotent and
+	// avoids producing "//" when basePath is "/" or empty.
+	reinstateSlash := strings.HasSuffix(pathPatternURL.Path, "/")
 
 	urlPath := path.Join(basePathURL.Path, pathPatternURL.Path)
 	for k, v := range r.pathParams {
 		urlPath = strings.ReplaceAll(urlPath, "{"+k+"}", url.PathEscape(v))
 	}
-	if reinstateSlash {
+	if reinstateSlash && !strings.HasSuffix(urlPath, "/") {
 		urlPath += "/"
 	}
 
