@@ -12,6 +12,15 @@ import (
 
 const wildcard = "*"
 
+// Internal constants for the SuffixBase table and any future
+// in-package references to the well-known base media types.
+const (
+	typeApplication = "application"
+	subtypeJSON     = "json"
+	subtypeXML      = "xml"
+	subtypeYAML     = "yaml"
+)
+
 // Specificity scores returned by [MediaType.Specificity], ordered from
 // least to most specific.
 const (
@@ -41,11 +50,36 @@ const ErrMalformed mediaTypeError = "mediatype: malformed"
 // Type, Subtype and the keys of Params are lowercased. Parameter values
 // are preserved verbatim; comparisons are case-insensitive (matching the
 // pre-v0.30 behaviour and the common convention for charset, version, etc.).
+//
+// Suffix exposes the RFC 6839 structured syntax suffix (the token after
+// the final '+' in Subtype) as a parallel hint. Subtype itself retains
+// the full wire value, so existing callers comparing Subtype against a
+// string see no change.
 type MediaType struct {
 	Type    string
 	Subtype string
+	Suffix  string
 	Params  map[string]string
 	Q       float64
+}
+
+// SuffixBase maps a known RFC 6839 / RFC 9512 structured syntax suffix
+// (without the leading '+', lowercased) to its base media type. It is
+// the authoritative table consulted by [MediaType.Base].
+//
+// The table is intentionally small: only suffixes whose base type has
+// a codec in the default runtime maps are listed. CBOR, zip, BER, DER,
+// FastInfoset and WBXML are registered by IANA but have no default
+// codec in this runtime; adding them is gated on having something to
+// do with them.
+//
+// This variable is documented as read-only. Mutating it from
+// application code is unsupported and may race with concurrent Parse
+// / Base calls.
+var SuffixBase = map[string]MediaType{
+	subtypeJSON: {Type: typeApplication, Subtype: subtypeJSON},
+	subtypeXML:  {Type: typeApplication, Subtype: subtypeXML},
+	subtypeYAML: {Type: typeApplication, Subtype: subtypeYAML},
 }
 
 // Parse parses a single media type. The input may carry parameters and a
@@ -70,6 +104,14 @@ func Parse(s string) (MediaType, error) {
 		Type:    full[:slash],
 		Subtype: full[slash+1:],
 		Q:       1.0,
+	}
+	// RFC 6839: structured syntax suffix is the trailing '+'-delimited
+	// token of the subtype. Only the last '+' counts ("foo+bar+json" →
+	// suffix "json"). A trailing '+' with nothing after it is not a
+	// valid suffix and is ignored. mime.ParseMediaType has already
+	// lowercased the subtype, so no further ToLower is needed.
+	if plus := strings.LastIndexByte(mt.Subtype, '+'); plus >= 0 && plus < len(mt.Subtype)-1 {
+		mt.Suffix = mt.Subtype[plus+1:]
 	}
 	if q, ok := params["q"]; ok {
 		if qf, perr := strconv.ParseFloat(q, 64); perr == nil {
@@ -169,5 +211,28 @@ func subtypeAgrees(at, asub, bt, bsub string) bool {
 //
 // Useful for the legacy "ignore parameters" negotiation mode.
 func (m MediaType) StripParams() MediaType {
-	return MediaType{Type: m.Type, Subtype: m.Subtype, Q: m.Q}
+	return MediaType{Type: m.Type, Subtype: m.Subtype, Suffix: m.Suffix, Q: m.Q}
+}
+
+// Base returns the base media type implied by the RFC 6839 structured
+// syntax suffix, or m unchanged when:
+//
+//   - Suffix is empty;
+//   - Suffix is not present in [SuffixBase].
+//
+// The returned value represents the structural base only: it carries
+// no parameters and no q-value. Use it to find a codec for the
+// underlying wire format — for example, "application/vnd.api+json"
+// resolves to "application/json".
+//
+// Base does not mutate the receiver.
+func (m MediaType) Base() MediaType {
+	if m.Suffix == "" {
+		return m
+	}
+	base, ok := SuffixBase[m.Suffix]
+	if !ok {
+		return m
+	}
+	return base
 }
