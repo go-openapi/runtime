@@ -16,6 +16,7 @@ type Option func(*options)
 
 type options struct {
 	ignoreParameters bool
+	matchSuffix      bool
 }
 
 func optionsWithDefaults(opts []Option) options {
@@ -48,6 +49,36 @@ func optionsWithDefaults(opts []Option) options {
 func WithIgnoreParameters(ignore bool) Option {
 	return func(o *options) {
 		o.ignoreParameters = ignore
+	}
+}
+
+// WithMatchSuffix returns an [Option] that extends content
+// negotiation to tolerate RFC 6839 structured-syntax suffix media
+// types. When enabled, an Accept entry of "application/json"
+// matches an offer of "application/vnd.api+json" and vice versa,
+// for the suffixes recognised by the runtime (+json, +xml, +yaml).
+//
+// Default: strict (false). Use only when interoperating with
+// clients or servers that do not strictly abide by the spec — for
+// example, servers returning application/problem+json error
+// responses against operations that only declare application/json
+// in produces.
+//
+// Suffix matches always lose to exact and alias matches when those
+// are on offer; see [mediatype.MatchKind] for the tier ordering.
+//
+// Example — per-call opt-in:
+//
+//	chosen := negotiate.ContentType(r, offers, "",
+//	    negotiate.WithMatchSuffix(true),
+//	)
+//
+// Example — server-wide opt-in (via [middleware.Context]):
+//
+//	ctx := middleware.NewContext(spec, api, nil).SetMatchSuffix(true)
+func WithMatchSuffix(enable bool) Option {
+	return func(o *options) {
+		o.matchSuffix = enable
 	}
 }
 
@@ -132,7 +163,11 @@ func ContentType(r *http.Request, offers []string, defaultOffer string, opts ...
 		offerSet = stripSet(offerSet)
 	}
 
-	best, ok := acceptSet.BestMatch(offerSet)
+	var matchOpts []mediatype.MatchOption
+	if o.matchSuffix {
+		matchOpts = append(matchOpts, mediatype.AllowSuffix())
+	}
+	best, ok := acceptSet.BestMatch(offerSet, matchOpts...)
 	if !ok {
 		return defaultOffer
 	}

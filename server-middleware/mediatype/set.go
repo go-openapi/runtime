@@ -34,22 +34,24 @@ func ParseAccept(s string) Set {
 }
 
 // BestMatch picks the offer most acceptable to the receiver's Accept
-// entries. Selection follows RFC 7231 §5.3.2 plus an alias-aware
-// tier:
+// entries. Selection follows RFC 7231 §5.3.2 plus tier-aware
+// ranking:
 //
 //   - highest q-value wins;
 //   - ties on q broken by the highest [MediaType.Specificity] of the
 //     matching Accept entry;
 //   - ties on specificity broken by [MatchKind] (MatchExact beats
-//     MatchAlias);
+//     MatchAlias beats MatchSuffix);
 //   - ties on match kind broken by earliest position in offered.
 //
 // Accept entries with q=0 are treated as exclusions and never match.
+// MatchSuffix results are only counted when [AllowSuffix] is passed.
 // Returns ok=false if no offer matched any non-zero-q entry.
-func (s Set) BestMatch(offered Set) (best MediaType, ok bool) {
+func (s Set) BestMatch(offered Set, opts ...MatchOption) (best MediaType, ok bool) {
 	if len(s) == 0 || len(offered) == 0 {
 		return MediaType{}, false
 	}
+	o := applyMatchOptions(opts)
 	bestQ := -1.0
 	bestSpec := -1
 	bestKind := MatchNone
@@ -61,6 +63,9 @@ func (s Set) BestMatch(offered Set) (best MediaType, ok bool) {
 			}
 			kind := offer.Match(entry)
 			if kind == MatchNone {
+				continue
+			}
+			if kind == MatchSuffix && !o.allowSuffix {
 				continue
 			}
 			spec := entry.Specificity()

@@ -28,6 +28,7 @@ const (
 	mtProbJSONUTF8 = "application/problem+json;charset=utf-8"
 	mtFooBar       = "application/foo+bar+json"
 	mtPlusJSON     = "application/+json"
+	mtFooYAML      = "application/vnd.foo+yaml"
 )
 
 func TestParseSuffix(t *testing.T) {
@@ -50,7 +51,7 @@ func TestParseSuffix(t *testing.T) {
 		{"application/geo+json", "geo+json", tJSON},
 		{"application/hal+json", "hal+json", tJSON},
 		{"application/vnd.foo+xml", subFooXML, tXML},
-		{"application/vnd.foo+yaml", subFooYAML, tYAML},
+		{mtFooYAML, subFooYAML, tYAML},
 
 		// Suffix with parameters.
 		{mtProbJSONUTF8, subProbJSON, tJSON},

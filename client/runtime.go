@@ -49,6 +49,14 @@ type Runtime struct {
 	Debug  bool
 	logger logger.Logger
 
+	// MatchSuffix enables RFC 6839 structured-syntax suffix tolerance
+	// for codec lookup. When true, a response with Content-Type
+	// "application/problem+json" finds the JSON consumer registered
+	// under "application/json"; with the default false, the lookup
+	// is strict and falls through to the "*/*" wildcard if present.
+	// See [mediatype.AllowSuffix] for the semantics.
+	MatchSuffix bool
+
 	clientOnce *sync.Once
 	client     *http.Client
 	schemes    []string
@@ -342,12 +350,14 @@ func (r *Runtime) dumpResponse(res *http.Response, ct string) error {
 
 // resolveConsumer parses ct and returns the registered Consumer for
 // that media type. Lookup is alias-aware (RFC 9512 §2.1 — yaml
-// aliases) and falls back to the "*/*" entry if any.
+// aliases) and, when [Runtime.MatchSuffix] is true, also tolerates
+// RFC 6839 structured-syntax suffix media types (+json, +xml, +yaml).
+// Falls back to the "*/*" entry if no match found.
 func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
 	if _, _, err := mime.ParseMediaType(ct); err != nil {
 		return nil, fmt.Errorf("parse content type: %s", err)
 	}
-	if cons, ok := mediatype.Lookup(r.Consumers, ct); ok {
+	if cons, ok := mediatype.Lookup(r.Consumers, ct, r.matchOpts()...); ok {
 		return cons, nil
 	}
 	if cons, ok := r.Consumers["*/*"]; ok {
@@ -355,6 +365,16 @@ func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
 	}
 	// scream about not knowing what to do
 	return nil, fmt.Errorf("no consumer: %q", ct)
+}
+
+// matchOpts builds the mediatype.MatchOption slice for codec
+// lookups on the Runtime, currently just the AllowSuffix opt-in.
+func (r *Runtime) matchOpts() []mediatype.MatchOption {
+	if !r.MatchSuffix {
+		return nil
+	}
+
+	return []mediatype.MatchOption{mediatype.AllowSuffix()}
 }
 
 // createHTTPRequestContext is the context-aware builder of a [http.Request].
@@ -403,8 +423,8 @@ func (r *Runtime) prepareRequest(operation *runtime.ClientOperation) (*request.R
 		})
 	}
 
-	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.Producers, r.DefaultMediaType)
-	if _, ok := mediatype.Lookup(r.Producers, cmt); !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
+	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.Producers, r.DefaultMediaType, r.matchOpts()...)
+	if _, ok := mediatype.Lookup(r.Producers, cmt, r.matchOpts()...); !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
 		return nil, "", nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
 	}
 
@@ -440,7 +460,7 @@ func (r *Runtime) applyHostScheme(httpReq *http.Request, operation *runtime.Clie
 // Step 2 closes part of issues #32 and #386: an operation declaring
 // `consumes: [application/x-vendor, application/json]` with no vendor
 // producer registered now silently uses JSON instead of erroring.
-func pickConsumesMediaType(consumes []string, producers map[string]runtime.Producer, def string) string {
+func pickConsumesMediaType(consumes []string, producers map[string]runtime.Producer, def string, opts ...mediatype.MatchOption) string {
 	for _, mt := range consumes {
 		if strings.EqualFold(mt, runtime.MultipartFormMime) {
 			return mt
@@ -457,7 +477,7 @@ func pickConsumesMediaType(consumes []string, producers map[string]runtime.Produ
 		if isStructuralMime(mt) {
 			return mt
 		}
-		if _, ok := mediatype.Lookup(producers, mt); ok {
+		if _, ok := mediatype.Lookup(producers, mt, opts...); ok {
 			return mt
 		}
 	}

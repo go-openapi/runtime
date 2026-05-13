@@ -33,11 +33,11 @@ type validation struct {
 // a 400 [errors.ParseError]). This function therefore only sees the
 // malformed case when invoked directly by callers that have bypassed
 // that step.
-func validateContentType(allowed []string, actual string) error {
+func validateContentType(allowed []string, actual string, opts ...mediatype.MatchOption) error {
 	if len(allowed) == 0 {
 		return nil
 	}
-	_, ok, err := mediatype.MatchFirst(allowed, actual)
+	_, ok, err := mediatype.MatchFirst(allowed, actual, opts...)
 	if ok {
 		return nil
 	}
@@ -96,12 +96,12 @@ func (v *validation) contentType() {
 
 		if len(v.result) == 0 {
 			v.debugLogf("validating content type for %q against [%s]", ct, strings.Join(v.route.Consumes, ", "))
-			if err := validateContentType(v.route.Consumes, ct); err != nil {
+			if err := validateContentType(v.route.Consumes, ct, v.context.matchOpts()...); err != nil {
 				v.result = append(v.result, err)
 			}
 		}
 		if ct != "" && v.route.Consumer == nil {
-			cons, ok := mediatype.Lookup(v.route.Consumers, ct)
+			cons, ok := mediatype.Lookup(v.route.Consumers, ct, v.context.matchOpts()...)
 			if !ok {
 				v.result = append(v.result, errors.New(http.StatusInternalServerError, "no consumer registered for %s", ct))
 			} else {

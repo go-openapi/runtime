@@ -7,12 +7,13 @@ package mediatype
 // using [MediaType.Match] — the param-aware RFC 7231 rule plus the
 // alias bridge from the package-internal alias table.
 //
-// The scan is two-pass: the first pass returns the first allowed
-// entry that matches under [MatchExact] (RFC 7231 semantics); only
-// when no exact match is found does the second pass look for a
-// [MatchAlias] match. This preserves the "exact beats alias" tier
-// from [Set.BestMatch] while keeping the "first match wins"
-// semantics within each tier.
+// The scan is multi-pass and tier-ordered: the first pass returns
+// the first allowed entry that matches under [MatchExact] (RFC 7231
+// semantics); the second pass looks for a [MatchAlias] match; when
+// [AllowSuffix] is in opts a third pass looks for a [MatchSuffix]
+// match. This preserves the "stronger tier wins" ordering from
+// [Set.BestMatch] while keeping the "first match wins" semantics
+// within each tier.
 //
 // Return values:
 //
@@ -31,7 +32,7 @@ package mediatype
 // An empty allowed list returns (zero, false, nil). MatchFirst is
 // the primitive; callers decide what no-constraints means in their
 // context.
-func MatchFirst(allowed []string, actual string) (MediaType, bool, error) {
+func MatchFirst(allowed []string, actual string, opts ...MatchOption) (MediaType, bool, error) {
 	if len(allowed) == 0 {
 		return MediaType{}, false, nil
 	}
@@ -39,26 +40,24 @@ func MatchFirst(allowed []string, actual string) (MediaType, bool, error) {
 	if err != nil {
 		return MediaType{}, false, err
 	}
-	// Two-pass scan: exact tier first, alias tier as fallback. The
-	// allowed list is typically short (an operation's Consumes set),
-	// so re-parsing each entry on the alias pass is cheaper than
-	// caching parses across both.
-	for _, a := range allowed {
-		allowedMT, perr := Parse(a)
-		if perr != nil {
-			continue
-		}
-		if allowedMT.Match(actualMT) == MatchExact {
-			return allowedMT, true, nil
-		}
+	o := applyMatchOptions(opts)
+	// Tier-ordered passes over the allowed list. The list is
+	// typically short (an operation's Consumes set), so re-parsing
+	// each entry on every pass is cheaper than caching parses across
+	// passes.
+	tiers := []MatchKind{MatchExact, MatchAlias}
+	if o.allowSuffix {
+		tiers = append(tiers, MatchSuffix)
 	}
-	for _, a := range allowed {
-		allowedMT, perr := Parse(a)
-		if perr != nil {
-			continue
-		}
-		if allowedMT.Match(actualMT) == MatchAlias {
-			return allowedMT, true, nil
+	for _, want := range tiers {
+		for _, a := range allowed {
+			allowedMT, perr := Parse(a)
+			if perr != nil {
+				continue
+			}
+			if allowedMT.Match(actualMT) == want {
+				return allowedMT, true, nil
+			}
 		}
 	}
 

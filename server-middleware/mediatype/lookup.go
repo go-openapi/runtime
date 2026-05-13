@@ -20,11 +20,17 @@ package mediatype
 //  3. The alias-canonicalized form from the package-internal alias
 //     table — for example, a request for "application/yaml" finds
 //     an entry registered under "application/x-yaml".
-//  4. As a final pass, walks m and returns the first entry whose
-//     own key alias-canonicalizes to the same target as mediaType.
-//     This covers the "map keyed by one alias, query uses another
-//     alias of the same canonical" case (e.g. registered under
-//     text/yaml, queried as application/x-yaml).
+//  4. Walks m and returns the first entry whose own key
+//     alias-canonicalizes to the same target as mediaType. This
+//     covers the "map keyed by one alias, query uses another alias
+//     of the same canonical" case (e.g. registered under text/yaml,
+//     queried as application/x-yaml).
+//  5. When [AllowSuffix] is passed in opts: the RFC 6839
+//     structured-syntax suffix base on the query side (plus its own
+//     alias canonical). Catches the "spec/traffic divergence" case
+//     (request for application/vnd.api+json finds a JSON consumer
+//     registered under application/json). Query-side only — no
+//     map-side suffix folding.
 //
 // Lookup does NOT fall back to "*/*". Callers that want wildcard
 // behavior (the historical resolveConsumer pattern in the client
@@ -39,15 +45,16 @@ package mediatype
 //
 //   - m is empty;
 //   - mediaType fails to parse and is not present verbatim;
-//   - none of the four tiers hits.
+//   - none of the active tiers hits.
 //
 // The malformed-vs-not-found distinction is intentionally elided:
 // codec-lookup callers treat both as the same "no codec" error path.
-func Lookup[T any](m map[string]T, mediaType string) (T, bool) {
+func Lookup[T any](m map[string]T, mediaType string, opts ...MatchOption) (T, bool) {
 	var zero T
 	if len(m) == 0 {
 		return zero, false
 	}
+	o := applyMatchOptions(opts)
 	// Tier 1: raw key.
 	if v, ok := m[mediaType]; ok {
 		return v, true
@@ -83,6 +90,40 @@ func Lookup[T any](m map[string]T, mediaType string) (T, bool) {
 		}
 		if kCanon == target {
 			return v, true
+		}
+	}
+	// Tier 5 (opt-in): RFC 6839 structured-syntax suffix base. Only
+	// fires when the query carries a known suffix and the suffix
+	// resolves to a base type in the package-internal suffix→base
+	// table. Query-side suffix fold only — we still walk the map
+	// applying alias canonicalization (same as tier 4), but never
+	// fold a map key's suffix.
+	if o.allowSuffix && mt.Suffix != "" {
+		base := mt.Base()
+		if base.Type != mt.Type || base.Subtype != mt.Subtype {
+			baseKey := base.Type + "/" + base.Subtype
+			baseTarget := baseKey
+			if v, ok := m[baseKey]; ok {
+				return v, true
+			}
+			if canon, ok := aliases[baseKey]; ok {
+				baseTarget = canon
+				if v, ok := m[canon]; ok {
+					return v, true
+				}
+			}
+			// Catches the "map keyed by an alias of the suffix base"
+			// case (e.g. base resolves to application/yaml, map is
+			// keyed by application/x-yaml).
+			for k, v := range m {
+				kCanon := k
+				if c, ok := aliases[k]; ok {
+					kCanon = c
+				}
+				if kCanon == baseTarget {
+					return v, true
+				}
+			}
 		}
 	}
 	return zero, false

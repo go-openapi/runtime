@@ -37,17 +37,57 @@ const (
 // negotiation tie-breaks.
 //
 // MatchExact covers direct subtype or wildcard agreement under RFC
-// 7231 rules; MatchAlias is returned only when the strict comparison
+// 7231 rules; MatchAlias is returned when the strict comparison
 // fails but the two values agree after canonicalization through the
-// internal aliases table (see [MediaType.Canonical]).
+// internal alias table (see [MediaType.Canonical]); MatchSuffix is
+// returned only when both alias and exact comparisons fail but the
+// two values agree after folding the RFC 6839 structured-syntax
+// suffix (see [MediaType.Base]).
+//
+// MatchSuffix matches are off by default at the negotiation /
+// lookup callers — they count only when [AllowSuffix] is passed to
+// [Set.BestMatch], [MatchFirst], or [Lookup]. The opt-in is the
+// single user-visible knob; [MediaType.Match] itself always returns
+// the strongest tier that succeeds.
 type MatchKind int
 
 // MatchKind values. Returned by [MediaType.Match].
 const (
-	MatchNone  MatchKind = iota // no match
-	MatchAlias                  // matched via the alias table
-	MatchExact                  // matched directly (RFC 7231 semantics)
+	MatchNone   MatchKind = iota // no match
+	MatchSuffix                  // matched via the RFC 6839 suffix base
+	MatchAlias                   // matched via the alias table
+	MatchExact                   // matched directly (RFC 7231 semantics)
 )
+
+// MatchOption configures the matching tolerances used by
+// [Set.BestMatch], [MatchFirst], and [Lookup]. The zero behaviour
+// is strict: only [MatchAlias] and [MatchExact] count.
+type MatchOption func(*matchOptions)
+
+type matchOptions struct {
+	allowSuffix bool
+}
+
+func applyMatchOptions(opts []MatchOption) matchOptions {
+	var o matchOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
+}
+
+// AllowSuffix returns a [MatchOption] that lets the caller count
+// [MatchSuffix] results as valid matches. Use this to opt into
+// RFC 6839 structured-syntax suffix tolerance for situations where
+// the client/server traffic does not strictly abide by the spec
+// (typical example: server returning application/problem+json
+// against operations that only declare application/json in
+// produces).
+func AllowSuffix() MatchOption {
+	return func(o *matchOptions) {
+		o.allowSuffix = true
+	}
+}
 
 type mediaTypeError string
 
@@ -306,26 +346,34 @@ func (m MediaType) Canonical() MediaType {
 }
 
 // Match reports how m matches other, classifying the result by
-// [MatchKind]. Used by negotiation to rank candidate offers: exact
-// matches always win over alias matches when both are available.
+// [MatchKind]. Used by negotiation to rank candidate offers:
+// stronger tiers win when both apply.
 //
-// Returns:
+// Returns, strongest first:
 //
 //   - MatchExact when m.Matches(other) is true under the strict
 //     RFC 7231 rules (including wildcards and the param subset
 //     rule).
 //   - MatchAlias when m.Canonical().Matches(other.Canonical())
 //     is true but the strict comparison failed.
+//   - MatchSuffix when m.Base().Canonical().Matches(
+//     other.Base().Canonical()) is true but the alias comparison
+//     failed (RFC 6839 structured-syntax suffix fold).
 //   - MatchNone otherwise.
 //
 // The asymmetric "bound vs constraint" rule of [MediaType.Matches]
-// is preserved at both tiers.
+// is preserved at every tier. Match itself is always lenient — the
+// opt-in to count MatchSuffix lives one level up at [Set.BestMatch],
+// [MatchFirst], and [Lookup] via [AllowSuffix].
 func (m MediaType) Match(other MediaType) MatchKind {
 	if m.Matches(other) {
 		return MatchExact
 	}
 	if m.Canonical().Matches(other.Canonical()) {
 		return MatchAlias
+	}
+	if m.Base().Canonical().Matches(other.Base().Canonical()) {
+		return MatchSuffix
 	}
 	return MatchNone
 }

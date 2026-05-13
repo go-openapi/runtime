@@ -86,6 +86,105 @@ The asymmetry is intrinsic to the semantics ("loose if the bound has no
 params, otherwise the constraint must be a subset"), not to which side is
 the server.
 
+## Beyond strict matching — alias and suffix tolerances
+
+The bare `Matches` rule above is strict RFC 7231: type, subtype, and the
+parameter subset. Two extensions sit on top of it, both surfaced through
+the graded result of `MediaType.Match`:
+
+| Tier | Reached when | Example |
+|---|---|---|
+| `MatchExact` | Strict RFC 7231 match. | `application/json` vs `application/json` |
+| `MatchAlias` | Strict fails but both sides resolve to the same canonical form via the package-internal alias table. | `application/x-yaml` vs `application/yaml` |
+| `MatchSuffix` | Strict and alias both fail but both sides resolve to the same base after folding the RFC 6839 structured-syntax suffix. | `application/vnd.api+json` vs `application/json` |
+| `MatchNone` | None of the above. | |
+
+`Set.BestMatch`, `MatchFirst`, and `mediatype.Lookup` rank candidates by
+this tier in addition to q-value and specificity — when two offers fit a
+constraint at different tiers, the stronger tier wins regardless of
+offer order. Exact beats alias, alias beats suffix.
+
+### Alias bridge — always on
+
+RFC 9512 §2.1 enumerates three deprecated alias names for the
+`application/yaml` registration:
+
+| Alias | Canonical |
+|---|---|
+| `application/x-yaml` | `application/yaml` |
+| `text/yaml` | `application/yaml` |
+| `text/x-yaml` | `application/yaml` |
+
+A request, offer, or codec registration in any of these forms matches a
+counterpart in any of the others. The bridge is wire-format equivalence
+backed by an explicit IANA registration-template field — no opt-in
+needed and no way to disable it.
+
+### Structured-syntax suffix tolerance — opt-in
+
+`+json`, `+xml`, and `+yaml` are the RFC 6839 structured-syntax suffixes
+the runtime recognises. Their wire format is the underlying base
+(`+json` is JSON), but their semantics carry application-specific
+structure on top (`application/problem+json` is JSON-on-the-wire with
+the RFC 7807 problem-details document shape). Tolerating these as
+equivalent to the base format is a contract loosening, so the runtime
+defaults to strict and surfaces the leniency through an explicit
+opt-in.
+
+Three matching knobs at three layers:
+
+```go
+// per-call (in negotiation only)
+chosen := negotiate.ContentType(r, offers, "",
+    negotiate.WithMatchSuffix(true),
+)
+
+// server-wide
+ctx := middleware.NewContext(spec, api, nil).SetMatchSuffix(true)
+
+// client-wide
+rt := client.New(host, basePath, schemes)
+rt.MatchSuffix = true
+```
+
+All three feed the same `mediatype.AllowSuffix()` option through
+`Set.BestMatch`, `MatchFirst`, and `mediatype.Lookup`. With the flag on,
+a spec declaring `consumes: [application/json]` end-to-end tolerates
+request bodies sent with `Content-Type: application/vnd.api+json` (and
+likewise for `+xml` / `+yaml`). With the flag off — the default — such
+a request is rejected with 415, exactly as before.
+
+The opt-in is intended for situations where the user does not control
+both sides of the wire:
+
+- a server that wants to accept `application/problem+json` errors from
+  upstream services declared as `application/json`;
+- a client that needs to consume `application/problem+json` responses
+  from servers whose spec only declares `application/json` in `produces`.
+
+If both sides are under your control, **prefer to align the spec**:
+list `application/vnd.api+json` (or whichever variant applies)
+explicitly in `consumes` / `produces`. The opt-in is leeway for the
+common real-world mismatch, not a substitute for a faithful spec.
+
+### Tier interactions worth pinning
+
+- **Parameters still bind at every tier.** A constraint of
+  `application/yaml; charset=utf-8` does not match an offer of
+  `application/yaml; charset=ascii` even with subtypes equal — the
+  parameter-subset rule from `Matches` applies regardless of which tier
+  resolved the subtype. Suffix tolerance does not loosen the param
+  rule.
+- **Exact registrations always win.** If `application/vnd.api+json` is
+  explicitly in `consumes` (or registered as a producer), routing and
+  codec lookup never fall through to the suffix tier for that mime —
+  even with `WithMatchSuffix(true)`.
+- **Map-side suffix folding is intentionally absent.** A registration
+  at `application/vnd.api+json` does *not* receive a query of
+  `application/json` even with the opt-in. The inverse case ("only the
+  vendor consumer is registered, plain-base query arrives") is not a
+  scenario the runtime tries to cover.
+
 ## Server side — inbound `Content-Type` validation
 
 Flow when a request arrives with a body:
@@ -395,6 +494,16 @@ your `produces` use mismatched charset/version params and you treat
 those as informational, opt out with `negotiate.WithIgnoreParameters(true)`
 (per call) or `Context.SetIgnoreParameters(true)` (server-wide).
 
+**"My server rejects `application/vnd.api+json` (or `application/problem+json`) with 415."**
+The default match is strict RFC 7231 — a vendor `+json` mime is *not*
+a `application/json` mime. Two routes forward: (1) list the vendor
+mime explicitly in the operation's `consumes` and register a codec
+under that key (the spec-faithful path); or (2) enable
+`Context.SetMatchSuffix(true)` server-wide to fold `+json` / `+xml` /
+`+yaml` to the underlying base codec at lookup time (the leeway path,
+for situations where the client is not under your control). See
+the "Beyond strict matching" section above.
+
 **"My client request returns 415 even though the API lists my type in `consumes`."**
 Check the wire `Content-Type` against your server's `consumes` matching
 rules. The client sends the picker's choice (with Stage-2 upgrades for
@@ -425,6 +534,8 @@ or the cached value at `middleware.MatchedRouteFrom(r).Consumes`.
 
 - Server matching primitive: `github.com/go-openapi/runtime/server-middleware/mediatype`
 - Server negotiator: `github.com/go-openapi/runtime/server-middleware/negotiate`
+- Codec lookup helper: `mediatype.Lookup[T]` — used by both server (`middleware/context.go`, `middleware/validation.go`) and client (`client/runtime.go`)
+- Alias and suffix tolerances: `mediatype.Match`, `mediatype.MatchKind`, `mediatype.AllowSuffix`; opt-in surfaces `negotiate.WithMatchSuffix`, `middleware.Context.SetMatchSuffix`, `client.Runtime.MatchSuffix`
 - Server validation: `middleware/validation.go` (`validateContentType`)
 - Client Stage-1 picker: `client/runtime.go` (`pickConsumesMediaType`)
 - Client Stage-2 fallback: `client/request.go` (`setStreamContentType`,
