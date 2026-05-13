@@ -44,19 +44,27 @@ func TestParse(t *testing.T) {
 			in       string
 			wantType string
 			wantSub  string
+			wantSfx  string
 			wantQ    float64
 			wantPars map[string]string
 		}{
-			{jsonMime, tApp, tJSON, 1.0, nil},
-			{"  Application/JSON  ", tApp, tJSON, 1.0, nil},
-			{textPlainUTF8, tText, tPlain, 1.0, map[string]string{pCharset: vUTF8}},
-			{"text/plain; charset=utf-8", tText, tPlain, 1.0, map[string]string{pCharset: vUTF8}},
-			{"text/html;q=0.5", tText, tHTML, 0.5, nil},
-			{"text/html;q=0", tText, tHTML, 0.0, nil},
-			{"text/html;q=1", tText, tHTML, 1.0, nil},
-			{"text/html;q=0.7;version=2", tText, tHTML, 0.7, map[string]string{"version": "2"}},
-			{textWild, tText, "*", 1.0, nil},
-			{starStar, "*", "*", 1.0, nil},
+			{jsonMime, tApp, tJSON, "", 1.0, nil},
+			{"  Application/JSON  ", tApp, tJSON, "", 1.0, nil},
+			{textPlainUTF8, tText, tPlain, "", 1.0, map[string]string{pCharset: vUTF8}},
+			{"text/plain; charset=utf-8", tText, tPlain, "", 1.0, map[string]string{pCharset: vUTF8}},
+			{"text/html;q=0.5", tText, tHTML, "", 0.5, nil},
+			{"text/html;q=0", tText, tHTML, "", 0.0, nil},
+			{"text/html;q=1", tText, tHTML, "", 1.0, nil},
+			{"text/html;q=0.7;version=2", tText, tHTML, "", 0.7, map[string]string{"version": "2"}},
+			{textWild, tText, "*", "", 1.0, nil},
+			{starStar, "*", "*", "", 1.0, nil},
+			// RFC 6839 structured-syntax suffix coverage. Exhaustive
+			// suffix cases live in mediatype_suffix_test.go; here we
+			// just confirm Parse populates Suffix alongside the other
+			// fields on a representative sample.
+			{mtAPIJSON, tApp, subAPIJSON, tJSON, 1.0, nil},
+			{mtProbJSONUTF8, tApp, subProbJSON, tJSON, 1.0, map[string]string{pCharset: vUTF8}},
+			{"application/vnd.foo+xml;q=0.5", tApp, subFooXML, tXML, 0.5, nil},
 		}
 		for _, c := range cases {
 			t.Run(c.in, func(t *testing.T) {
@@ -64,6 +72,7 @@ func TestParse(t *testing.T) {
 				require.NoError(t, err)
 				assert.EqualT(t, c.wantType, got.Type)
 				assert.EqualT(t, c.wantSub, got.Subtype)
+				assert.EqualT(t, c.wantSfx, got.Suffix)
 				assert.EqualT(t, c.wantQ, got.Q)
 				if c.wantPars == nil {
 					assert.Nil(t, got.Params)
@@ -78,7 +87,7 @@ func TestParse(t *testing.T) {
 		invalid := []string{
 			"",
 			"   ",
-			"application",
+			tApp,
 			"application/",
 			"/json",
 			"application(",
@@ -115,7 +124,7 @@ func TestString(t *testing.T) {
 		in   MediaType
 		want string
 	}{
-		{MediaType{Type: "application", Subtype: "json"}, jsonMime},
+		{MediaType{Type: tApp, Subtype: tJSON}, jsonMime},
 		{MediaType{Type: "text", Subtype: "plain", Params: map[string]string{pCharset: vUTF8}}, "text/plain; charset=utf-8"},
 		{MediaType{Type: "*", Subtype: "*"}, starStar},
 		{MediaType{}, ""},
@@ -132,7 +141,7 @@ func TestRoundtrip(t *testing.T) {
 	inputs := []string{
 		jsonMime,
 		textPlainUTF8,
-		"application/vnd.api+json",
+		mtAPIJSON,
 		"multipart/form-data;boundary=xyz",
 	}
 	for _, s := range inputs {
@@ -144,6 +153,7 @@ func TestRoundtrip(t *testing.T) {
 			require.NoError(t, err)
 			assert.EqualT(t, m1.Type, m2.Type)
 			assert.EqualT(t, m1.Subtype, m2.Subtype)
+			assert.EqualT(t, m1.Suffix, m2.Suffix)
 			assert.EqualValues(t, m1.Params, m2.Params)
 		})
 	}

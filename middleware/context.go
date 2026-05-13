@@ -22,6 +22,7 @@ import (
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/runtime/server-middleware/docui"
+	"github.com/go-openapi/runtime/server-middleware/mediatype"
 	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
 
@@ -80,6 +81,7 @@ type Context struct {
 	router           Router
 	debugLogf        func(string, ...any) // a logging function to debug context and all components using it
 	ignoreParameters bool                 // see SetIgnoreParameters / WithIgnoreParameters
+	matchSuffix      bool                 // see SetMatchSuffix / WithMatchSuffix
 }
 
 // NewRoutableContext creates a new context for a routable API.
@@ -147,6 +149,27 @@ func Serve(spec *loads.Document, api *untyped.API) http.Handler {
 // See [WithIgnoreParameters] for the rationale and an example.
 func (c *Context) SetIgnoreParameters(ignore bool) *Context {
 	c.ignoreParameters = ignore
+
+	return c
+}
+
+// SetMatchSuffix toggles RFC 6839 structured-syntax suffix tolerance
+// server-wide. When enabled, both Accept negotiation and codec lookup
+// fall back through the suffix base for the recognised suffixes
+// (+json, +xml, +yaml) — so an operation declaring
+// consumes: [application/json] also accepts request bodies sent with
+// Content-Type: application/vnd.api+json (or any other +json variant).
+//
+// Default: strict (false). Use only when interoperating with clients
+// that do not strictly abide by the spec.
+//
+// Returns the receiver for fluent configuration:
+//
+//	ctx := middleware.NewContext(spec, api, nil).SetMatchSuffix(true)
+//
+// See [negotiate.WithMatchSuffix] for the per-call form and rationale.
+func (c *Context) SetMatchSuffix(enable bool) *Context {
+	c.matchSuffix = enable
 
 	return c
 }
@@ -348,7 +371,7 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 				res = append(res, err)
 			}
 			if len(res) == 0 {
-				cons, ok := route.Consumers[ct]
+				cons, ok := mediatype.Lookup(route.Consumers, ct, c.matchOpts()...)
 				if !ok {
 					res = append(res, errors.New(http.StatusInternalServerError, "no consumer registered for %s", ct))
 				} else {
@@ -722,11 +745,27 @@ func (c Context) uiOptionsForHandler(opts []UIOption) []docui.Option {
 }
 
 func (c *Context) negotiateOpts() []negotiate.Option {
-	if !c.ignoreParameters {
+	var opts []negotiate.Option
+	if c.ignoreParameters {
+		opts = append(opts, negotiate.WithIgnoreParameters(true))
+	}
+	if c.matchSuffix {
+		opts = append(opts, negotiate.WithMatchSuffix(true))
+	}
+
+	return opts
+}
+
+// matchOpts builds the mediatype.MatchOption slice that the
+// codec-lookup and Content-Type validation paths apply server-wide.
+// Mirrors negotiateOpts but at the mediatype level (without going
+// through the negotiate.Option wrapper).
+func (c *Context) matchOpts() []mediatype.MatchOption {
+	if !c.matchSuffix {
 		return nil
 	}
 
-	return []negotiate.Option{negotiate.WithIgnoreParameters(true)}
+	return []mediatype.MatchOption{mediatype.AllowSuffix()}
 }
 
 func cantFindProducer(format string) string {

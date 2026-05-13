@@ -27,6 +27,7 @@ const (
 	textPlainASCII = "text/plain;charset=ascii"
 
 	textPlainUTF8 = "text/plain;charset=utf-8"
+	mtAPIJSON     = "application/vnd.api+json"
 	jsonV1        = "application/json;version=1"
 	htmlPNGq05    = "text/html, image/png; q=0.5"
 	xy            = "x/y"
@@ -202,6 +203,53 @@ func TestNegotiateContentTypeMultiHeader(t *testing.T) {
 	offers := []string{jsonMime}
 	if got := negotiate.ContentType(r, offers, ""); got != jsonMime {
 		t.Errorf("got %q, want %q (later Accept value should still match)", got, jsonMime)
+	}
+}
+
+// TestNegotiateContentTypeWithMatchSuffix exercises the per-call
+// opt-in for RFC 6839 structured-syntax suffix tolerance. Without
+// the option the default test matrix (see "vendor MIME unmatched"
+// row above) already pins strict behaviour.
+func TestNegotiateContentTypeWithMatchSuffix(t *testing.T) {
+	cases := []struct {
+		name         string
+		acceptHeader string
+		offers       []string
+		defaultOffer string
+		expect       string
+	}{
+		{
+			"vendor +json matches base json via suffix tier",
+			jsonMime, []string{mtAPIJSON}, "",
+			mtAPIJSON,
+		},
+		{
+			"problem+json matches base json",
+			jsonMime, []string{"application/problem+json"}, "",
+			"application/problem+json",
+		},
+		{
+			"exact beats suffix regardless of offer order",
+			jsonMime, []string{mtAPIJSON, jsonMime}, "",
+			jsonMime,
+		},
+		{
+			"unrelated suffix base still misses",
+			jsonMime, []string{"application/vnd.foo+xml"}, "",
+			"",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := &http.Request{Header: http.Header{headerAccept: {c.acceptHeader}}}
+			got := negotiate.ContentType(r, c.offers, c.defaultOffer,
+				negotiate.WithMatchSuffix(true),
+			)
+			if got != c.expect {
+				t.Errorf("ContentType(%q, %#v, %q, WithMatchSuffix(true)) = %q, want %q",
+					c.acceptHeader, c.offers, c.defaultOffer, got, c.expect)
+			}
+		})
 	}
 }
 

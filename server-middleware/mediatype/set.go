@@ -34,28 +34,38 @@ func ParseAccept(s string) Set {
 }
 
 // BestMatch picks the offer most acceptable to the receiver's Accept
-// entries. Selection follows RFC 7231 §5.3.2:
+// entries. Selection follows RFC 7231 §5.3.2 plus tier-aware
+// ranking:
 //
 //   - highest q-value wins;
 //   - ties on q broken by the highest [MediaType.Specificity] of the
 //     matching Accept entry;
-//   - ties on specificity broken by earliest position in offered.
+//   - ties on specificity broken by [MatchKind] (MatchExact beats
+//     MatchAlias beats MatchSuffix);
+//   - ties on match kind broken by earliest position in offered.
 //
 // Accept entries with q=0 are treated as exclusions and never match.
+// MatchSuffix results are only counted when [AllowSuffix] is passed.
 // Returns ok=false if no offer matched any non-zero-q entry.
-func (s Set) BestMatch(offered Set) (best MediaType, ok bool) {
+func (s Set) BestMatch(offered Set, opts ...MatchOption) (best MediaType, ok bool) {
 	if len(s) == 0 || len(offered) == 0 {
 		return MediaType{}, false
 	}
+	o := applyMatchOptions(opts)
 	bestQ := -1.0
 	bestSpec := -1
+	bestKind := MatchNone
 	bestIdx := -1
 	for i, offer := range offered {
 		for _, entry := range s {
 			if entry.Q == 0 {
 				continue
 			}
-			if !offer.Matches(entry) {
+			kind := offer.Match(entry)
+			if kind == MatchNone {
+				continue
+			}
+			if kind == MatchSuffix && !o.allowSuffix {
 				continue
 			}
 			spec := entry.Specificity()
@@ -64,14 +74,22 @@ func (s Set) BestMatch(offered Set) (best MediaType, ok bool) {
 				best, ok = offer, true
 				bestQ = entry.Q
 				bestSpec = spec
+				bestKind = kind
 				bestIdx = i
 			case entry.Q < bestQ:
 				// not better
 			case spec > bestSpec:
 				best, ok = offer, true
 				bestSpec = spec
+				bestKind = kind
 				bestIdx = i
 			case spec < bestSpec:
+				// not better
+			case kind > bestKind:
+				best, ok = offer, true
+				bestKind = kind
+				bestIdx = i
+			case kind < bestKind:
 				// not better
 			case bestIdx < 0 || i < bestIdx:
 				best, ok = offer, true
