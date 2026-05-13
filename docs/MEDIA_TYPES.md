@@ -470,11 +470,101 @@ preference fix from #286 are preserved verbatim.
 
 ## Client side — inbound responses
 
-The client uses the operation's `Reader` plus the per-MIME `Consumers`
-map. There is no `Accept` negotiation step on the client beyond the
-header value the user (or codegen) sets on the request — the response
-content type is taken from `Content-Type` on the response and dispatched
-to the matching consumer.
+There is no `Accept` negotiation step at decode time. The client sent
+its `Accept` header on the request and is now reading whatever the
+server chose to return — the response's `Content-Type` header is the
+single input the codec dispatcher consults.
+
+### Pipeline
+
+```
+response.Header["Content-Type"]
+        │
+        ▼
+   resolveConsumer(ct)     ── client/runtime.go
+        │
+        ▼  picks a runtime.Consumer
+   operation.Reader        ── codegen-emitted; switches on status code,
+        │                     hands the body to the picked consumer,
+        ▼                     decodes into the typed response struct
+   typed response value or error
+```
+
+The codegen-emitted **operation `Reader`** is the piece most users
+never see. It's a generated function per operation that:
+
+1. Reads the HTTP status code and selects the matching response
+   definition from the spec.
+2. Calls `runtime.ContentType(response.Header)` to extract the bare
+   mime.
+3. Invokes the runtime to resolve a consumer for that mime
+   (`resolveConsumer`).
+4. Decodes the body into the response definition's Go type via
+   `consumer.Consume(body, target)`.
+
+If you are writing a custom client without codegen, you implement
+this function yourself.
+
+### `resolveConsumer` — picking a consumer
+
+`resolveConsumer(ct string)` in `client/runtime.go` is the single
+codec-lookup site on the client. It runs:
+
+1. Parse `ct` (rejects malformed values with a `"parse content type:
+   …"` error — surfaced as a client-side error, not as a server
+   response).
+2. `mediatype.Lookup(r.Consumers, ct, r.matchOpts()...)` — runs the
+   four always-on tiers (raw key, parsed canonical, alias query-side,
+   alias map-side) plus the opt-in suffix tier when
+   `Runtime.MatchSuffix` is set. See "Beyond strict matching" above.
+3. On lookup miss, fall back to `r.Consumers["*/*"]` if a wildcard
+   consumer is registered.
+4. On full miss, return `"no consumer: %q"` — the operation `Reader`
+   propagates this as the operation's error.
+
+### Where `Runtime.MatchSuffix` lands
+
+Setting `rt.MatchSuffix = true` flips the inbound decode path to
+tolerate RFC 6839 suffix media types: a response with
+`Content-Type: application/problem+json` finds the JSON consumer
+registered at `application/json`, decoded into whatever Go type the
+response definition declares. The wildcard `"*/*"` fallback runs
+unchanged after the suffix tier.
+
+Symmetric to the server-side `Context.SetMatchSuffix(true)` — the
+opt-in is independent on each side and exists for exactly the same
+reason: real servers (or real clients) that don't strictly abide by
+the spec's `produces` / `consumes` declarations.
+
+### Alias bridge — also active here
+
+The always-on alias bridge applies on this path too. A client that
+registers the YAML consumer at the legacy `application/x-yaml` key
+(or, for that matter, leaves the default-map flip in place at
+`application/yaml`) handles a server response with
+`Content-Type: text/yaml` correctly — `mediatype.Lookup`
+canonicalizes both keys to `application/yaml` and finds the consumer
+regardless of which form was registered.
+
+### Failure modes worth knowing
+
+- **Malformed `Content-Type`** (e.g. trailing garbage, unterminated
+  quoted string) — `resolveConsumer` returns an error sourced from
+  `mime.ParseMediaType`, prefixed with `parse content type:`. The
+  operation `Reader` surfaces this as the operation's error; no
+  decode is attempted.
+- **No consumer, no wildcard registered** — `"no consumer: %q"` with
+  the offending Content-Type. Most commonly hit when the server
+  returns an undeclared error mime (`application/problem+json` is the
+  canonical example) and `Runtime.MatchSuffix` is off and `"*/*"` is
+  not registered.
+- **Silent wildcard fallback** — if `Consumers["*/*"]` is registered
+  (the default-map registers `runtime.ByteStreamConsumer` there), any
+  unrecognised `Content-Type` decodes through that consumer. For a
+  typed response struct, this usually fails inside the consumer's own
+  unmarshal with a less specific error than the no-consumer case.
+  Worth knowing if the runtime appears to "silently succeed at
+  decoding garbage."
 
 ## `Accept-Encoding`
 
