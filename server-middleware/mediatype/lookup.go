@@ -14,22 +14,18 @@ package mediatype
 //  1. mediaType verbatim (fast path for callers that already pass a
 //     canonical, parameter-free string and store map keys in the
 //     same form).
-//  2. The canonical "type/subtype" form derived by parsing
-//     mediaType (strips parameters and lowercases — recovers the
-//     match when mediaType carries "; charset=...").
-//  3. The alias-canonicalized form from the package-internal alias
-//     table — for example, a request for "application/yaml" finds
-//     an entry registered under "application/x-yaml".
-//  4. Walks m and returns the first entry whose own key
-//     alias-canonicalizes to the same target as mediaType. This
-//     covers the "map keyed by one alias, query uses another alias
-//     of the same canonical" case (e.g. registered under text/yaml,
-//     queried as application/x-yaml).
-//  5. When [AllowSuffix] is passed in opts: the RFC 6839
-//     structured-syntax suffix base on the query side (plus its own
-//     alias canonical). Catches the "spec/traffic divergence" case
-//     (request for application/vnd.api+json finds a JSON consumer
-//     registered under application/json). Query-side only — no
+//  2. An alias-aware walk against the parsed "type/subtype" form:
+//     a direct map hit on the parsed key, on its alias canonical
+//     if any, and finally an O(len(m)) scan returning any map
+//     entry whose key alias-canonicalizes to the same target.
+//     Catches both "map keyed by canonical, query uses alias" and
+//     "map keyed by one alias, query uses another alias of the
+//     same canonical".
+//  3. When [AllowSuffix] is passed in opts: the same alias-aware
+//     walk against the RFC 6839 structured-syntax suffix base.
+//     Catches the "spec/traffic divergence" case (request for
+//     application/vnd.api+json finds a JSON consumer registered
+//     under application/json). Query-side suffix fold only — no
 //     map-side suffix folding.
 //
 // Lookup does NOT fall back to "*/*". Callers that want wildcard
@@ -45,7 +41,7 @@ package mediatype
 //
 //   - m is empty;
 //   - mediaType fails to parse and is not present verbatim;
-//   - none of the active tiers hits.
+//   - none of the active steps hits.
 //
 // The malformed-vs-not-found distinction is intentionally elided:
 // codec-lookup callers treat both as the same "no codec" error path.
@@ -55,7 +51,9 @@ func Lookup[T any](m map[string]T, mediaType string, opts ...MatchOption) (T, bo
 		return zero, false
 	}
 	o := applyMatchOptions(opts)
-	// Tier 1: raw key.
+	// Fast path: raw key (preserves any caller behaviour that stored
+	// non-canonical strings as map keys, and skips parsing in the
+	// common already-canonical case).
 	if v, ok := m[mediaType]; ok {
 		return v, true
 	}
@@ -64,67 +62,55 @@ func Lookup[T any](m map[string]T, mediaType string, opts ...MatchOption) (T, bo
 		return zero, false
 	}
 	key := mt.Type + "/" + mt.Subtype
-	// Tier 2: parsed canonical form (strips params, lowercases).
-	if key != mediaType {
-		if v, ok := m[key]; ok {
+	if v, ok := findByCanonical(m, key); ok {
+		return v, true
+	}
+	if o.allowSuffix && mt.Suffix != "" {
+		base := mt.Base()
+		if baseKey := base.Type + "/" + base.Subtype; baseKey != key {
+			if v, ok := findByCanonical(m, baseKey); ok {
+				return v, true
+			}
+		}
+	}
+	return zero, false
+}
+
+// findByCanonical returns the first entry in m whose key
+// alias-canonicalizes to the same value as target.
+//
+// Tries direct hits before the O(len(m)) walk:
+//
+//  1. m[target] — map keyed by the same string.
+//  2. m[aliases[target]] — map keyed by the canonical when target
+//     is an alias.
+//  3. Walk m: return any entry where canonical(k) == canonical(target).
+//     Catches the "map keyed by an alias different from the query
+//     side" case (e.g. registered under text/yaml, queried as
+//     application/x-yaml — both canonicalize to application/yaml).
+//
+// Map size is single-digit for the runtime's codec maps, so the
+// walk is negligible.
+func findByCanonical[T any](m map[string]T, target string) (T, bool) {
+	if v, ok := m[target]; ok {
+		return v, true
+	}
+	canonTarget := target
+	if canon, ok := aliases[target]; ok {
+		canonTarget = canon
+		if v, ok := m[canonTarget]; ok {
 			return v, true
 		}
 	}
-	// Tier 3: alias bridge from the query side — fast path when the
-	// map is keyed by the canonical form.
-	target := key
-	if canon, ok := aliases[key]; ok {
-		target = canon
-		if v, ok := m[target]; ok {
-			return v, true
-		}
-	}
-	// Tier 4: alias bridge from the map side. Catches the case where
-	// the map is keyed by an alias (or by a different alias than the
-	// query). O(len(m)) but codec maps are tiny (<10 entries) so this
-	// is negligible.
 	for k, v := range m {
 		kCanon := k
 		if c, ok := aliases[k]; ok {
 			kCanon = c
 		}
-		if kCanon == target {
+		if kCanon == canonTarget {
 			return v, true
 		}
 	}
-	// Tier 5 (opt-in): RFC 6839 structured-syntax suffix base. Only
-	// fires when the query carries a known suffix and the suffix
-	// resolves to a base type in the package-internal suffix→base
-	// table. Query-side suffix fold only — we still walk the map
-	// applying alias canonicalization (same as tier 4), but never
-	// fold a map key's suffix.
-	if o.allowSuffix && mt.Suffix != "" {
-		base := mt.Base()
-		if base.Type != mt.Type || base.Subtype != mt.Subtype {
-			baseKey := base.Type + "/" + base.Subtype
-			baseTarget := baseKey
-			if v, ok := m[baseKey]; ok {
-				return v, true
-			}
-			if canon, ok := aliases[baseKey]; ok {
-				baseTarget = canon
-				if v, ok := m[canon]; ok {
-					return v, true
-				}
-			}
-			// Catches the "map keyed by an alias of the suffix base"
-			// case (e.g. base resolves to application/yaml, map is
-			// keyed by application/x-yaml).
-			for k, v := range m {
-				kCanon := k
-				if c, ok := aliases[k]; ok {
-					kCanon = c
-				}
-				if kCanon == baseTarget {
-					return v, true
-				}
-			}
-		}
-	}
+	var zero T
 	return zero, false
 }
