@@ -17,6 +17,7 @@ import (
 	"github.com/go-openapi/runtime/client/internal/request"
 	"github.com/go-openapi/runtime/logger"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/runtime/server-middleware/mediatype"
 	"github.com/go-openapi/runtime/yamlpc"
 	"github.com/go-openapi/strfmt"
 )
@@ -340,17 +341,16 @@ func (r *Runtime) dumpResponse(res *http.Response, ct string) error {
 }
 
 // resolveConsumer parses ct and returns the registered Consumer for
-// that media type, falling back to the "*/*" entry if any.
+// that media type. Lookup is alias-aware (RFC 9512 §2.1 — yaml
+// aliases) and falls back to the "*/*" entry if any.
 func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
-	mt, _, err := mime.ParseMediaType(ct)
-	if err != nil {
+	if _, _, err := mime.ParseMediaType(ct); err != nil {
 		return nil, fmt.Errorf("parse content type: %s", err)
 	}
-	cons, ok := r.Consumers[mt]
-	if ok {
+	if cons, ok := mediatype.Lookup(r.Consumers, ct); ok {
 		return cons, nil
 	}
-	if cons, ok = r.Consumers["*/*"]; ok {
+	if cons, ok := r.Consumers["*/*"]; ok {
 		return cons, nil
 	}
 	// scream about not knowing what to do
@@ -404,7 +404,7 @@ func (r *Runtime) prepareRequest(operation *runtime.ClientOperation) (*request.R
 	}
 
 	cmt := pickConsumesMediaType(operation.ConsumesMediaTypes, r.Producers, r.DefaultMediaType)
-	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
+	if _, ok := mediatype.Lookup(r.Producers, cmt); !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
 		return nil, "", nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
 	}
 
@@ -457,7 +457,7 @@ func pickConsumesMediaType(consumes []string, producers map[string]runtime.Produ
 		if isStructuralMime(mt) {
 			return mt
 		}
-		if _, ok := producers[mt]; ok {
+		if _, ok := mediatype.Lookup(producers, mt); ok {
 			return mt
 		}
 	}

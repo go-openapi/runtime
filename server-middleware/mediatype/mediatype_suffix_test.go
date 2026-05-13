@@ -212,13 +212,13 @@ func TestSuffixBaseTable(t *testing.T) {
 	// The table is small and explicit; assert its contents to catch
 	// accidental edits. MediaType is not comparable (has a map field),
 	// so the rows are checked component-wise.
-	require.Len(t, SuffixBase, 3)
+	require.Len(t, suffixBase, 3)
 	for suffix, wantSub := range map[string]string{
 		tJSON: tJSON,
 		tXML:  tXML,
 		tYAML: tYAML,
 	} {
-		got, ok := SuffixBase[suffix]
+		got, ok := suffixBase[suffix]
 		require.TrueT(t, ok, "missing entry for %q", suffix)
 		assert.EqualT(t, tApp, got.Type, "%q.Type", suffix)
 		assert.EqualT(t, wantSub, got.Subtype, "%q.Subtype", suffix)

@@ -12,13 +12,15 @@ import (
 
 const wildcard = "*"
 
-// Internal constants for the SuffixBase table and any future
+// Internal constants for the suffixBase table and any future
 // in-package references to the well-known base media types.
 const (
 	typeApplication = "application"
 	subtypeJSON     = "json"
 	subtypeXML      = "xml"
 	subtypeYAML     = "yaml"
+
+	mtYAML = typeApplication + "/" + subtypeYAML
 )
 
 // Specificity scores returned by [MediaType.Specificity], ordered from
@@ -28,6 +30,23 @@ const (
 	SpecificityType                   // "type/*"
 	SpecificityExact                  // "type/subtype" (no params)
 	SpecificityExactWithParams        // "type/subtype;k=v"
+)
+
+// MatchKind classifies the strength of a match between two media
+// types. Larger values represent stronger matches and win in
+// negotiation tie-breaks.
+//
+// MatchExact covers direct subtype or wildcard agreement under RFC
+// 7231 rules; MatchAlias is returned only when the strict comparison
+// fails but the two values agree after canonicalization through the
+// internal aliases table (see [MediaType.Canonical]).
+type MatchKind int
+
+// MatchKind values. Returned by [MediaType.Match].
+const (
+	MatchNone  MatchKind = iota // no match
+	MatchAlias                  // matched via the alias table
+	MatchExact                  // matched directly (RFC 7231 semantics)
 )
 
 type mediaTypeError string
@@ -63,23 +82,48 @@ type MediaType struct {
 	Q       float64
 }
 
-// SuffixBase maps a known RFC 6839 / RFC 9512 structured syntax suffix
-// (without the leading '+', lowercased) to its base media type. It is
-// the authoritative table consulted by [MediaType.Base].
+// suffixBase maps a known RFC 6839 / RFC 9512 structured syntax
+// suffix (without the leading '+', lowercased) to its base media
+// type. It is the authoritative table consulted by [MediaType.Base].
 //
-// The table is intentionally small: only suffixes whose base type has
-// a codec in the default runtime maps are listed. CBOR, zip, BER, DER,
-// FastInfoset and WBXML are registered by IANA but have no default
-// codec in this runtime; adding them is gated on having something to
-// do with them.
+// The table is intentionally small: only suffixes whose base type
+// has a codec in the default runtime maps are listed. CBOR, zip,
+// BER, DER, FastInfoset and WBXML are registered by IANA but have
+// no default codec in this runtime; adding them is gated on having
+// something to do with them.
 //
-// This variable is documented as read-only. Mutating it from
-// application code is unsupported and may race with concurrent Parse
-// / Base calls.
-var SuffixBase = map[string]MediaType{
+// Package-internal by design: the external API is [MediaType.Base].
+// If users ever need to extend the table, a Register-style function
+// is the right answer, not an exported mutable map.
+var suffixBase = map[string]MediaType{
 	subtypeJSON: {Type: typeApplication, Subtype: subtypeJSON},
 	subtypeXML:  {Type: typeApplication, Subtype: subtypeXML},
 	subtypeYAML: {Type: typeApplication, Subtype: subtypeYAML},
+}
+
+// aliases maps a deprecated or legacy media-type name to its
+// canonical registered equivalent. Keys are the lowercased
+// "type/subtype" form with no parameters; values are the canonical
+// "type/subtype" form, also without parameters.
+//
+// Entries are limited to media types whose authoritative RFC
+// explicitly names the alias. The seed entries cite RFC 9512 §2.1,
+// which enumerates "Deprecated alias names for this type:
+// application/x-yaml, text/yaml, and text/x-yaml" as part of the
+// IANA registration template for application/yaml.
+//
+// Pull requests adding entries need an analogous citation in the
+// commit message; entries without authoritative backing belong in
+// caller-side canonicalization, not here.
+//
+// Package-internal by design: the external API is
+// [MediaType.Canonical] and [MediaType.Match]. If users ever need
+// to register their own aliases, a Register-style function is the
+// right answer, not an exported mutable map.
+var aliases = map[string]string{
+	"application/x-yaml": mtYAML, // RFC 9512 §2.1
+	"text/yaml":          mtYAML, // RFC 9512 §2.1
+	"text/x-yaml":        mtYAML, // RFC 9512 §2.1
 }
 
 // Parse parses a single media type. The input may carry parameters and a
@@ -218,7 +262,7 @@ func (m MediaType) StripParams() MediaType {
 // syntax suffix, or m unchanged when:
 //
 //   - Suffix is empty;
-//   - Suffix is not present in [SuffixBase].
+//   - Suffix is not present in the package-internal suffix→base table.
 //
 // The returned value represents the structural base only: it carries
 // no parameters and no q-value. Use it to find a codec for the
@@ -230,9 +274,58 @@ func (m MediaType) Base() MediaType {
 	if m.Suffix == "" {
 		return m
 	}
-	base, ok := SuffixBase[m.Suffix]
+	base, ok := suffixBase[m.Suffix]
 	if !ok {
 		return m
 	}
 	return base
+}
+
+// Canonical returns m rewritten to its canonical media type via
+// the package-internal alias table, or m unchanged when
+// (Type, Subtype) is not a known alias. Params and Q are preserved on the returned value; Suffix
+// is recomputed from the canonical Subtype (none of the current
+// entries carry a suffix, but the contract is forward-safe).
+//
+// Canonical does not mutate the receiver.
+func (m MediaType) Canonical() MediaType {
+	key := m.Type + "/" + m.Subtype
+	canon, ok := aliases[key]
+	if !ok {
+		return m
+	}
+	slash := strings.IndexByte(canon, '/')
+	out := m
+	out.Type = canon[:slash]
+	out.Subtype = canon[slash+1:]
+	out.Suffix = ""
+	if plus := strings.LastIndexByte(out.Subtype, '+'); plus >= 0 && plus < len(out.Subtype)-1 {
+		out.Suffix = out.Subtype[plus+1:]
+	}
+	return out
+}
+
+// Match reports how m matches other, classifying the result by
+// [MatchKind]. Used by negotiation to rank candidate offers: exact
+// matches always win over alias matches when both are available.
+//
+// Returns:
+//
+//   - MatchExact when m.Matches(other) is true under the strict
+//     RFC 7231 rules (including wildcards and the param subset
+//     rule).
+//   - MatchAlias when m.Canonical().Matches(other.Canonical())
+//     is true but the strict comparison failed.
+//   - MatchNone otherwise.
+//
+// The asymmetric "bound vs constraint" rule of [MediaType.Matches]
+// is preserved at both tiers.
+func (m MediaType) Match(other MediaType) MatchKind {
+	if m.Matches(other) {
+		return MatchExact
+	}
+	if m.Canonical().Matches(other.Canonical()) {
+		return MatchAlias
+	}
+	return MatchNone
 }

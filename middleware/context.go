@@ -22,6 +22,7 @@ import (
 	"github.com/go-openapi/runtime/middleware/untyped"
 	"github.com/go-openapi/runtime/security"
 	"github.com/go-openapi/runtime/server-middleware/docui"
+	"github.com/go-openapi/runtime/server-middleware/mediatype"
 	"github.com/go-openapi/runtime/server-middleware/negotiate"
 )
 
@@ -348,7 +349,7 @@ func (c *Context) BindValidRequest(request *http.Request, route *MatchedRoute, b
 				res = append(res, err)
 			}
 			if len(res) == 0 {
-				cons, ok := route.Consumers[ct]
+				cons, ok := mediatype.Lookup(route.Consumers, ct)
 				if !ok {
 					res = append(res, errors.New(http.StatusInternalServerError, "no consumer registered for %s", ct))
 				} else {

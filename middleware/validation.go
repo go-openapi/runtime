@@ -101,7 +101,7 @@ func (v *validation) contentType() {
 			}
 		}
 		if ct != "" && v.route.Consumer == nil {
-			cons, ok := v.route.Consumers[ct]
+			cons, ok := mediatype.Lookup(v.route.Consumers, ct)
 			if !ok {
 				v.result = append(v.result, errors.New(http.StatusInternalServerError, "no consumer registered for %s", ct))
 			} else {
