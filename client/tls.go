@@ -184,9 +184,10 @@ func TLSClient(opts TLSClientOptions) (*http.Client, error) {
 	return &http.Client{Transport: transport}, nil
 }
 
+// basePool returns pool if non-nil; otherwise it returns a new empty cert pool.
 func basePool(pool *x509.CertPool) *x509.CertPool {
 	if pool == nil {
 		return x509.NewCertPool()
 	}
-	return pool
+	return pool.Clone()
 }
