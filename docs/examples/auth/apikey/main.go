@@ -11,6 +11,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -40,7 +41,9 @@ func wireAPIKeyAuth() {
 	api.RegisterAuth("key", security.APIKeyAuth(
 		"X-Token", "header",
 		func(token string) (any, error) {
-			if token == "abcdefuvwxyz" {
+			// Use subtle.ConstantTimeCompare to avoid leaking the
+			// expected token byte-by-byte via response timing.
+			if subtle.ConstantTimeCompare([]byte(token), []byte("abcdefuvwxyz")) == 1 {
 				return "alice", nil
 			}
 			return nil, errors.New(http.StatusUnauthorized, "invalid api key")
