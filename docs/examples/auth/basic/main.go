@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 
 	"github.com/go-openapi/errors"
@@ -33,7 +34,10 @@ type fakePrincipal struct{ Name string }
 type fakeStore struct{}
 
 func (fakeStore) AuthenticateBasic(_ context.Context, user, pass string) (*fakePrincipal, error) {
-	if user == "alice" && pass == "s3cret" {
+	// subtle.ConstantTimeCompare avoids leaking the expected password
+	// byte-by-byte via response timing. The username is non-secret and
+	// compared with `==` purely to short-circuit unknown accounts.
+	if user == "alice" && subtle.ConstantTimeCompare([]byte(pass), []byte("s3cret")) == 1 {
 		return &fakePrincipal{Name: user}, nil
 	}
 	return nil, errors.Unauthenticated("basic")

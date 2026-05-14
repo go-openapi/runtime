@@ -42,22 +42,42 @@ func ScopedAuthenticator(handler func(*ScopedAuthRequest) (bool, any, error)) ru
 	})
 }
 
-// UserPassAuthentication authentication function.
+// UserPassAuthentication validates a basic-auth credential.
+//
+// Implementations comparing the password (or any derived secret) against a
+// known value MUST use [crypto/subtle.ConstantTimeCompare]: the runtime
+// extracts the credential from the request and delegates the comparison
+// here, and does not enforce a constant-time posture on the caller's behalf.
 type UserPassAuthentication func(string, string) (any, error)
 
-// UserPassAuthenticationCtx authentication function with [context.Context].
+// UserPassAuthenticationCtx is the [context.Context]-aware variant of
+// [UserPassAuthentication]. The same constant-time-comparison guidance
+// applies.
 type UserPassAuthenticationCtx func(context.Context, string, string) (context.Context, any, error)
 
-// TokenAuthentication authentication function.
+// TokenAuthentication validates an API-key token.
+//
+// Implementations comparing the token against a known value MUST use
+// [crypto/subtle.ConstantTimeCompare]; the runtime delegates the comparison
+// here and does not enforce a constant-time posture on the caller's behalf.
 type TokenAuthentication func(string) (any, error)
 
-// TokenAuthenticationCtx authentication function with [context.Context].
+// TokenAuthenticationCtx is the [context.Context]-aware variant of
+// [TokenAuthentication]. The same constant-time-comparison guidance
+// applies.
 type TokenAuthenticationCtx func(context.Context, string) (context.Context, any, error)
 
-// ScopedTokenAuthentication authentication function.
+// ScopedTokenAuthentication validates a bearer/OAuth2 token along with the
+// scopes required for the operation.
+//
+// Implementations comparing the token against a known value MUST use
+// [crypto/subtle.ConstantTimeCompare]; the runtime delegates the comparison
+// here and does not enforce a constant-time posture on the caller's behalf.
 type ScopedTokenAuthentication func(string, []string) (any, error)
 
-// ScopedTokenAuthenticationCtx authentication function with [context.Context].
+// ScopedTokenAuthenticationCtx is the [context.Context]-aware variant of
+// [ScopedTokenAuthentication]. The same constant-time-comparison guidance
+// applies.
 type ScopedTokenAuthenticationCtx func(context.Context, string, []string) (context.Context, any, error)
 
 var DefaultRealmName = "API"
