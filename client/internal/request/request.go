@@ -111,7 +111,7 @@ type Request struct {
 	// that buildHTTP — which runs after the writer populates the payload
 	// — can apply payload-aware fallback rules (see streamFallbackMime).
 	//
-	// This i by Runtime.createHttpRequest.
+	// This is set by Runtime.createHttpRequest.
 	consumes []string
 	timeout  time.Duration
 	buf      *bytes.Buffer
@@ -197,7 +197,7 @@ func (r *Request) GetQueryParams() url.Values {
 	return result
 }
 
-// SetFormParam adds a forn param to the request.
+// SetFormParam adds a form param to the request.
 //
 //   - when there is only 1 value provided, it will set it.
 //   - when there are several values provided, it will add all of those (no overriding).
