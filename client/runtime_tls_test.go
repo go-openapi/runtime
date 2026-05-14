@@ -5,10 +5,14 @@ package client
 
 import (
 	"crypto"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -59,6 +63,19 @@ func TestRuntimeTLSOptions(t *testing.T) {
 			opts := TLSClientOptions{
 				LoadedKey:         fixtures.ECDSA.LoadedKey,
 				LoadedCertificate: fixtures.ECDSA.LoadedCert,
+			}
+
+			cfg, err := TLSClientAuth(opts)
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+			assert.Len(t, cfg.Certificates, 1)
+		})
+
+		t.Run("with TLSAuthConfig configured with loaded Ed25519 key/certificate", func(t *testing.T) {
+			edKey, edCert := newEd25519KeyCert(t)
+			opts := TLSClientOptions{
+				LoadedKey:         edKey,
+				LoadedCertificate: edCert,
 			}
 
 			cfg, err := TLSClientAuth(opts)
@@ -258,6 +275,29 @@ type (
 		CertFile string
 	}
 )
+
+func newEd25519KeyCert(t testing.TB) (ed25519.PrivateKey, *x509.Certificate) {
+	t.Helper()
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(42),
+		Subject:      pkix.Name{CommonName: "ed25519-test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, priv)
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+
+	return priv, cert
+}
 
 func systemCAPool(t testing.TB) *x509.CertPool {
 	if goruntime.GOOS == "windows" {

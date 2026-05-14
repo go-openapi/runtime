@@ -279,7 +279,7 @@ func writePKCS1KeyPair(dir, name string, key *rsa.PrivateKey, certDER []byte) er
 
 	// Write private key
 	keyDER := x509.MarshalPKCS1PrivateKey(key)
-	if err := writePEM(keyPath, "EC PRIVATE KEY", keyDER); err != nil {
+	if err := writePEM(keyPath, "RSA PRIVATE KEY", keyDER); err != nil {
 		return err
 	}
 
