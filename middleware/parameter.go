@@ -100,7 +100,8 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		}
 
 		// Parse via the shared helper. The helper routes on Content-Type
-		// (multipart/form-data → ParseMultipartForm, otherwise → ParseForm)
+		// (multipart/form-data → ParseMultipartForm; all non-multipart types,
+		// including application/x-www-form-urlencoded, → ParseForm)
 		// and applies the default 32 MiB body cap via http.MaxBytesReader.
 		// Idempotent across the per-parameter loop: stdlib short-circuits
 		// when r.MultipartForm / r.PostForm are already populated.
