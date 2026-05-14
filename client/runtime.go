@@ -231,7 +231,8 @@ func (r *Runtime) SubmitContext(parentCtx context.Context, operation *runtime.Cl
 	// ReadResponse downstream, after which finish is called.
 	var trace *traceSession
 	if r.Trace {
-		trace = newTraceSession(r.logger, req.Method, req.URL.String())
+		trace = newTraceSession(r.logger, req.Method, req.URL.String(),
+			introspectTLSConfig(r.pickClient(operation)))
 		//nolint:contextcheck // We intentionally derive from req.Context() to layer the trace hooks onto the existing request context.
 		req = req.WithContext(trace.attach(req.Context()))
 		if req.Body != nil {

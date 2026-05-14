@@ -27,6 +27,14 @@ type traceSession struct {
 	method string
 	url    string
 
+	// tlsCfg points at the *tls.Config of the http.Transport that
+	// will run the request, when introspectable (i.e. the transport
+	// is an *http.Transport). Used by the TLS diagnostic mode to
+	// cross-check user configuration against what the handshake
+	// actually attempted. Nil when the transport is custom and
+	// the config cannot be reached.
+	tlsCfg *tls.Config
+
 	mu      sync.Mutex
 	start   time.Time
 	last    time.Time // last printed event, for relative-dt rendering
@@ -79,11 +87,16 @@ const staleIdleThreshold = 30 * time.Second
 // newTraceSession allocates a session and pre-renders the opening
 // line (method + url). The session is not yet attached to a
 // context — that's the caller's responsibility via session.attach.
-func newTraceSession(log logger.Logger, method, url string) *traceSession {
+//
+// tlsCfg may be nil; when non-nil it is used by the TLS diagnostic
+// mode to cross-check user-configured constraints (MinVersion,
+// CipherSuites, custom RootCAs) against handshake failures.
+func newTraceSession(log logger.Logger, method, url string, tlsCfg *tls.Config) *traceSession {
 	s := &traceSession{
 		logger: log,
 		method: method,
 		url:    url,
+		tlsCfg: tlsCfg,
 		start:  time.Now(),
 	}
 	s.last = s.start
@@ -246,9 +259,7 @@ func (s *traceSession) onTLSHandshakeDone(state tls.ConnectionState, err error) 
 
 	if err != nil {
 		s.emitTf("TLSHandshakeDone(err=%v)", err)
-		// TLS diagnostic mode is rendered by emitTLSDiagnostic
-		// in httptrace_tls.go (later task). For now the bare error
-		// is emitted; the diagnostic block will be added on top.
+		s.emitTLSDiagnostic(state, err)
 		return
 	}
 	s.emitTf("TLSHandshakeDone(tls=%s, cipher=%s, server=%s%s)",
