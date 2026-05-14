@@ -90,17 +90,8 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 		return p.bindValue(data, hasKey, target)
 
 	case "formData":
-		var err error
-		var mt string
-
-		mt, _, e := runtime.ContentType(request.Header)
-		if e != nil {
-			// because of the interface conversion go thinks the error is not nil
-			// so we first check for nil and then set the err var if it's not nil
-			err = e
-		}
-
-		if err != nil {
+		mt, _, ctErr := runtime.ContentType(request.Header)
+		if ctErr != nil {
 			return errors.InvalidContentType("", []string{runtime.MultipartFormMime, runtime.URLencodedFormMime})
 		}
 
@@ -108,14 +99,13 @@ func (p *untypedParamBinder) Bind(request *http.Request, routeParams RouteParams
 			return errors.InvalidContentType(mt, []string{runtime.MultipartFormMime, runtime.URLencodedFormMime})
 		}
 
-		if mt == runtime.MultipartFormMime {
-			if err = request.ParseMultipartForm(defaultMaxMemory); err != nil {
-				return errors.NewParseError(p.Name, p.parameter.In, "", err)
-			}
-		}
-
-		if err = request.ParseForm(); err != nil {
-			return errors.NewParseError(p.Name, p.parameter.In, "", err)
+		// Parse via the shared helper. The helper routes on Content-Type
+		// (multipart/form-data → ParseMultipartForm, otherwise → ParseForm)
+		// and applies the default 32 MiB body cap via http.MaxBytesReader.
+		// Idempotent across the per-parameter loop: stdlib short-circuits
+		// when r.MultipartForm / r.PostForm are already populated.
+		if _, perr := runtime.BindForm(request, runtime.BindFormMaxParseMemory(defaultMaxMemory)); perr != nil {
+			return perr
 		}
 
 		if p.parameter.Type == "file" {
