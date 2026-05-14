@@ -491,7 +491,8 @@ func (c *Context) ResetAuth(request *http.Request) *http.Request {
 	return request.WithContext(rctx)
 }
 
-// Authorize authorizes the request
+// Authorize authorizes the request.
+//
 // Returns the principal object and a shallow copy of the request when its
 // context doesn't contain the principal, otherwise the same request or an error
 // (the last) if one of the authenticators returns one or an Unauthenticated error.

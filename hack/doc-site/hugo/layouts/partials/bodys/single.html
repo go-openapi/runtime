@@ -1,0 +1,7 @@
+{{- .Store.Set "relearnIsNested" false }}
+{{- if gt .ReadingTime 1 }}
+<div class="reading-time">
+📖 {{ .ReadingTime }} min read  (~ {{ .FuzzyWordCount }} words).
+</div>
+{{- end }}
+{{- .Render "article" }}

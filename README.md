@@ -94,7 +94,7 @@ on top of which it has been built.
 
 ## Other documentation
 
-* [FAQ](docs/FAQ.md)
+* [FAQ](https://go-openapi.github.io/runtime/tutorials/faq/) · [Media-type selection](https://go-openapi.github.io/runtime/tutorials/media-types/) · [Client keep-alive](https://go-openapi.github.io/runtime/tutorials/keep-alive/)
 * [All-time contributors](./CONTRIBUTORS.md)
 * [Contributing guidelines][contributing-doc-site]
 * [Maintainers documentation][maintainers-doc-site]

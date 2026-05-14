@@ -1,0 +1,30 @@
+<style>
+:root {
+  --INTERNAL-MAIN-MAX-width: var(--MENU-MAX-width, var(--MAIN-WIDTH-MAX, 125.0rem));
+}
+.inline-badge > a,img {
+  /* This allows a markdown badge to remain left-aligned */
+  margin: 10px !important;
+}
+.card-container > li:only-child {
+  /* When a card container has a single card (e.g. one code example per tab),
+     span the full grid width instead of being squished to 1/3. */
+  grid-column: 1 / -1;
+}
+.card-container:has(> li:nth-child(2)):not(:has(> li:nth-child(3))) {
+  /* Auto-adapt to 2 columns when a container has exactly 2 cards. */
+  grid-template-columns: repeat(2, 1fr);
+}
+.card-container .card {
+  /* Relearn's theme.css caps cards at max-height: 600px with overflow: hidden,
+     which truncates long testable examples. Let them grow vertically and
+     scroll when needed. */
+  max-height: none;
+  overflow-y: auto;
+}
+.card-container .card pre {
+  /* Ensure horizontal scrolling on long lines inside code blocks. */
+  overflow-x: auto;
+  white-space: pre;
+}
+</style>

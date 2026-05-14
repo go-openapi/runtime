@@ -1,0 +1,115 @@
+{{- /*
+  code: include a source file from the examples mount with syntax highlighting,
+  followed by a "Full source" link back to the file on GitHub.
+
+  Parameters:
+    file      (required) Path relative to docs/examples, e.g. "customcodec/uint32.go".
+    lang      Chroma lexer name. Defaults to "text".
+    options   Chroma options passed through, e.g. "linenos=table,hl_lines=3-5".
+    lines     "N-M" (1-based, inclusive) to show only a slice of the file.
+              When set, the GitHub source link gets a matching #L{N}-L{M} anchor.
+              Mutually exclusive with `region`.
+    region    Name of a named region delimited by `// snippet:NAME` and
+              `// endsnippet:NAME` markers in the file. Marker lines are
+              stripped; captured lines are de-indented by the leading
+              whitespace of the first non-blank captured line.
+              Mutually exclusive with `lines`.
+    nolink    Set to "true" to suppress the "Full source" footnote.
+*/ -}}
+{{- $file := .Get "file" -}}
+{{- if not $file -}}
+  {{- errorf "code shortcode at %s: missing required parameter %q" .Position "file" -}}
+{{- end -}}
+{{- $lang := .Get "lang" | default "text" -}}
+{{- $opts := .Get "options" | default "" -}}
+{{- $lines := .Get "lines" -}}
+{{- $region := .Get "region" -}}
+{{- $nolink := eq (.Get "nolink") "true" -}}
+{{- if and $lines $region -}}
+  {{- errorf "code shortcode at %s: %q and %q are mutually exclusive" .Position "lines" "region" -}}
+{{- end -}}
+{{- $resourcePath := printf "examples/%s" $file -}}
+{{- $resource := resources.Get $resourcePath -}}
+{{- if not $resource -}}
+  {{- errorf "code shortcode at %s: file %q not found under assets/examples" .Position $file -}}
+{{- else -}}
+  {{- $content := $resource.Content -}}
+  {{- $anchor := "" -}}
+  {{- with $lines -}}
+    {{- $parts := split . "-" -}}
+    {{- $startStr := index $parts 0 -}}
+    {{- $endStr := cond (gt (len $parts) 1) (index $parts 1) $startStr -}}
+    {{- $start := int $startStr -}}
+    {{- $end := int $endStr -}}
+    {{- $all := split $content "\n" -}}
+    {{- $count := add (sub $end $start) 1 -}}
+    {{- $content = delimit (first $count (after (sub $start 1) $all)) "\n" -}}
+    {{- $anchor = printf "#L%s-L%s" $startStr $endStr -}}
+  {{- end -}}
+  {{- with $region -}}
+    {{- $startMarker := printf "// snippet:%s" . -}}
+    {{- $endMarker := printf "// endsnippet:%s" . -}}
+    {{- $all := split $content "\n" -}}
+    {{- $captured := slice -}}
+    {{- $inRegion := false -}}
+    {{- $startLine := 0 -}}
+    {{- $endLine := 0 -}}
+    {{- range $i, $line := $all -}}
+      {{- if and $inRegion (strings.Contains $line $endMarker) -}}
+        {{- $inRegion = false -}}
+        {{- $endLine = add $i 1 -}}
+      {{- else if and (not $inRegion) (strings.Contains $line $startMarker) -}}
+        {{- $inRegion = true -}}
+        {{- $startLine = add $i 2 -}}
+      {{- else if $inRegion -}}
+        {{- $captured = $captured | append $line -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if eq (len $captured) 0 -}}
+      {{- errorf "code shortcode at %s: region %q not found in %q" $.Position . $file -}}
+    {{- end -}}
+    {{- /* dedent: leading whitespace of first non-blank captured line */ -}}
+    {{- $prefix := "" -}}
+    {{- $found := false -}}
+    {{- range $captured -}}
+      {{- if and (not $found) (ne (trim . " \t") "") -}}
+        {{- $stripped := strings.TrimLeft " \t" . -}}
+        {{- $prefix = substr . 0 (sub (len .) (len $stripped)) -}}
+        {{- $found = true -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $dedented := slice -}}
+    {{- range $captured -}}
+      {{- $dedented = $dedented | append (strings.TrimPrefix $prefix .) -}}
+    {{- end -}}
+    {{- /* drop a leading blank line (common when a blank line separates the snippet marker from a godoc-eligible symbol) */ -}}
+    {{- if and (gt (len $dedented) 0) (eq (trim (index $dedented 0) " \t") "") -}}
+      {{- $dedented = after 1 $dedented -}}
+    {{- end -}}
+    {{- /* drop a trailing blank line (common when endsnippet sits on its own line) */ -}}
+    {{- $n := len $dedented -}}
+    {{- if and (gt $n 0) (eq (trim (index $dedented (sub $n 1)) " \t") "") -}}
+      {{- $dedented = first (sub $n 1) $dedented -}}
+    {{- end -}}
+    {{- $content = delimit $dedented "\n" -}}
+    {{- $anchor = printf "#L%d-L%d" $startLine $endLine -}}
+  {{- end -}}
+  {{- /* strip trailing //nolint:... directives so suppressions in source don't leak into rendered snippets */ -}}
+  {{- $lineSet := split $content "\n" -}}
+  {{- $cleaned := slice -}}
+  {{- range $lineSet -}}
+    {{- $line := . -}}
+    {{- $stripped := replaceRE `\s*//\s*nolint:.*$` "" $line -}}
+    {{- if or (ne $stripped "") (eq (trim $line " \t") "") -}}
+      {{- $cleaned = $cleaned | append $stripped -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $content = delimit $cleaned "\n" -}}
+  {{- highlight $content $lang $opts }}
+  {{- if not $nolink }}
+    {{- $repo := site.Params.sourceRepository | default "https://github.com/go-openapi/runtime" -}}
+    {{- $sourceURL := printf "%s/blob/master/docs/examples/%s%s" $repo $file $anchor }}
+
+<p class="code-source"><em>Full source: <a href="{{ $sourceURL }}" target="_blank" rel="noopener"><code>docs/examples/{{ $file }}</code></a></em></p>
+  {{- end }}
+{{- end -}}

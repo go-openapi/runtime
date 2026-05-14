@@ -1,4 +1,10 @@
-# Frequently Asked Questions
+---
+title: FAQ
+weight: 10
+description: |
+  Frequently asked questions collected from GitHub issues — quick
+  answers on TLS, debugging, content types, and common gotchas.
+---
 
 Answers to common questions collected from [GitHub issues](https://github.com/go-openapi/runtime/issues).
 

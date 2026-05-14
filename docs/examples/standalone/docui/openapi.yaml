@@ -1,0 +1,10 @@
+swagger: "2.0"
+info:
+  title: Demo API
+  version: 1.0.0
+paths:
+  /v1/ping:
+    get:
+      responses:
+        "200":
+          description: pong
