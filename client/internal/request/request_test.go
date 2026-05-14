@@ -38,7 +38,7 @@ var testProducers = map[string]runtime.Producer{
 const (
 	valBirdWatching = "Bird watching"
 	valJohn         = "John"
-	valOrganTrail   = "Organ trail"
+	valOregonTrail  = "Oregon Trail"
 	valTom          = "Tom"
 	testFile1       = "request.go"
 	testFile2       = "request_test.go"
@@ -126,7 +126,7 @@ func mustGetFile(pth string) *os.File {
 func TestBuildRequest_SetBody(t *testing.T) {
 	r := New(http.MethodGet, "/flats/{id}/?hello=world", nil)
 
-	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOregonTrail}, {valJohn, valBirdWatching}}
 
 	_ = r.SetBodyParam(bd)
 	assert.Equal(t, bd, r.payload)
@@ -210,7 +210,7 @@ func TestBuildRequest_BuildHTTP_NoPayload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
-	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOregonTrail}, {valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "world")
@@ -237,7 +237,7 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
-	bd := []struct{ Name, Hobby string }{{valTom, valOrganTrail}, {valJohn, valBirdWatching}}
+	bd := []struct{ Name, Hobby string }{{valTom, valOregonTrail}, {valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "wrong")
@@ -277,7 +277,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 		XMLName xml.Name `xml:"person"`
 		Name    string   `xml:"name"`
 		Hobby   string   `xml:"hobby"`
-	}{{xml.Name{}, valTom, valOrganTrail}, {xml.Name{}, valJohn, valBirdWatching}}
+	}{{xml.Name{}, valTom, valOregonTrail}, {xml.Name{}, valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)
 		_ = req.SetQueryParam("hello", "world")
