@@ -331,12 +331,13 @@ type instrumentedBody struct {
 func (b *instrumentedBody) Read(p []byte) (int, error) {
 	n, err := b.wrapped.Read(p)
 	if n > 0 {
+		first := b.last.IsZero()
 		var dt time.Duration
-		if !b.last.IsZero() {
+		if !first {
 			dt = time.Since(b.last)
 		}
 		b.last = time.Now()
-		b.sess.onBodyChunk(b.side, n, dt)
+		b.sess.onBodyChunk(b.side, n, dt, first)
 	}
 	return n, err
 }
@@ -368,14 +369,18 @@ func (s *traceSession) wrapResponseBody(body io.ReadCloser) io.ReadCloser {
 }
 
 // onBodyChunk renders a single BodyChunk{Sent,Received} event.
-// dt is the duration since the previous Read on the same body
-// (zero on the first Read).
-func (s *traceSession) onBodyChunk(side bodySide, n int, dt time.Duration) {
-	if dt > 0 {
-		s.emitTf("BodyChunk%s(n=%d, dt=%s)", side, n, round(dt))
+// dt is the duration since the previous Read on the same body and
+// is meaningful only when `first` is false. The first chunk has no
+// preceding read, so the dt= field is suppressed; every subsequent
+// chunk emits dt= unconditionally — even when the measured value
+// rounds to zero (common on Windows, where the system clock
+// resolution is coarser than a fast loopback read loop).
+func (s *traceSession) onBodyChunk(side bodySide, n int, dt time.Duration, first bool) {
+	if first {
+		s.emitTf("BodyChunk%s(n=%d)", side, n)
 		return
 	}
-	s.emitTf("BodyChunk%s(n=%d)", side, n)
+	s.emitTf("BodyChunk%s(n=%d, dt=%s)", side, n, round(dt))
 }
 
 // ---------------------------------------------------------------
