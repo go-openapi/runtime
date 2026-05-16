@@ -12,6 +12,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -132,7 +133,11 @@ func serverUpload() {
 	// snippet:serverUpload
 	api.RegisterOperation("post", "/backups", runtime.OperationHandlerFunc(
 		func(params any) (any, error) {
-			body := params.(putBackupParams).Blob // io.ReadCloser
+			putBackupParams, ok := params.(putBackupParams)
+			if !ok {
+				return nil, errors.New("invalid params")
+			}
+			body := putBackupParams.Blob // io.ReadCloser
 			defer body.Close()
 
 			f, err := os.CreateTemp("", "upload-*")
