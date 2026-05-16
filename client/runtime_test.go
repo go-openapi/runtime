@@ -118,7 +118,8 @@ func TestRuntime_Concurrent(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -164,7 +165,8 @@ func TestRuntime_Canary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -216,7 +218,8 @@ func TestRuntime_XMLCanary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, tasks{}, res)
-	actual := res.(tasks)
+	actual, ok := res.(tasks)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -258,7 +261,8 @@ func TestRuntime_TextCanary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, "", res)
-	actual := res.(string)
+	actual, ok := res.(string)
+	require.TrueT(t, ok)
 	assert.EqualT(t, result, actual)
 }
 
@@ -303,7 +307,8 @@ func TestRuntime_CSVCanary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, bytes.Buffer{}, res)
-	actual := res.(bytes.Buffer)
+	actual, ok := res.(bytes.Buffer)
+	require.TrueT(t, ok)
 	assert.EqualT(t, result, actual.String())
 }
 
@@ -361,7 +366,8 @@ func TestRuntime_CustomTransport(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -475,7 +481,8 @@ func TestRuntime_AuthCanary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -575,7 +582,8 @@ func TestRuntime_PickConsumer(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -628,7 +636,8 @@ func TestRuntime_ContentTypeCanary(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -683,7 +692,8 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -883,7 +893,8 @@ func TestRuntime_FallbackConsumer(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []byte{}, res)
-	actual := res.([]byte)
+	actual, ok := res.([]byte)
+	require.TrueT(t, ok)
 	assert.EqualValues(t, result, actual)
 }
 
@@ -933,7 +944,8 @@ func TestRuntime_AuthHeaderParamDetected(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.IsType(t, []task{}, res)
-	actual := res.([]task)
+	actual, ok := res.([]task)
+	require.TrueT(t, ok)
 	assert.Equal(t, result, actual)
 }
 
@@ -941,7 +953,6 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	const (
 		// these values should be sufficient for most CI engines
 		clientTimeout   time.Duration = 25 * time.Millisecond
-		serverDelay     time.Duration = 100 * time.Millisecond
 		clientNoTimeout time.Duration = 250 * time.Millisecond
 		ctxError                      = "context deadline exceeded"
 	)
@@ -974,7 +985,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with timeout specified as a request parameter, no operation context", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1005,7 +1016,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with timeout specified as a request parameter, no context at all", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1036,7 +1047,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with inherited operation context, timeout specified as operation context, request timeout set to 0", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1073,7 +1084,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with a fresh operation context, timeout specified as operation context, request timeout set to 0", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 		rt := New(host, "/", []string{schemeHTTP})
 		rt.Context = nil
@@ -1110,7 +1121,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 
 	t.Run("with an hypothetical timeout specified as runtime context, no operation context", func(t *testing.T) {
 		// in real life, the runtime context may be cancellable for other reasons than timeout
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		t.Run("should not time out", func(t *testing.T) {
@@ -1151,7 +1162,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with multiple timeouts set, shortest wins", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1219,7 +1230,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 	})
 
 	t.Run("with no context, explicit infinite wait", func(t *testing.T) {
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1241,7 +1252,7 @@ func TestRuntime_Timeout(t *testing.T) { //nolint:maintidx // linter evaluates t
 		requestEmptyWriter := runtime.ClientRequestWriterFunc(func(_ runtime.ClientRequest, _ strfmt.Registry) error {
 			return nil
 		})
-		host, cleaner := serverBuilder(t, serverDelay, result)
+		host, cleaner := serverBuilder(t, result)
 		t.Cleanup(cleaner)
 
 		rt := New(host, "/", []string{schemeHTTP})
@@ -1336,7 +1347,8 @@ func TestGetBodyCallsBeforeRoundTrip(t *testing.T) {
 	res, err := openAPIClient.Submit(operation)
 	require.NoError(t, err)
 
-	actual := res.(string)
+	actual, ok := res.(string)
+	require.TrueT(t, ok)
 	require.EqualT(t, "test result", actual)
 }
 
@@ -1395,7 +1407,10 @@ func assertResult(result []task) func(testing.TB, any) {
 	}
 }
 
-func serverBuilder(t testing.TB, delay time.Duration, result []task) (string, func()) {
+const serverDelay = 100 * time.Millisecond
+
+func serverBuilder(t testing.TB, result []task) (string, func()) {
+	delay := serverDelay
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		timer := time.NewTimer(delay)

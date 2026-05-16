@@ -304,7 +304,7 @@ func TestBuildRequest_BuildHTTP_XMLPayload(t *testing.T) {
 }
 
 func TestBuildRequest_BuildHTTP_TextPayload(t *testing.T) {
-	const bd = "Tom: Organ trail; John: Bird watching"
+	const bd = "Tom: Oregon trail; John: Bird watching"
 
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
 		_ = req.SetBodyParam(bd)

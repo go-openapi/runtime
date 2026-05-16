@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/testify/v2/assert"
+	"github.com/go-openapi/testify/v2/require"
 )
 
 func TestRequestWriterFunc(t *testing.T) {
@@ -20,5 +21,8 @@ func TestRequestWriterFunc(t *testing.T) {
 	tr := new(TestClientRequest)
 	_ = hand.WriteToRequest(tr, nil)
 	assert.EqualT(t, "blahblah", tr.Headers.Get("Blah"))
-	assert.EqualT(t, "Adriana", tr.Body.(struct{ Name string }).Name)
+
+	body, ok := tr.Body.(struct{ Name string })
+	require.TrueT(t, ok)
+	assert.EqualT(t, "Adriana", body.Name)
 }

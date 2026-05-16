@@ -49,12 +49,12 @@ func assertAPIError(t *testing.T, wantCode int, err error) {
 
 	require.Error(t, err)
 
-	ce, ok := err.(*apierrors.CompositeError)
-	assert.TrueT(t, ok)
-	assert.NotEmpty(t, ce.Errors)
+	var ce *apierrors.CompositeError
+	require.TrueT(t, errors.As(err, &ce))
+	require.NotEmpty(t, ce.Errors)
 
-	ae, ok := ce.Errors[0].(apierrors.Error)
-	assert.TrueT(t, ok)
+	var ae apierrors.Error
+	require.TrueT(t, errors.As(ce.Errors[0], &ae))
 	assert.EqualT(t, wantCode, int(ae.Code()))
 }
 
@@ -425,8 +425,8 @@ func TestContextAuthorize_WithAuthorizer(t *testing.T) {
 	request.SetBasicAuth("anyother", "anyother")
 	p, reqWithCtx, err = ctx.Authorize(request, ri)
 	require.Error(t, err)
-	ae, ok := err.(apierrors.Error)
-	require.TrueTf(t, ok, "expected an apierrors.Error, but got %T", err)
+	var ae apierrors.Error
+	require.TrueTf(t, errors.As(err, &ae), "expected an apierrors.Error, but got %T", err)
 	assert.EqualT(t, http.StatusForbidden, int(ae.Code()))
 	assert.Nil(t, p)
 	assert.Nil(t, reqWithCtx)

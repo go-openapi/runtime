@@ -15,12 +15,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/justinas/alice"
+
 	"github.com/go-openapi/analysis"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/middleware/untyped"
-	"github.com/justinas/alice"
 )
 
 // --- Stubs (excluded from rendered snippets) ------------------------

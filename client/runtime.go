@@ -401,7 +401,7 @@ func (r *Runtime) dumpResponse(res *http.Response, ct string) error {
 // Falls back to the "*/*" entry if no match found.
 func (r *Runtime) resolveConsumer(ct string) (runtime.Consumer, error) {
 	if _, _, err := mime.ParseMediaType(ct); err != nil {
-		return nil, fmt.Errorf("parse content type: %s", err)
+		return nil, fmt.Errorf("parse content type: %w", err)
 	}
 	if cons, ok := mediatype.Lookup(r.Consumers, ct, r.matchOpts()...); ok {
 		return cons, nil

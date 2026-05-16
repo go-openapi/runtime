@@ -210,7 +210,9 @@ func TestRequestBindingDefaultValue(t *testing.T) {
 	assert.Equal(t, age, data[paramKeyAge])
 	assert.InDelta(t, factor, data["factor"], 1e-6)
 	assert.InDelta(t, score, data["score"], 1e-6)
-	assert.EqualT(t, "hello", string(data["picture"].(strfmt.Base64)))
+	formatted, ok := data["picture"].(strfmt.Base64)
+	require.TrueT(t, ok)
+	assert.EqualT(t, "hello", string(formatted))
 }
 
 func TestRequestBindingForInvalid(t *testing.T) {

@@ -169,7 +169,10 @@ func TestBearerAuthCtx(t *testing.T) {
 	})
 }
 
-func testIsAuthorized(_ context.Context, req *http.Request, authorizer runtime.Authenticator, expectAuthorized authExpectation, extraAsserters ...func(context.Context, *testing.T)) func(*testing.T) {
+func testIsAuthorized(_ context.Context,
+	req *http.Request, authorizer runtime.Authenticator,
+	expectAuthorized authExpectation, extraAsserters ...func(context.Context, *testing.T),
+) func(*testing.T) {
 	return func(t *testing.T) { //nolint:contextcheck
 		hasToken, usr, err := authorizer.Authenticate(&ScopedAuthRequest{Request: req})
 		switch expectAuthorized {
@@ -192,6 +195,9 @@ func testIsAuthorized(_ context.Context, req *http.Request, authorizer runtime.A
 			assert.FalseT(t, hasToken)
 			assert.Nil(t, usr)
 			assert.Empty(t, OAuth2SchemeName(req))
+
+		default:
+			t.FailNow()
 		}
 
 		for _, contextAsserter := range extraAsserters {

@@ -60,13 +60,19 @@ func NewAPI(t gotest.TB) (*loads.Document, *untyped.API) {
 		return nil, errors.Unauthenticated("token")
 	}))
 	api.RegisterAuthorizer(runtime.AuthorizerFunc(func(r *http.Request, user any) error {
-		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && user.(string) != apiPrincipal {
-			if user.(string) == apiUser {
+		userStr, ok := user.(string)
+		if !ok {
+			return goerrors.New("unauthorized")
+		}
+
+		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/pets") && userStr != apiPrincipal {
+			if userStr == apiUser {
 				return errors.CompositeValidationError(errors.New(errors.InvalidTypeCode, "unauthorized"))
 			}
 
 			return goerrors.New("unauthorized")
 		}
+
 		return nil
 	}))
 	api.RegisterOperation("get", "/pets", new(stubOperationHandler))
