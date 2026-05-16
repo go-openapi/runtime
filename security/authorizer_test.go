@@ -23,8 +23,8 @@ func TestAuthenticator(t *testing.T) {
 	r, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
-	t.Run("with HttpAuthenticator", func(t *testing.T) {
-		auth := HttpAuthenticator(func(_ *http.Request) (bool, any, error) { return true, "test", nil })
+	t.Run("with HTTPAuthenticator", func(t *testing.T) {
+		auth := HTTPAuthenticator(func(_ *http.Request) (bool, any, error) { return true, "test", nil })
 
 		t.Run("authenticator should work on *http.Request", func(t *testing.T) {
 			isAuth, user, err := auth.Authenticate(r)

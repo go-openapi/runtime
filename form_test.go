@@ -92,6 +92,8 @@ func assertParseError(t *testing.T, err error, wantName string, reasonCheck func
 
 // assertCompositeContains extracts a *errors.CompositeError from err
 // and asserts that at least n inner errors satisfy match.
+//
+//nolint:unparam // left variable n for future assertions
 func assertCompositeContains(t *testing.T, err error, n int, match func(error) bool) {
 	t.Helper()
 	require.Error(t, err)

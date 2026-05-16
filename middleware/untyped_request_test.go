@@ -65,7 +65,8 @@ func TestUntypedFileUpload(t *testing.T) {
 	assert.Equal(t, "the-name", data[paramKeyName])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
-	file := data["file"].(runtime.File)
+	file, ok := data["file"].(runtime.File)
+	require.TrueT(t, ok)
 	require.NotNil(t, file.Header)
 	assert.EqualT(t, "plain-jane.txt", file.Header.Filename)
 
@@ -156,7 +157,8 @@ func TestUntypedOptionalFileUpload(t *testing.T) {
 	assert.Equal(t, "the-name", data[paramKeyName])
 	assert.NotNil(t, data["file"])
 	assert.IsType(t, runtime.File{}, data["file"])
-	file := data["file"].(runtime.File)
+	file, ok := data["file"].(runtime.File)
+	require.TrueT(t, ok)
 	assert.NotNil(t, file.Header)
 	assert.EqualT(t, "plain-jane.txt", file.Header.Filename)
 
@@ -211,5 +213,7 @@ func TestUntypedBindingTypesForValid(t *testing.T) {
 	assert.InDelta(t, score, data["score"], 1e-6)
 	pb, err := base64.URLEncoding.DecodeString(picture)
 	require.NoError(t, err)
-	assert.EqualValues(t, pb, data["picture"].(strfmt.Base64))
+	formatted, ok := data["picture"].(strfmt.Base64)
+	require.TrueT(t, ok)
+	assert.EqualValues(t, pb, formatted)
 }

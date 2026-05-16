@@ -39,6 +39,8 @@ func init() {
 }
 
 func testCollectionFormat(t *testing.T, param *spec.Parameter, valid bool) {
+	t.Helper()
+
 	binder := &untypedParamBinder{
 		parameter: param,
 	}

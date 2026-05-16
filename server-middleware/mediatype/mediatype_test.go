@@ -292,7 +292,10 @@ func TestBestMatch(t *testing.T) {
 		{"image/* matches gif first", pngWild, []string{imageGIF, imageJPG}, imageGIF},
 		{"image/png beats image/* on specificity (2)", pngWild, []string{imageGIF, imagePNG}, imagePNG},
 		{"image/png beats image/* (offer order doesn't override)", pngWild, []string{imagePNG, imageGIF}, imagePNG},
-		{"vendor params don't break match", "application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3", []string{textPlain}, textPlain},
+		{"vendor params don't break match",
+			"application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3",
+			[]string{textPlain}, textPlain,
+		},
 		// vendor MIME types are NOT structurally matched against
 		// "+json" — text/json doesn't match application/vnd.cia.v1+json.
 		{"vendor MIME unmatched", jsonMime, []string{"application/vnd.cia.v1+json"}, ""},

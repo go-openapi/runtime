@@ -238,9 +238,9 @@ func writerSetBody(payload any) runtime.ClientRequestWriter {
 	})
 }
 
-func writerSetHeader(name, value string) runtime.ClientRequestWriter {
+func writerSetContentType(value string) runtime.ClientRequestWriter {
 	return runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-		return r.SetHeaderParam(name, value)
+		return r.SetHeaderParam("Content-Type", value)
 	})
 }
 
@@ -250,9 +250,9 @@ func writerSetForm(name string, values ...string) runtime.ClientRequestWriter {
 	})
 }
 
-func writerSetFile(name string, files ...runtime.NamedReadCloser) runtime.ClientRequestWriter {
+func writerSetFileToUpload(files ...runtime.NamedReadCloser) runtime.ClientRequestWriter {
 	return runtime.ClientRequestWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-		return r.SetFileParam(name, files...)
+		return r.SetFileParam("upload", files...)
 	})
 }
 
@@ -303,8 +303,8 @@ type staticFileWithCT struct{ *staticFile }
 
 func (f *staticFileWithCT) ContentType() string { return f.ct }
 
-func newFile(name, data string) runtime.NamedReadCloser {
-	return &staticFile{name: name, r: strings.NewReader(data)}
+func newFile(data string) runtime.NamedReadCloser {
+	return &staticFile{name: "doc.txt", r: strings.NewReader(data)}
 }
 
 func newFileWithCT(name, data, ct string) runtime.NamedReadCloser {
@@ -374,7 +374,7 @@ func payloadStructCases() iter.Seq[buildHTTPCase] {
 			name:      "struct + SetHeader Content-Type is ignored — picker wins",
 			mediaType: runtime.JSONMime,
 			writer: writerCompose(
-				writerSetHeader("Content-Type", "application/x-ignored"),
+				writerSetContentType("application/x-ignored"),
 				writerSetBody(task{Content: "y"}),
 			),
 			wantContentType: runtime.JSONMime,
@@ -509,7 +509,7 @@ func payloadReaderCases() iter.Seq[buildHTTPCase] {
 			name:      "io.Reader + SetHeader Content-Type wins over picker",
 			mediaType: runtime.JSONMime,
 			writer: writerCompose(
-				writerSetHeader("Content-Type", vendorMime),
+				writerSetContentType(vendorMime),
 				writerSetBody(bytes.NewReader([]byte("v"))),
 			),
 			wantContentType: vendorMime,
@@ -520,7 +520,7 @@ func payloadReaderCases() iter.Seq[buildHTTPCase] {
 			name:      "io.Reader + SetHeader wins over payload ContentType()",
 			mediaType: runtime.JSONMime,
 			writer: writerCompose(
-				writerSetHeader("Content-Type", "application/x-explicit"),
+				writerSetContentType("application/x-explicit"),
 				writerSetBody(&readerWithCT{
 					Reader: strings.NewReader("body"),
 					ct:     ndjsonMime,
@@ -535,7 +535,7 @@ func payloadReaderCases() iter.Seq[buildHTTPCase] {
 			mediaType: runtime.JSONMime,
 			consumes:  []string{runtime.JSONMime, runtime.DefaultMime},
 			writer: writerCompose(
-				writerSetHeader("Content-Type", "application/x-explicit"),
+				writerSetContentType("application/x-explicit"),
 				writerSetBody(bytes.NewReader([]byte("v"))),
 			),
 			wantContentType: "application/x-explicit",
@@ -546,7 +546,7 @@ func payloadReaderCases() iter.Seq[buildHTTPCase] {
 			name:      "io.ReadCloser + SetHeader Content-Type wins",
 			mediaType: runtime.TextMime,
 			writer: writerCompose(
-				writerSetHeader("Content-Type", vendorMime),
+				writerSetContentType(vendorMime),
 				writerSetBody(io.NopCloser(strings.NewReader("data"))),
 			),
 			wantContentType: vendorMime,
@@ -615,7 +615,7 @@ func fileFieldCases() iter.Seq[buildHTTPCase] {
 		{
 			name:                  "file field + multipart mime",
 			mediaType:             runtime.MultipartFormMime,
-			writer:                writerSetFile("upload", newFile("doc.txt", "filebody")),
+			writer:                writerSetFileToUpload(newFile("filebody")),
 			wantContentTypePrefix: runtime.MultipartFormMime + "; boundary=",
 			wantBody:              bodyContainsAll(`name="upload"`, `filename="doc.txt"`, "filebody"),
 		},
@@ -624,14 +624,14 @@ func fileFieldCases() iter.Seq[buildHTTPCase] {
 			// the file content travels as a regular form value.
 			name:            "file field + urlencoded mime — file inlined as form value",
 			mediaType:       runtime.URLencodedFormMime,
-			writer:          writerSetFile("upload", newFile("doc.txt", "abc")),
+			writer:          writerSetFileToUpload(newFile("abc")),
 			wantContentType: runtime.URLencodedFormMime,
 			wantBody:        bodyContainsAll("upload=abc"),
 		},
 		{
 			name:                  "file with declared ContentType()",
 			mediaType:             runtime.MultipartFormMime,
-			writer:                writerSetFile("upload", newFileWithCT("doc.txt", "x", "application/json")),
+			writer:                writerSetFileToUpload(newFileWithCT("doc.txt", "x", "application/json")),
 			wantContentTypePrefix: runtime.MultipartFormMime + "; boundary=",
 			wantBody:              bodyContainsAll("application/json"),
 		},
@@ -646,7 +646,7 @@ func formAndFileFieldCases() iter.Seq[buildHTTPCase] {
 			mediaType: runtime.MultipartFormMime,
 			writer: writerCompose(
 				writerSetForm("name", "fido"),
-				writerSetFile("upload", newFile("doc.txt", "filebody")),
+				writerSetFileToUpload(newFile("filebody")),
 			),
 			wantContentTypePrefix: runtime.MultipartFormMime + "; boundary=",
 			wantBody:              bodyContainsAll(`name="name"`, "fido", `filename="doc.txt"`, "filebody"),
@@ -656,7 +656,7 @@ func formAndFileFieldCases() iter.Seq[buildHTTPCase] {
 			mediaType: runtime.URLencodedFormMime,
 			writer: writerCompose(
 				writerSetForm("name", "fido"),
-				writerSetFile("upload", newFile("doc.txt", "abc")),
+				writerSetFileToUpload(newFile("abc")),
 			),
 			wantContentType: runtime.URLencodedFormMime,
 			wantBody:        bodyContainsAll("name=fido", "upload=abc"),
@@ -748,7 +748,7 @@ func submitWiringCases() iter.Seq[submitCase] {
 			name:     "consumes [json] + SetHeader Content-Type — escape hatch wins",
 			consumes: []string{runtime.JSONMime},
 			writer: writerCompose(
-				writerSetHeader("Content-Type", vendorMime),
+				writerSetContentType(vendorMime),
 				writerSetBody(bytes.NewReader([]byte("data"))),
 			),
 			wantContentType: vendorMime,

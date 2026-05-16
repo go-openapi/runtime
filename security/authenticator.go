@@ -19,8 +19,8 @@ const (
 	accessTokenParam = "access_token"
 )
 
-// HttpAuthenticator is a function that authenticates a HTTP request.
-func HttpAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.Authenticator { //nolint:revive
+// HTTPAuthenticator is a function that authenticates a HTTP request.
+func HTTPAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.Authenticator {
 	return runtime.AuthenticatorFunc(func(params any) (bool, any, error) {
 		if request, ok := params.(*http.Request); ok {
 			return handler(request)
@@ -32,7 +32,14 @@ func HttpAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.A
 	})
 }
 
-// ScopedAuthenticator is a function that authenticates a HTTP request against a list of valid scopes.
+// HttpAuthenticator aliases [HTTPAuthenticator] for backward-compatibility.
+//
+// Deprecated: use HTTPAuthenticator instead.
+func HttpAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.Authenticator { //nolint:revive
+	return HTTPAuthenticator(handler)
+}
+
+// ScopedAuthenticator is a function that authenticates an [http.Request] against a list of valid scopes.
 func ScopedAuthenticator(handler func(*ScopedAuthRequest) (bool, any, error)) runtime.Authenticator {
 	return runtime.AuthenticatorFunc(func(params any) (bool, any, error) {
 		if request, ok := params.(*ScopedAuthRequest); ok {
@@ -219,7 +226,7 @@ func APIKeyAuthCtx(name, in string, authenticate TokenAuthenticationCtx) runtime
 	})
 }
 
-// ScopedAuthRequest contains both a [http] request and the required scopes for a particular operation.
+// ScopedAuthRequest contains both the [http.Request] and the required scopes for a particular operation.
 type ScopedAuthRequest struct {
 	Request        *http.Request
 	RequiredScopes []string

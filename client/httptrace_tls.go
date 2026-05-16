@@ -71,7 +71,7 @@ func introspectTLSConfig(client *http.Client) *tls.Config {
 func (s *traceSession) emitTLSDiagnostic(state tls.ConnectionState, err error) {
 	s.emitf("# TLS DIAGNOSTIC")
 
-	//nolint:exhaustive // tlsAxisGeneric is handled by the default branch.
+	// tlsAxisGeneric is handled by the default branch.
 	switch axis := classifyTLSError(err); axis {
 	case tlsAxisProtocolVersion:
 		s.diagnoseProtocolVersion(state, err)
@@ -215,7 +215,6 @@ func (s *traceSession) diagnoseCertInvalid(certInvalid x509.CertificateInvalidEr
 	cert := certInvalid.Cert
 	s.emitf("#   reason: %s", certInvalidReasonName(certInvalid.Reason))
 
-	//nolint:exhaustive // Less-common reasons render via the default branch (issuer + NotAfter dump).
 	switch certInvalid.Reason {
 	case x509.Expired:
 		s.emitf("#   leaf:    subject=%s", cert.Subject)
@@ -231,6 +230,7 @@ func (s *traceSession) diagnoseCertInvalid(certInvalid x509.CertificateInvalidEr
 		s.emitf("#   suggested: set TLSClientOptions.ServerName to match")
 		s.emitf("#              one of the cert SANs, or fix the cert.")
 	default:
+		// Less-common reasons render via the default branch (issuer + NotAfter dump).
 		s.emitf("#   leaf:    subject=%s, issuer=%s", cert.Subject, cert.Issuer)
 		s.emitf("#            NotBefore=%s", cert.NotBefore.UTC().Format(time.RFC3339))
 		s.emitf("#            NotAfter=%s", cert.NotAfter.UTC().Format(time.RFC3339))
@@ -326,7 +326,7 @@ func cipherSuiteNames(ids []uint16) []string {
 // human-readable label. The stdlib does not expose a String()
 // method for these, so we keep a small table.
 //
-//nolint:exhaustive // Anything outside the listed cases falls through to the numeric default.
+// Anything outside the listed cases falls through to the numeric default.
 func certInvalidReasonName(r x509.InvalidReason) string {
 	switch r {
 	case x509.NotAuthorizedToSign:

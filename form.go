@@ -242,7 +242,9 @@ func parseFormBody(r *http.Request, maxMemory, maxBody int64) error {
 
 	mt, _, _ := ContentType(r.Header)
 	if mt == MultipartFormMime {
-		//nolint:gosec // G120: false positive (gosec doesn't track the Body). See https://github.com/securego/gosec/blob/de65614d10a6b84029e3e1215567b8ce7e490f23/testutils/g120_samples.go#L57
+		//nolint:gosec // G120: false positive -- see below
+		// gosec doesn't track the Body.
+		// See https://github.com/securego/gosec/blob/de65614d10a6b84029e3e1215567b8ce7e490f23/testutils/g120_samples.go#L57
 		return r.ParseMultipartForm(maxMemory)
 	}
 	return r.ParseForm()

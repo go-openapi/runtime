@@ -118,7 +118,8 @@ func TestRouterBuilder(t *testing.T) {
 
 	rec := postRecords[0]
 	assert.EqualT(t, "/pets", rec.Key)
-	val := rec.Value.(*routeEntry)
+	val, ok := rec.Value.(*routeEntry)
+	require.TrueT(t, ok)
 	assert.Len(t, val.Consumers, 2)
 	assert.Len(t, val.Producers, 2)
 	assert.Len(t, val.Consumes, 2)
@@ -133,7 +134,8 @@ func TestRouterBuilder(t *testing.T) {
 
 	recG := getRecords[0]
 	assert.EqualT(t, "/pets", recG.Key)
-	valG := recG.Value.(*routeEntry)
+	valG, ok := recG.Value.(*routeEntry)
+	require.TrueT(t, ok)
 	assert.Len(t, valG.Consumers, 2)
 	assert.Len(t, valG.Producers, 4)
 	assert.Len(t, valG.Consumes, 2)

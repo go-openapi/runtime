@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-openapi/strfmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/log"
+
+	"github.com/go-openapi/strfmt"
 
 	"github.com/go-openapi/runtime"
 )

@@ -5,6 +5,7 @@ package simplepetstore
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -38,21 +39,55 @@ var getAllPets = runtime.OperationHandlerFunc(func(_ any) (any, error) {
 })
 
 var createPet = runtime.OperationHandlerFunc(func(data any) (any, error) {
-	body := data.(map[string]any)["pet"].(map[string]any)
+	asMap, ok := data.(map[string]any)
+	if !ok {
+		return nil, stderrors.New("bad data: wanted map")
+	}
+	pet := asMap["pet"]
+	body, ok := pet.(map[string]any)
+	if !ok {
+		return nil, stderrors.New("bad pet body: wanted map")
+	}
+
+	name, ok := body["name"].(string)
+	if !ok {
+		return nil, stderrors.New("bad name: wanted string")
+	}
+	status, ok := body["status"].(string)
+	if !ok {
+		return nil, stderrors.New("bad status: wanted string")
+	}
+
 	return addPet(Pet{
-		Name:   body["name"].(string),
-		Status: body["status"].(string),
+		Name:   name,
+		Status: status,
 	}), nil
 })
 
 var deletePet = runtime.OperationHandlerFunc(func(data any) (any, error) {
-	id := data.(map[string]any)["id"].(int64)
+	asMap, ok := data.(map[string]any)
+	if !ok {
+		return nil, stderrors.New("bad data: wanted map")
+	}
+	id, ok := asMap["id"].(int64)
+	if !ok {
+		return nil, stderrors.New("bad id: wanted int64")
+	}
+
 	removePet(id)
 	return map[string]any{}, nil
 })
 
 var getPetByID = runtime.OperationHandlerFunc(func(data any) (any, error) {
-	id := data.(map[string]any)["id"].(int64)
+	asMap, ok := data.(map[string]any)
+	if !ok {
+		return nil, stderrors.New("bad data: wanted map")
+	}
+	id, ok := asMap["id"].(int64)
+	if !ok {
+		return nil, stderrors.New("bad id: wanted int64")
+	}
+
 	return petByID(id)
 })
 
