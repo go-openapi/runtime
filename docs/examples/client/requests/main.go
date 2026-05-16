@@ -64,7 +64,8 @@ func main() {
 func submitVariants() {
 	// snippet:submitVariants
 	// legacy — cached context, hard to cancel from the call site
-	result, err := rt.Submit(op) //nolint:ineffassign,wastedassign,staticcheck // doc example: shows legacy form alongside preferred form
+	result, err := rt.Submit(op)
+	use(result, err)
 
 	// preferred — explicit context
 	ctx, cancel := context.WithTimeout(parent, exampleTimeout)
@@ -97,7 +98,8 @@ func migrationForm() {
 	// snippet:migrationForm
 	// before
 	op.Context = ctx
-	result, err := rt.Submit(op) //nolint:ineffassign,wastedassign,staticcheck // doc example: shows before/after migration
+	result, err := rt.Submit(op)
+	use(result, err)
 
 	// after
 	result, err = rt.SubmitContext(ctx, op)

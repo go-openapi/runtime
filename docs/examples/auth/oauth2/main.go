@@ -127,7 +127,11 @@ func wireOauth2AccessCode() {
 		func(params any) (any, error) {
 			// The bound params struct exposes the raw HTTP request through HTTPRequest.
 			// Untyped: extract from params; typed: it's already a field.
-			r := params.(getCallbackParams).HTTPRequest
+			callbackParams, ok := params.(getCallbackParams)
+			if !ok {
+				panic("internal error")
+			}
+			r := callbackParams.HTTPRequest
 			if r.URL.Query().Get("state") != state {
 				return nil, errors.New(http.StatusBadRequest, "state mismatch")
 			}
