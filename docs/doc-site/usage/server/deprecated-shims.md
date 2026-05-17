@@ -23,7 +23,7 @@ the right-hand column directly.
 |----------------------------------------------------------|--------------------------------------------------------------------|
 | `middleware.NegotiateOption`                             | `negotiate.Option`                                                 |
 | `middleware.NegotiateContentType(r, offers, def, opts…)` | `negotiate.ContentType(r, offers, def, opts…)`                     |
-| `middleware.NegotiateContentEncoding(r, offers)`         | `negotiate.ContentEncoding(r, offers)`                             |
+| `middleware.NegotiateContentEncoding(r, offers)`         | _deprecated, no direct replacement_ — see the [compression recipe](../../examples/middleware/compression/) |
 | `middleware.WithIgnoreParameters(true)`                  | `negotiate.WithIgnoreParameters(true)`                             |
 
 Same signatures, same semantics. The deprecated forms in

@@ -30,13 +30,6 @@ The full module pulls only the standard library at runtime
 no offer is acceptable, the third argument (the *default offer*) is
 returned.
 
-## Pick a Content-Encoding
-
-{{< code file="contenttypes/negotiatestandalone/main.go" lang="go" region="pickEncoding" >}}
-
-`""` means "no offer is acceptable" — let your handler decide
-whether to send the unencoded body or 406.
-
 ## Exercise
 
 ```sh

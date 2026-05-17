@@ -8,8 +8,7 @@
 //
 // The runtime does not ship compression itself; this example is a
 // recipe for composing the existing ecosystem with the go-openapi
-// pipeline. See server-middleware/negotiate.ContentEncoding (now
-// deprecated) for context.
+// pipeline.
 //
 // Run:
 //

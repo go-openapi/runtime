@@ -29,7 +29,6 @@ func use(_ ...any) {}
 const readHeaderTimeout = 5 * time.Second
 
 func main() {
-	pickEncoding(nil, nil)
 	ignoreParameters(nil)
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
 		pickContentType()
@@ -72,20 +71,6 @@ func pickContentType() {
 }
 
 // endsnippet:pickContentType
-
-func pickEncoding(w http.ResponseWriter, r *http.Request) {
-	if r == nil || w == nil {
-		return
-	}
-	// snippet:pickEncoding
-	chosen := negotiate.ContentEncoding(r, []string{"gzip", "deflate"})
-	if chosen != "" {
-		w.Header().Set("Content-Encoding", chosen)
-	}
-	// endsnippet:pickEncoding
-
-	use(chosen)
-}
 
 func ignoreParameters(r *http.Request) {
 	if r == nil {
