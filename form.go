@@ -46,10 +46,7 @@ func ValidateFilenameLength(paramName, paramIn, filename string, maxLen int) err
 	if maxLen <= 0 || len(filename) <= maxLen {
 		return nil
 	}
-	preview := filename
-	if len(preview) > filenamePreviewLen {
-		preview = preview[:filenamePreviewLen]
-	}
+	preview := filename[:min(len(filename), filenamePreviewLen)]
 	return errors.NewParseError(paramName, paramIn, preview,
 		fmt.Errorf("filename length %d exceeds limit %d", len(filename), maxLen))
 }

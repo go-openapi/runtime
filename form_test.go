@@ -448,4 +448,3 @@ func TestValidateFilenameLength(t *testing.T) {
 		require.NoError(t, ValidateFilenameLength("avatar", "formData", name, -1))
 	})
 }
-

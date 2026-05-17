@@ -2,13 +2,9 @@ version: "2"
 linters:
   default: all
   disable:
-    #- cyclop
     - depguard
     - err113 # disabled temporarily: there are just too many issues to address
-    #- errchkjson
-    #- errorlint
     - exhaustruct
-    #- forcetypeassert
     - funlen
     - gochecknoglobals
     - gochecknoinits
@@ -16,12 +12,12 @@ linters:
     - godot
     - godox
     - gomoddirectives # moved to mono-repo, multi-modules, so replace directives are needed
+    - gomodguard
+    - gomodguard_v2
     - gosmopolitan
     - inamedparam
     - ireturn # this repo adopted a pattern where there are quite many returned interfaces. To be challenged with v2
-    #- lll
     - musttag
-    #- nestif
     - nilerr # nilerr crashes on this repo
     - nlreturn
     - noinlineerr
@@ -31,7 +27,6 @@ linters:
     - testpackage
     - thelper
     - tparallel
-    #- unparam
     - varnamelen
     - whitespace
     - wrapcheck

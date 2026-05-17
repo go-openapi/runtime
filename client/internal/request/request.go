@@ -825,6 +825,13 @@ func (r *Request) writeNonStreamPayload(mediaType string, producers map[string]r
 	return r.buf, nil
 }
 
+var quoter = strings.NewReplacer(
+	"\\", "\\\\",
+	`"`, "\\\"",
+	"\r", "_",
+	"\n", "_",
+)
+
 // escapeQuotes escapes backslash and double-quote for embedding in a
 // quoted-string Content-Disposition parameter value, and rewrites
 // CR / LF to '_' to prevent header-injection through attacker-influenced
@@ -835,12 +842,7 @@ func (r *Request) writeNonStreamPayload(mediaType string, producers map[string]r
 // that would split the header line into a forged header or part).
 // Mirrors the known stdlib gap golang/go#19038.
 func escapeQuotes(s string) string {
-	return strings.NewReplacer(
-		"\\", "\\\\",
-		`"`, "\\\"",
-		"\r", "_",
-		"\n", "_",
-	).Replace(s)
+	return quoter.Replace(s)
 }
 
 // setStreamContentType resolves and writes the wire Content-Type for a
