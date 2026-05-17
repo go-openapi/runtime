@@ -140,6 +140,14 @@ func (p *untypedParamBinder) bindFormData(request *http.Request, _ RouteParams, 
 			return nil
 		}
 
+		// Mirror the FileHeader.Filename length cap that BindForm
+		// applies to typed (codegen) paths through BindFormFile, so
+		// untyped formData bindings get the same protection.
+		if err := runtime.ValidateFilenameLength(p.Name, p.parameter.In, header.Filename,
+			runtime.DefaultMaxUploadFilenameLength); err != nil {
+			return err
+		}
+
 		target.Set(reflect.ValueOf(runtime.File{Data: file, Header: header}))
 		return nil
 	}

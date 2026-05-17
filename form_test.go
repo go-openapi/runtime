@@ -412,3 +412,40 @@ func TestBindForm_idempotent(t *testing.T) {
 	assert.FalseT(t, fatal2)
 	assert.EqualT(t, "x", r.Form.Get(testFieldDesc))
 }
+
+// TestValidateFilenameLength covers the exported helper used by both
+// BindForm's BindFormFile path and the untyped middleware/parameter.go
+// formData path. Security scrub Lens 3 / L3.1.
+func TestValidateFilenameLength(t *testing.T) {
+	t.Run("within cap returns nil", func(t *testing.T) {
+		require.NoError(t, ValidateFilenameLength("avatar", "formData", "ok.txt", 1024))
+	})
+	t.Run("at cap returns nil", func(t *testing.T) {
+		name := strings.Repeat("x", 10)
+		require.NoError(t, ValidateFilenameLength("avatar", "formData", name, 10))
+	})
+	t.Run("over cap returns ParseError", func(t *testing.T) {
+		name := strings.Repeat("x", 50)
+		err := ValidateFilenameLength("avatar", "formData", name, 10)
+		require.Error(t, err)
+		var pe *errors.ParseError
+		require.True(t, stderrors.As(err, &pe))
+		assert.EqualT(t, "avatar", pe.Name)
+		assert.EqualT(t, "formData", pe.In)
+	})
+	t.Run("preview is truncated", func(t *testing.T) {
+		name := strings.Repeat("y", 200)
+		err := ValidateFilenameLength("avatar", "formData", name, 10)
+		require.Error(t, err)
+		var pe *errors.ParseError
+		require.True(t, stderrors.As(err, &pe))
+		// preview must fit filenamePreviewLen (32 bytes).
+		assert.LessOrEqual(t, len(pe.Value), filenamePreviewLen)
+	})
+	t.Run("maxLen<=0 disables the cap", func(t *testing.T) {
+		name := strings.Repeat("z", 10000)
+		require.NoError(t, ValidateFilenameLength("avatar", "formData", name, 0))
+		require.NoError(t, ValidateFilenameLength("avatar", "formData", name, -1))
+	})
+}
+
