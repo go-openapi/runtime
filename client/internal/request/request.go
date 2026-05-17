@@ -825,8 +825,22 @@ func (r *Request) writeNonStreamPayload(mediaType string, producers map[string]r
 	return r.buf, nil
 }
 
+// escapeQuotes escapes backslash and double-quote for embedding in a
+// quoted-string Content-Disposition parameter value, and rewrites
+// CR / LF to '_' to prevent header-injection through attacker-influenced
+// field names or filenames.
+//
+// RFC 7578 §4.2 limits parameter values to printable characters; this
+// is the conservative subset relevant to security (control characters
+// that would split the header line into a forged header or part).
+// Mirrors the known stdlib gap golang/go#19038.
 func escapeQuotes(s string) string {
-	return strings.NewReplacer("\\", "\\\\", `"`, "\\\"").Replace(s)
+	return strings.NewReplacer(
+		"\\", "\\\\",
+		`"`, "\\\"",
+		"\r", "_",
+		"\n", "_",
+	).Replace(s)
 }
 
 // setStreamContentType resolves and writes the wire Content-Type for a
