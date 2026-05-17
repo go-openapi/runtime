@@ -547,3 +547,37 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("the file contents"), bb)
 }
+
+// TestBindingFileUpload_RejectsOversizedFilename exercises the
+// filename-length cap on the untyped formData path: a multipart
+// body with a multi-MB filename must be rejected with a ParseError
+// before the file is bound.
+//
+// Mirrors the BindFormFile-path coverage in
+// runtime.TestBindForm_maxFilenameLen_exceeded. Security scrub
+// Lens 3 / L3.1.
+func TestBindingFileUpload_RejectsOversizedFilename(t *testing.T) {
+	binder := paramsForFileUpload()
+
+	body := bytes.NewBuffer(nil)
+	writer := multipart.NewWriter(body)
+	longName := strings.Repeat("x", runtime.DefaultMaxUploadFilenameLength+1) + ".txt"
+	part, err := writer.CreateFormFile("file", longName)
+	require.NoError(t, err)
+	_, err = part.Write([]byte("contents"))
+	require.NoError(t, err)
+	require.NoError(t, writer.WriteField(paramKeyName, "the-name"))
+	require.NoError(t, writer.Close())
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	data := fileRequest{}
+	bindErr := binder.Bind(req, nil, runtime.JSONConsumer(), &data)
+	require.Error(t, bindErr)
+	assert.Contains(t, bindErr.Error(), "exceeds limit")
+	// File must NOT have been bound past the cap.
+	assert.Nil(t, data.File.Data)
+	assert.Nil(t, data.File.Header)
+}

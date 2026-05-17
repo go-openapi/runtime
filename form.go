@@ -32,6 +32,25 @@ const DefaultMaxUploadBodySize = int64(32) << 20
 // rejects a too-long filename.
 const filenamePreviewLen = 32
 
+// ValidateFilenameLength enforces the FileHeader.Filename length cap
+// that [BindForm] applies via [BindFormFile] declarations. Untyped
+// binder paths that fetch the file via [http.Request.FormFile]
+// directly (rather than declaring the file through BindFormFile) call
+// this to opt into the same protection.
+//
+// Returns nil if filename length is within maxLen or maxLen <= 0.
+// Otherwise returns an *errors.ParseError suitable for direct return
+// from a parameter binder. The error embeds a truncated preview of
+// the offending filename to keep the error message bounded.
+func ValidateFilenameLength(paramName, paramIn, filename string, maxLen int) error {
+	if maxLen <= 0 || len(filename) <= maxLen {
+		return nil
+	}
+	preview := filename[:min(len(filename), filenamePreviewLen)]
+	return errors.NewParseError(paramName, paramIn, preview,
+		fmt.Errorf("filename length %d exceeds limit %d", len(filename), maxLen))
+}
+
 // FileBinder is the per-file callback invoked by [BindForm] when a
 // declared file field is present.
 //
@@ -276,13 +295,8 @@ func bindFormFile(r *http.Request, spec formFileSpec, maxFilenameLen int) error 
 		return errors.NewParseError(spec.name, "formData", "", err)
 	}
 
-	if maxFilenameLen > 0 && len(header.Filename) > maxFilenameLen {
-		preview := header.Filename
-		if len(preview) > filenamePreviewLen {
-			preview = preview[:filenamePreviewLen]
-		}
-		return errors.NewParseError(spec.name, "formData", preview,
-			fmt.Errorf("filename length %d exceeds limit %d", len(header.Filename), maxFilenameLen))
+	if err := ValidateFilenameLength(spec.name, "formData", header.Filename, maxFilenameLen); err != nil {
+		return err
 	}
 
 	if spec.bind == nil {
