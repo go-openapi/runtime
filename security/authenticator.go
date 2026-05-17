@@ -34,7 +34,7 @@ func HTTPAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.A
 
 // HttpAuthenticator aliases [HTTPAuthenticator] for backward-compatibility.
 //
-// Deprecated: use HTTPAuthenticator instead.
+// Deprecated: use [HTTPAuthenticator] instead.
 func HttpAuthenticator(handler func(*http.Request) (bool, any, error)) runtime.Authenticator { //nolint:revive
 	return HTTPAuthenticator(handler)
 }

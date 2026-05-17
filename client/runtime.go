@@ -174,20 +174,15 @@ func (r *Runtime) CreateHTTPRequestContext(ctx context.Context, operation *runti
 	return
 }
 
-// CreateHttpRequestContext is like [Runtime.CreateHTTPRequestContext], but picks its context from the
-// [ClientOperation.Context] or from the [Runtime.Context] is they are defined.
+// CreateHttpRequest builds the [http.Request] for the given operation, using
+// [context.Background] as the request context.
 //
-// # Change in behavior with v0.30.0.
+// Any per-operation timeout declared by the operation's [runtime.ClientRequestWriter]
+// is silently ignored here, which can leak a context-cancellation channel if the
+// caller relies on it.
 //
-// Callers who define a non-zero timeout set by the [ClientOperation.Params] ([runtime.ClientRequestWriter]),
-// MUST move to [CreateHTTPRequestContext] in order to retrieve the proper cancellation function,
-// and thus avoid a systematic leak of the context cancellation channel.
-//
-// In previous versions, the value of this timeout was simply ignored here (was only honored by [Runtime.Submit].
-//
-// Callers not using timeouts this way are not affected.
-//
-// Deprecated: use [CreateHTTPRequestContext] instead, with appropriate control of the request cancellation.
+// Deprecated: use [Runtime.CreateHTTPRequestContext] instead, with explicit
+// control over the request context and its cancellation.
 func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
 	req, _, err = r.createHTTPRequestContext(context.Background(), operation)
 	return

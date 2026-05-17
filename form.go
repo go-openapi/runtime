@@ -13,7 +13,7 @@ import (
 )
 
 // DefaultMaxUploadFilenameLength is the default cap applied to
-// FileHeader.Filename for each declared file when BindForm is invoked
+// FileHeader.Filename for each declared file when [BindForm] is invoked
 // without an explicit [BindFormMaxFilenameLen] option.
 //
 // Multipart headers are allocated per part; an attacker submitting
@@ -35,11 +35,11 @@ const filenamePreviewLen = 32
 // ValidateFilenameLength enforces the FileHeader.Filename length cap
 // that [BindForm] applies via [BindFormFile] declarations. Untyped
 // binder paths that fetch the file via [http.Request.FormFile]
-// directly (rather than declaring the file through BindFormFile) call
+// directly (rather than declaring the file through [BindFormFile]) call
 // this to opt into the same protection.
 //
 // Returns nil if filename length is within maxLen or maxLen <= 0.
-// Otherwise returns an *errors.ParseError suitable for direct return
+// Otherwise returns a [*errors.ParseError] suitable for direct return
 // from a parameter binder. The error embeds a truncated preview of
 // the offending filename to keep the error message bounded.
 func ValidateFilenameLength(paramName, paramIn, filename string, maxLen int) error {
@@ -59,10 +59,10 @@ func ValidateFilenameLength(paramName, paramIn, filename string, maxLen int) err
 //
 //	o.FieldName = &runtime.File{Data: file, Header: header}
 //
-// Returning a non-nil error surfaces the error in BindForm's per-field
+// Returning a non-nil error surfaces the error in [BindForm]'s per-field
 // accumulator. Errors from the binder flow through verbatim — the
 // binder is expected to produce HTTP-aware errors (e.g.
-// errors.ExceedsMaximum from go-openapi/validate).
+// [errors.ExceedsMaximum] from go-openapi/validate).
 type FileBinder func(file multipart.File, header *multipart.FileHeader) error
 
 // BindOption configures [BindForm]. The variadic style keeps simple
@@ -91,7 +91,7 @@ type formFileSpec struct {
 // This option does NOT cap total body bytes — see [BindFormMaxBody]
 // for that. The default body cap ([DefaultMaxUploadBodySize] = 32 MB)
 // is applied even when this option is not supplied, so out of the box
-// BindForm is bounded; callers with stricter or looser requirements
+// [BindForm] is bounded; callers with stricter or looser requirements
 // adjust via [BindFormMaxBody].
 func BindFormMaxParseMemory(n int64) BindOption {
 	return func(c *bindConfig) { c.maxParseMemory = n }
@@ -125,7 +125,7 @@ func BindFormMaxFilenameLen(n int) BindOption {
 
 // BindFormFile declares a file field to bind under the given form
 // name. If required is true and the field is absent, [BindForm]
-// produces the per-field error
+// produces the per-field error.
 //
 //	errors.NewParseError(name, "formData", "", http.ErrMissingFile)
 //
@@ -154,7 +154,7 @@ func BindFormFile(name string, required bool, bind FileBinder) BindOption {
 // the call returns.
 //
 // All errors produced by BindForm itself (parse failure, missing
-// required field, cap exceeded) are *errors.ParseError values built
+// required field, cap exceeded) are [*errors.ParseError] values built
 // via [errors.NewParseError], matching the untyped
 // middleware/parameter.go path. Errors returned by per-file binders
 // flow through verbatim — binders own their HTTP-aware error shape.
@@ -189,8 +189,8 @@ func BindFormFile(name string, required bool, bind FileBinder) BindOption {
 //
 // Caller responsibilities the helper does NOT cover:
 //
-//   - Set http.Server.ReadTimeout / IdleTimeout to defend against
-//     slow-read attacks.
+//   - Set [http.Server.ReadTimeout] / [http.Server.IdleTimeout] to defend
+//     against slow-read attacks.
 //   - Decompress Content-Encoding: gzip request bodies upstream if
 //     the API accepts them, using a size-limited reader.
 //   - Treat FileHeader.Filename as untrusted user input; never use

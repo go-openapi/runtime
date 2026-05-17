@@ -75,7 +75,7 @@ type Handler struct {
 	Func HandlerFunc
 }
 
-// HandlerFunc is an aliase to the handler function, similar to [http.HandlerFunc].
+// HandlerFunc is an alias to the handler function, similar to [http.HandlerFunc].
 type HandlerFunc func(w http.ResponseWriter, r *http.Request, params Params)
 
 type serveMux struct {
