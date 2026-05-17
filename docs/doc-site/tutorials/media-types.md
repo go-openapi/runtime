@@ -575,13 +575,15 @@ regardless of which form was registered.
 
 ## `Accept-Encoding`
 
-[`negotiate.ContentEncoding(r, offers)`](https://pkg.go.dev/github.com/go-openapi/runtime/server-middleware/negotiate#ContentEncoding)
-implements `Accept-Encoding` negotiation against a list of offered
-encoding tokens (`gzip`, `deflate`, …). Encoding tokens have no
-parameters, so the v0.30 parameter-honouring change does not apply.
-
-The runtime itself does not transparently encode response bodies; this
-helper is for handlers that want to make the choice explicitly.
+The runtime does not handle `Accept-Encoding` or transparently encode
+response bodies. The historical `negotiate.ContentEncoding` helper is
+deprecated — it was never paired with a real encoder, so on its own it
+produces no `Vary`, no `Content-Length` rewrite, and no minimum-size
+guard. Compose a proper compression middleware at the `http.Handler`
+level instead: the
+[compression recipe](../../usage/examples/middleware/compression/) wraps
+`middleware.Serve` with
+[`CAFxX/httpcompression`](https://github.com/CAFxX/httpcompression).
 
 ## Common gotchas
 

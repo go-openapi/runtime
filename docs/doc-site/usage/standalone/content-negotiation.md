@@ -54,21 +54,16 @@ version params that you treat as informational, opt out per call —
 
 {{< code file="standalone/contentnegotiation/main.go" lang="go" region="serverWideIgnoreParameters" >}}
 
-## `ContentEncoding` — pick a response encoding
+## `Accept-Encoding` — not handled here
 
-```go
-func ContentEncoding(r *http.Request, offers []string) string
-```
-
-Returns the best-matching offered encoding for the request's
-`Accept-Encoding` header. Two offers tied on q go to the earlier one;
-no acceptable offer returns `""` (so the caller can choose to send no
-encoding rather than substituting `identity`).
-
-Encoding tokens have no parameters, so this function is unaffected by
-the v0.30 parameter-honouring change.
-
-{{< code file="standalone/contentnegotiation/main.go" lang="go" region="pickEncoding" >}}
+`negotiate.ContentEncoding` is **deprecated**. The runtime does not ship
+response compression, and surfacing a half-feature negotiator without a
+matching encoder leads to subtle correctness traps (no `Vary`,
+no `Content-Length` rewrite, no minimum-size guard). Use a real
+compression middleware at the `http.Handler` level — see the
+[compression recipe](../../examples/middleware/compression/) for a worked
+example using
+[`CAFxX/httpcompression`](https://github.com/CAFxX/httpcompression).
 
 ## Direct header parsing
 

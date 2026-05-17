@@ -45,7 +45,6 @@ var (
 )
 
 func main() {
-	pickEncoding(nil, nil)
 	ignoreParameters(nil)
 	serverWideIgnoreParameters()
 	parseAcceptHeader(nil)
@@ -109,20 +108,6 @@ func serverWideIgnoreParameters() {
 	// endsnippet:serverWideIgnoreParameters
 
 	use(ctx)
-}
-
-func pickEncoding(w http.ResponseWriter, r *http.Request) {
-	if r == nil || w == nil {
-		return
-	}
-	// snippet:pickEncoding
-	chosen := negotiate.ContentEncoding(r, []string{"gzip", "deflate"})
-	if chosen != "" {
-		w.Header().Set("Content-Encoding", chosen)
-	}
-	// endsnippet:pickEncoding
-
-	use(chosen)
 }
 
 func parseAcceptHeader(r *http.Request) {
