@@ -50,7 +50,7 @@ var _ runtime.ClientRequest = new(Request) // ensure compliance to the interface
 //
 // The result is a [http.Request], with the following properties:
 //
-//   - file, multipart form or io.Reader body: a streaming request with an attached go routine that consumes the [io.Reader].
+//   - file, multipart form or [io.Reader] body: a streaming request with an attached go routine that consumes the [io.Reader].
 //   - buffered body: a simple request
 //
 // The caller passes the parent [context.Context] to [Request.BuildHTTPContext] and receives back a cancel
@@ -300,7 +300,7 @@ func (r *Request) SetConsumes(consumers []string) {
 // It starts by writing the request, then proceed with adding authentication,
 // then finally assembling URL or header parameters.
 //
-// The split mirrors the auth question: streaming bodies require a lazy body-copy closure during AuthenticateRequest,
+// The split mirrors the auth question: streaming bodies require a lazy body-copy closure during [AuthenticateRequest],
 // whereas buffered bodies do not.
 //
 // The returned [http.Request] carries a context derived from parentCtx that:
