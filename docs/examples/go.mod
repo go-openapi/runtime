@@ -14,7 +14,7 @@ require (
 	github.com/go-openapi/runtime v0.0.0
 	github.com/go-openapi/runtime/server-middleware v0.30.0
 	github.com/go-openapi/strfmt v0.26.2
-	github.com/go-openapi/testify/v2 v2.5.0
+	github.com/go-openapi/testify/v2 v2.5.1
 	github.com/justinas/alice v1.2.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
