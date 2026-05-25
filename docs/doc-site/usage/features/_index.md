@@ -63,6 +63,11 @@ the canonical specification rather than secondary sources.
     (`application/json; charset=utf-8` → `application/json`).
   * Match the structured MIME suffix
     (`application/vnd.acme+json` → `application/json`).
+* **Authentication bypass for dev / e2e** —
+  `middleware.SetSkipAuth(true)`, available **only** in binaries built
+  with the `openapi_unsafe_skipauth` Go build tag. The bypass symbol
+  is absent from default builds; see
+  [Security schemes / Bypassing authentication](../server/security/#bypassing-authentication-entirely--setskipauth-dev-only).
 
 ## Client
 
