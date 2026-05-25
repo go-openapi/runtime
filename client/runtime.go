@@ -188,6 +188,22 @@ func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *ht
 	return
 }
 
+// ContextualTransport extends [runtime.ClientTransport] with an
+// explicit context-aware submission method.
+//
+// [Runtime] satisfies it via [Runtime.SubmitContext]. Wrappers such
+// as the OpenTelemetry transport type-assert to this interface so
+// they can forward an explicit context to the underlying transport
+// without setting the cached [runtime.ClientOperation.Context] field.
+//
+// In v2, SubmitContext will be folded into [runtime.ClientTransport]
+// itself and the cached context field removed; this interface is the
+// v0.x bridge.
+type ContextualTransport interface {
+	runtime.ClientTransport
+	SubmitContext(context.Context, *runtime.ClientOperation) (any, error)
+}
+
 // Submit a request and when there is a body on success it will turn that into the result
 // all other things are turned into an api error for swagger which retains the status code.
 //

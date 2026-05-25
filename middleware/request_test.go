@@ -548,6 +548,66 @@ func TestBindingOptionalFileUpload(t *testing.T) {
 	assert.Equal(t, []byte("the file contents"), bb)
 }
 
+// TestBindingOptionalFileUpload_URLEncoded is the untyped-path
+// regression for go-swagger/go-swagger#3113: a spec accepting both
+// multipart/form-data and application/x-www-form-urlencoded with an
+// optional file field must accept a urlencoded request body that omits
+// the file value.
+func TestBindingOptionalFileUpload_URLEncoded(t *testing.T) {
+	binder := paramsForOptionalFileUpload()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL, bytes.NewBufferString(`name=the-name`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	data := fileRequest{}
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.EqualT(t, "the-name", data.Name)
+	assert.Nil(t, data.File.Data)
+	assert.Nil(t, data.File.Header)
+}
+
+// TestBindingFileUpload_URLEncoded exercises the OpenAPI 2.0 allowance
+// that file params can be consumed as application/x-www-form-urlencoded.
+// The file bytes ride as a regular form value, surfaced through the
+// runtime.File target with Header.Filename set to the field name.
+func TestBindingFileUpload_URLEncoded(t *testing.T) {
+	binder := paramsForFileUpload()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL,
+		bytes.NewBufferString(`name=the-name&file=the+file+contents`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	data := fileRequest{}
+	require.NoError(t, binder.Bind(req, nil, runtime.JSONConsumer(), &data))
+	assert.EqualT(t, "the-name", data.Name)
+	require.NotNil(t, data.File.Header)
+	assert.EqualT(t, "file", data.File.Header.Filename)
+	assert.EqualT(t, int64(len("the file contents")), data.File.Header.Size)
+	bb, err := io.ReadAll(data.File.Data)
+	require.NoError(t, err)
+	assert.EqualT(t, "the file contents", string(bb))
+}
+
+// TestBindingFileUpload_URLEncoded_RequiredMissing verifies that the
+// untyped path produces a parse error (rather than the misleading
+// multipart-parse error) when a required file field is absent from
+// a urlencoded body.
+func TestBindingFileUpload_URLEncoded_RequiredMissing(t *testing.T) {
+	binder := paramsForFileUpload()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testURL,
+		bytes.NewBufferString(`name=the-name`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	data := fileRequest{}
+	bindErr := binder.Bind(req, nil, runtime.JSONConsumer(), &data)
+	require.Error(t, bindErr)
+	assert.Contains(t, bindErr.Error(), http.ErrMissingFile.Error())
+}
+
 // TestBindingFileUpload_RejectsOversizedFilename exercises the
 // filename-length cap on the untyped formData path: a multipart
 // body with a multi-MB filename must be rejected with a ParseError
