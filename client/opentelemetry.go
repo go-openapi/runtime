@@ -29,12 +29,12 @@ const (
 // A new client span is created for each request.
 // The provided opts are applied to each spans - for example to add global tags.
 //
-// The returned transport satisfies [ContextualTransport]: callers
+// The returned transport satisfies [runtime.ContextualTransport]: callers
 // should prefer [openTelemetryTransport.SubmitContext] over the
 // legacy [runtime.ClientOperation.Context] field. Setting that
 // field is still honored on the [openTelemetryTransport.Submit]
 // compatibility path.
-func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOpt) ContextualTransport {
+func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOpt) runtime.ContextualTransport {
 	return newOpenTelemetryTransport(r, r.Host, opts)
 }
 
@@ -58,7 +58,7 @@ func (r *Runtime) WithOpenTelemetry(opts ...OpenTelemetryOpt) ContextualTranspor
 // usual opentracing options and opentracing-enabled transport.
 //
 // Passed options are ignored unless they are of type [OpenTelemetryOpt].
-func (r *Runtime) WithOpenTracing(opts ...any) ContextualTransport {
+func (r *Runtime) WithOpenTracing(opts ...any) runtime.ContextualTransport {
 	otelOpts := make([]OpenTelemetryOpt, 0, len(opts))
 	for _, o := range opts {
 		otelOpt, ok := o.(OpenTelemetryOpt)
@@ -179,7 +179,7 @@ func (t *openTelemetryTransport) Submit(op *runtime.ClientOperation) (any, error
 // transport's SubmitContext call. The legacy
 // [runtime.ClientOperation.Context] field is not consulted.
 //
-// When the wrapped transport implements [ContextualTransport], ctx is
+// When the wrapped transport implements [runtime.ContextualTransport], ctx is
 // forwarded directly via its SubmitContext. Otherwise, the legacy
 // Submit path is used: ctx is stamped onto op.Context for the
 // duration of that call and restored afterwards, so the wrapped
@@ -228,7 +228,7 @@ func (t *openTelemetryTransport) SubmitContext(ctx context.Context, op *runtime.
 
 //nolint:contextcheck // ctx is forwarded verbatim; the legacy Submit branch only stamps it onto op.Context for the wrapped transport.
 func (t *openTelemetryTransport) submitWrapped(ctx context.Context, op *runtime.ClientOperation) (any, error) {
-	if sc, ok := t.transport.(ContextualTransport); ok {
+	if sc, ok := t.transport.(runtime.ContextualTransport); ok {
 		return sc.SubmitContext(ctx, op)
 	}
 	prev := op.Context
