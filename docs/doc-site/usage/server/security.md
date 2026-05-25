@@ -156,3 +156,85 @@ principal directly. From extra middleware mounted via `Builder`:
 `scopes` is the `AllScopes()` of the matching `RouteAuthenticator` —
 useful for audit logging that needs to record which token (or token
 shape) authorised the request.
+
+## Bypassing authentication entirely — `SetSkipAuth` (dev only)
+
+Some development and end-to-end testing workflows want to exercise
+secured operations without standing up a real identity provider. A
+pass-all `Authenticator` still threads through scheme resolution,
+principal extraction, and `Authorizer`, which can defeat the point.
+For those workflows the runtime exposes a hard short-circuit on
+`Context.Authorize` that resolves every request to
+`(nil principal, request unchanged, nil error)` — skipping both
+authentication and authorization.
+
+> **This is a footgun.** Enabling it disables security for *every*
+> operation in the server. It MUST NOT be reachable from a production
+> binary.
+
+To prevent accidental — or malicious — enablement in production, the
+bypass is gated by a Go **build tag** rather than a runtime flag.
+Default builds do not contain the bypass code path at all (the symbol
+`middleware.SetSkipAuth` does not exist in the resulting binary), so
+no in-process tampering, environment variable, or configuration file
+can turn it on.
+
+### Building with the bypass available
+
+Pass the `openapi_unsafe_skipauth` build tag to `go build` /
+`go test`:
+
+```sh
+go build -tags openapi_unsafe_skipauth ./...
+go test  -tags openapi_unsafe_skipauth ./...
+```
+
+Without the tag, the package compiles its production `Authorize`
+implementation and `SetSkipAuth` is undefined — any code that
+references it fails to compile. That is the intended ergonomics:
+production CI pipelines that do not pass the tag cannot accidentally
+ship a binary with the bypass available.
+
+### Enabling at runtime (tagged builds only)
+
+`middleware.SetSkipAuth(bool)` is a package-level toggle backed by a
+`sync/atomic.Bool`, safe to call from any goroutine.
+
+```go
+//go:build openapi_unsafe_skipauth
+
+package main
+
+import "github.com/go-openapi/runtime/middleware"
+
+func main() {
+    middleware.SetSkipAuth(true)  // logs a loud WARNING to stderr
+    defer middleware.SetSkipAuth(false)
+    // ... run the dev server / e2e harness ...
+}
+```
+
+`SetSkipAuth(true)` prints a `WARNING` line via `log.Println` every
+time it is called, naming the bypass explicitly. The warning is
+intentional and not suppressible — the goal is to make accidental
+enablement visible in any log scrape.
+
+### Scope and guarantees
+
+- **Scope**: the short-circuit lives on `Context.Authorize`, which is
+  the single chokepoint both untyped APIs and `go-swagger`-generated
+  servers call into. Enabling the bypass therefore covers both flows.
+- **Default state**: even with the tag enabled at compile time, the
+  bypass is **off** until `SetSkipAuth(true)` is called.
+- **Symbol absence**: in a default build, `nm` against the binary
+  shows zero `SkipAuth*` symbols. That is verified by a dedicated CI
+  workflow (`.github/workflows/skipauth-test.yml`) that exercises the
+  tagged build path on every PR.
+
+### When to use the bypass vs. a pass-all authenticator
+
+| Goal                                                  | Use                                                          |
+|-------------------------------------------------------|--------------------------------------------------------------|
+| Local dev / e2e where auth wiring is out of scope     | `SetSkipAuth(true)` under the build tag                      |
+| Tests that need a *specific* principal to be present  | A pass-all `Authenticator` returning a fixture principal     |
+| Production with anonymous access for selected routes  | Mark those operations with no `security:` requirement        |
