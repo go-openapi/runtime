@@ -413,6 +413,100 @@ func TestBindForm_idempotent(t *testing.T) {
 	assert.EqualT(t, "x", r.Form.Get(testFieldDesc))
 }
 
+// TestBindForm_urlencoded_optionalFileMissing is the regression for
+// go-swagger/go-swagger#3113: an optional file declared via
+// BindFormFile against an application/x-www-form-urlencoded body
+// without the file value must bind cleanly.
+func TestBindForm_urlencoded_optionalFileMissing(t *testing.T) {
+	r := newURLEncodedRequest(t, map[string]string{testFieldDesc: testValueHello})
+
+	called := false
+	fatal, err := BindForm(r, BindFormFile(testFieldFile, false, func(_ multipart.File, _ *multipart.FileHeader) error {
+		called = true
+		return nil
+	}))
+
+	assert.FalseT(t, fatal)
+	require.NoError(t, err)
+	assert.FalseT(t, called, "optional file binder should not run when value absent")
+	assert.EqualT(t, testValueHello, r.PostForm.Get(testFieldDesc))
+}
+
+// TestBindForm_urlencoded_requiredFileMissing asserts that a required
+// file declared via BindFormFile yields the standard "missing file"
+// error (not the historical multipart-parse error) when the urlencoded
+// body omits the value.
+func TestBindForm_urlencoded_requiredFileMissing(t *testing.T) {
+	r := newURLEncodedRequest(t, map[string]string{testFieldDesc: testValueHello})
+
+	called := false
+	fatal, err := BindForm(r, BindFormFile(testFieldFile, true, func(_ multipart.File, _ *multipart.FileHeader) error {
+		called = true
+		return nil
+	}))
+
+	assert.FalseT(t, fatal)
+	assert.FalseT(t, called)
+	assertCompositeContains(t, err, 1, func(e error) bool {
+		var apiErr errors.Error
+		if !stderrors.As(e, &apiErr) {
+			return false
+		}
+		return apiErr.Code() == http.StatusBadRequest &&
+			strings.Contains(apiErr.Error(), http.ErrMissingFile.Error())
+	})
+}
+
+// TestBindForm_urlencoded_filePresent verifies the OpenAPI 2.0
+// allowance that file params can be consumed as
+// application/x-www-form-urlencoded — the value bytes ride as a
+// regular form value, surfaced through the binder with
+// FileHeader.Filename set to the field name.
+func TestBindForm_urlencoded_filePresent(t *testing.T) {
+	const fileBody = "the file contents"
+	r := newURLEncodedRequest(t, map[string]string{
+		testFieldFile: fileBody,
+		testFieldDesc: testValueHello,
+	})
+
+	var bound *File
+	fatal, err := BindForm(r, BindFormFile(testFieldFile, true, func(f multipart.File, h *multipart.FileHeader) error {
+		bound = &File{Data: f, Header: h}
+		return nil
+	}))
+
+	assert.FalseT(t, fatal)
+	require.NoError(t, err)
+	require.NotNil(t, bound)
+	assert.EqualT(t, testFieldFile, bound.Header.Filename)
+	assert.EqualT(t, int64(len(fileBody)), bound.Header.Size)
+	got, err := io.ReadAll(bound.Data)
+	require.NoError(t, err)
+	assert.EqualT(t, fileBody, string(got))
+}
+
+// TestBindForm_urlencoded_fileEmpty asserts that an empty present
+// value (`file=`) binds as a zero-byte file — presence in PostForm
+// is the only criterion.
+func TestBindForm_urlencoded_fileEmpty(t *testing.T) {
+	r := newURLEncodedRequest(t, map[string]string{
+		testFieldFile: "",
+		testFieldDesc: testValueHello,
+	})
+
+	var bound *File
+	fatal, err := BindForm(r, BindFormFile(testFieldFile, true, func(f multipart.File, h *multipart.FileHeader) error {
+		bound = &File{Data: f, Header: h}
+		return nil
+	}))
+
+	assert.FalseT(t, fatal)
+	require.NoError(t, err)
+	require.NotNil(t, bound)
+	assert.EqualT(t, testFieldFile, bound.Header.Filename)
+	assert.EqualT(t, int64(0), bound.Header.Size)
+}
+
 // TestValidateFilenameLength covers the exported helper used by both
 // BindForm's BindFormFile path and the untyped middleware/parameter.go
 // formData path. Security scrub Lens 3 / L3.1.
