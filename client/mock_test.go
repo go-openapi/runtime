@@ -22,6 +22,32 @@ func (m *mockRuntime) Submit(operation *runtime.ClientOperation) (any, error) {
 	return map[string]any{}, nil
 }
 
+// mockContextualRuntime satisfies [ContextualTransport] and records
+// which entry point a caller took plus the context observed at each.
+// Used to verify that wrappers prefer SubmitContext when available
+// and fall back to Submit otherwise.
+type mockContextualRuntime struct {
+	mockRuntime
+
+	submitCalls        int
+	submitContextCalls int
+	lastSubmitCtx      context.Context //nolint:containedctx // test-only inspection of the ctx forwarded by the wrapper
+	lastOpCtx          context.Context //nolint:containedctx // test-only inspection of op.Context as seen by the wrapped transport
+}
+
+func (m *mockContextualRuntime) Submit(operation *runtime.ClientOperation) (any, error) {
+	m.submitCalls++
+	m.lastOpCtx = operation.Context
+	return m.mockRuntime.Submit(operation)
+}
+
+func (m *mockContextualRuntime) SubmitContext(ctx context.Context, operation *runtime.ClientOperation) (any, error) {
+	m.submitContextCalls++
+	m.lastSubmitCtx = ctx
+	m.lastOpCtx = operation.Context
+	return m.mockRuntime.Submit(operation)
+}
+
 type tres struct {
 }
 
