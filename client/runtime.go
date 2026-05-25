@@ -44,7 +44,8 @@ type Runtime struct {
 	Host     string
 	BasePath string
 	Formats  strfmt.Registry
-	Context  context.Context //nolint:containedctx  // we precisely want this type to contain the request context
+	// Deprecated: prefer [runtime.ContextualTransport.SubmitContext] to pass the request context explicitly.
+	Context context.Context //nolint:containedctx  // we precisely want this type to contain the request context
 
 	Debug bool
 
@@ -84,6 +85,8 @@ type Runtime struct {
 	schemes    []string
 	response   ClientResponseFunc
 }
+
+var _ runtime.ContextualTransport = &Runtime{}
 
 // New creates a new default runtime for a swagger api runtime.Client.
 func New(host, basePath string, schemes []string) *Runtime {
@@ -186,22 +189,6 @@ func (r *Runtime) CreateHTTPRequestContext(ctx context.Context, operation *runti
 func (r *Runtime) CreateHttpRequest(operation *runtime.ClientOperation) (req *http.Request, err error) { //nolint:revive
 	req, _, err = r.createHTTPRequestContext(context.Background(), operation)
 	return
-}
-
-// ContextualTransport extends [runtime.ClientTransport] with an
-// explicit context-aware submission method.
-//
-// [Runtime] satisfies it via [Runtime.SubmitContext]. Wrappers such
-// as the OpenTelemetry transport type-assert to this interface so
-// they can forward an explicit context to the underlying transport
-// without setting the cached [runtime.ClientOperation.Context] field.
-//
-// In v2, SubmitContext will be folded into [runtime.ClientTransport]
-// itself and the cached context field removed; this interface is the
-// v0.x bridge.
-type ContextualTransport interface {
-	runtime.ClientTransport
-	SubmitContext(context.Context, *runtime.ClientOperation) (any, error)
 }
 
 // Submit a request and when there is a body on success it will turn that into the result
@@ -309,7 +296,7 @@ func (r *Runtime) SetResponseReader(f ClientResponseFunc) {
 
 func (r *Runtime) ensureContext(operation *runtime.ClientOperation) context.Context {
 	switch {
-	case operation.Context != nil:
+	case operation.Context != nil: //nolint:staticcheck // kept for backward compatibility
 		return operation.Context
 	case r.Context != nil:
 		return r.Context
