@@ -236,6 +236,28 @@ func TestBuildRequest_BuildHTTP_Payload(t *testing.T) {
 	assert.Equal(t, append(expectedBody, '\n'), actualBody)
 }
 
+// TestBuildRequest_BuildHTTP_UnregisteredProducer guards against a
+// regression of go-swagger/go-swagger#3192: a non-stream payload sent
+// with a media type that has no producer registered must surface an
+// actionable error rather than panic on a nil-method dispatch.
+func TestBuildRequest_BuildHTTP_UnregisteredProducer(t *testing.T) {
+	bd := []struct{ Name, Hobby string }{{valTom, valOregonTrail}}
+	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
+		_ = req.SetBodyParam(bd)
+		return nil
+	})
+	r := New(http.MethodPost, "/flats/", reqWrtr)
+
+	const unregisteredMime = "application/x-not-registered"
+	req, cancel, err := r.BuildHTTPContext(t.Context(), unregisteredMime, "", testProducers, nil, nil)
+	t.Cleanup(cancel)
+
+	require.Error(t, err)
+	assert.Nil(t, req)
+	assert.Contains(t, err.Error(), unregisteredMime)
+	assert.Contains(t, err.Error(), "no producer registered")
+}
+
 func TestBuildRequest_BuildHTTP_SetsInAuth(t *testing.T) {
 	bd := []struct{ Name, Hobby string }{{valTom, valOregonTrail}, {valJohn, valBirdWatching}}
 	reqWrtr := runtime.ClientRequestWriterFunc(func(req runtime.ClientRequest, _ strfmt.Registry) error {
