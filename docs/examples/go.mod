@@ -8,7 +8,7 @@ go 1.25.0
 
 require (
 	github.com/CAFxX/httpcompression v0.0.9
-	github.com/go-openapi/analysis v0.25.0
+	github.com/go-openapi/analysis v0.25.1
 	github.com/go-openapi/errors v0.22.7
 	github.com/go-openapi/loads v0.23.3
 	github.com/go-openapi/runtime v0.0.0
