@@ -79,7 +79,7 @@ func FuzzUntypedRequestBinder(f *testing.F) {
 	f.Add("", "query", "", "", false, false)
 	f.Add("x", "header", "string", "", false, false)
 
-	f.Fuzz(func(t *testing.T, name, in, tpe, format string, isArray, hasSchema bool) {
+	f.Fuzz(func(_ *testing.T, name, in, tpe, format string, isArray, hasSchema bool) {
 		if name == "" {
 			name = "p"
 		}
