@@ -13,8 +13,8 @@ require (
 	github.com/go-openapi/swag/jsonutils v0.26.1
 	github.com/go-openapi/swag/stringutils v0.26.1
 	github.com/go-openapi/swag/typeutils v0.26.1
-	github.com/go-openapi/testify/enable/yaml/v2 v2.5.1
-	github.com/go-openapi/testify/v2 v2.5.1
+	github.com/go-openapi/testify/enable/yaml/v2 v2.6.0
+	github.com/go-openapi/testify/v2 v2.6.0
 	github.com/go-openapi/validate v0.26.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/sdk v1.44.0
