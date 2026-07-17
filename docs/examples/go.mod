@@ -13,7 +13,7 @@ require (
 	github.com/go-openapi/loads v0.24.0
 	github.com/go-openapi/runtime v0.0.0
 	github.com/go-openapi/runtime/server-middleware v0.30.0
-	github.com/go-openapi/strfmt v0.26.4
+	github.com/go-openapi/strfmt v0.27.0
 	github.com/go-openapi/testify/v2 v2.6.0
 	github.com/justinas/alice v1.2.0
 	go.opentelemetry.io/otel v1.44.0
@@ -45,9 +45,9 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )
 
 replace (
