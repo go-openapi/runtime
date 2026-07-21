@@ -1,7 +1,7 @@
 module github.com/go-openapi/runtime/client-middleware/opentracing
 
 require (
-	github.com/go-openapi/runtime v0.32.5
+	github.com/go-openapi/runtime v0.32.6
 	github.com/go-openapi/strfmt v0.27.0
 	github.com/go-openapi/testify/v2 v2.6.0
 	github.com/opentracing/opentracing-go v1.2.0
@@ -16,7 +16,7 @@ require (
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/loads v0.25.0 // indirect
-	github.com/go-openapi/runtime/server-middleware v0.32.5 // indirect
+	github.com/go-openapi/runtime/server-middleware v0.32.6 // indirect
 	github.com/go-openapi/spec v0.22.9 // indirect
 	github.com/go-openapi/swag/conv v0.27.3 // indirect
 	github.com/go-openapi/swag/fileutils v0.27.3 // indirect
