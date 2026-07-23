@@ -8,10 +8,10 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"net/url"
 
 	"github.com/go-openapi/errors"
 )
@@ -19,9 +19,12 @@ import (
 // MultipartFormStreamOption configures [NewMultipartFormStream].
 type MultipartFormStreamOption func(*multipartFormStreamConfig)
 
+const defaultMultipartFormStreamMaxParts = 1000
+
 type multipartFormStreamConfig struct {
 	maxBody        int64
 	maxFiles       int
+	maxParts       int
 	maxFilenameLen int
 }
 
@@ -38,6 +41,13 @@ func MultipartFormStreamMaxBody(n int64) MultipartFormStreamOption {
 // file parts have been encountered. A value of 0 means no file-count cap.
 func MultipartFormStreamMaxFiles(n int) MultipartFormStreamOption {
 	return func(c *multipartFormStreamConfig) { c.maxFiles = n }
+}
+
+// MultipartFormStreamMaxParts rejects a multipart stream after more than n
+// total parts have been encountered. The default is 1000, matching
+// [multipart.Reader.ReadForm]. A value of 0 disables the limit.
+func MultipartFormStreamMaxParts(n int) MultipartFormStreamOption {
+	return func(c *multipartFormStreamConfig) { c.maxParts = n }
 }
 
 // MultipartFormStreamMaxFilenameLen rejects file parts whose filename exceeds
@@ -112,16 +122,17 @@ func (f *StreamedFile) Close() error {
 //
 // The caller owns the stream. Call [MultipartFormStream.Drain] to consume the
 // remaining body, collect trailing fields and allow HTTP connection reuse when
-// possible. Call [MultipartFormStream.Close] to abort immediately without
-// draining.
+// possible. Call [MultipartFormStream.Close] to stop multipart processing
+// without explicitly draining the remaining parts.
 type MultipartFormStream struct {
 	request        *http.Request
 	reader         *multipart.Reader
-	queryValues    url.Values
 	current        *StreamedFile
 	maxFiles       int
+	maxParts       int
 	maxFilenameLen int
 	files          int
+	parts          int
 	closed         bool
 	done           bool
 }
@@ -129,9 +140,10 @@ type MultipartFormStream struct {
 // NewMultipartFormStream creates a sequential multipart/form-data stream over
 // r.Body.
 //
-// The constructor validates the media type and boundary but does not consume
-// multipart parts. It initializes request.Form and request.PostForm in the same
-// way as [http.Request.ParseForm], then populates multipart values incrementally
+// The constructor accepts only multipart/form-data, validates that a non-empty
+// boundary is present, but does not consume multipart parts. It initializes
+// request.Form and request.PostForm in the same way as
+// [http.Request.ParseForm], then populates multipart values incrementally
 // as [MultipartFormStream.NextFile] advances.
 //
 // NewMultipartFormStream marks the request as handled by MultipartReader.
@@ -147,9 +159,12 @@ type MultipartFormStream struct {
 // current file before advancing. No background goroutines are started.
 //
 // MultipartFormStream is not safe for concurrent use.
+//
+// File names and MIME headers are supplied by the client and remain untrusted.
 func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) (*MultipartFormStream, error) {
 	cfg := multipartFormStreamConfig{
 		maxFilenameLen: DefaultMaxUploadFilenameLength,
+		maxParts:       defaultMultipartFormStreamMaxParts,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -160,6 +175,21 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 	}
 	if r.Body == nil {
 		return nil, errors.NewParseError("body", "formData", "", stderrors.New("nil request body"))
+	}
+
+	contentType := r.Header.Get(HeaderContentType)
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return nil, errors.NewParseError(HeaderContentType, "header", contentType, err)
+	}
+	if mediaType != MultipartFormMime {
+		return nil, errors.NewParseError(HeaderContentType, "header", mediaType, http.ErrNotMultipart)
+	}
+	if params["boundary"] == "" {
+		return nil, errors.NewParseError(HeaderContentType, "header", contentType, http.ErrMissingBoundary)
+	}
+	if err = r.ParseForm(); err != nil {
+		return nil, errors.NewParseError("body", "formData", "", err)
 	}
 
 	body := r.Body
@@ -177,15 +207,12 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 	if err != nil {
 		return nil, errors.NewParseError("body", "formData", "", err)
 	}
-	if err = r.ParseForm(); err != nil {
-		return nil, errors.NewParseError("body", "formData", "", err)
-	}
 
 	return &MultipartFormStream{
 		request:        r,
 		reader:         reader,
-		queryValues:    cloneFormValues(r.Form),
 		maxFiles:       cfg.maxFiles,
+		maxParts:       cfg.maxParts,
 		maxFilenameLen: cfg.maxFilenameLen,
 	}, nil
 }
@@ -226,10 +253,24 @@ func (s *MultipartFormStream) NextFile() (*StreamedFile, error) {
 			return nil, s.abort(err)
 		}
 
+		s.parts++
+		if s.maxParts > 0 && s.parts > s.maxParts {
+			return nil, s.abort(errors.NewParseError("body", "formData", "",
+				fmt.Errorf("multipart form contains %d parts, exceeds limit %d", s.parts, s.maxParts)))
+		}
+
 		fieldName := part.FormName()
+		if fieldName == "" {
+			if err = discardPart(part); err != nil {
+				return nil, s.abort(err)
+			}
+
+			continue
+		}
+
 		filename := part.FileName()
 		if filename == "" {
-			if err := s.bindValue(part, fieldName); err != nil {
+			if err = s.bindValue(part, fieldName); err != nil {
 				return nil, s.abort(err)
 			}
 
@@ -278,17 +319,19 @@ func (s *MultipartFormStream) Drain() error {
 		if err != nil {
 			return stderrors.Join(err, s.Close())
 		}
-		if err := file.Close(); err != nil {
+		if err = file.Close(); err != nil {
 			return stderrors.Join(err, s.Close())
 		}
 	}
 }
 
-// Close closes the underlying HTTP request body without draining it.
+// Close stops multipart processing and closes the underlying HTTP request body
+// without explicitly draining the remaining multipart parts.
 //
-// Close aborts further multipart processing. Call Drain instead when the
-// remaining parts must be consumed, for example to collect trailing form
-// fields or improve the chance of HTTP connection reuse.
+// The concrete request body may perform its own work during Close. In
+// particular, a net/http server request body may discard a limited amount of
+// unread data to allow connection reuse, so Close is not guaranteed to return
+// immediately. Call Drain when trailing form fields must be collected.
 func (s *MultipartFormStream) Close() error {
 	if s == nil || s.closed {
 		return nil
@@ -319,33 +362,23 @@ func (s *MultipartFormStream) closeCurrent() error {
 }
 
 func (s *MultipartFormStream) bindValue(part *multipart.Part, name string) error {
-	defer part.Close()
-
 	value, err := io.ReadAll(part)
 	if err != nil {
 		return err
 	}
-	if name == "" {
-		return nil
-	}
 
 	s.request.PostForm.Add(name, string(value))
-	postValues := s.request.PostForm[name]
-	combined := make([]string, 0, len(postValues)+len(s.queryValues[name]))
-	combined = append(combined, postValues...)
-	combined = append(combined, s.queryValues[name]...)
-	s.request.Form[name] = combined
+	// Match net/http.ParseMultipartForm: query values already present in Form
+	// keep precedence over multipart body values, which are appended.
+	s.request.Form.Add(name, string(value))
 
 	return nil
 }
 
-func cloneFormValues(values url.Values) url.Values {
-	cloned := make(url.Values, len(values))
-	for name, entries := range values {
-		cloned[name] = append([]string(nil), entries...)
-	}
+func discardPart(part *multipart.Part) error {
+	_, err := io.Copy(io.Discard, part)
 
-	return cloned
+	return err
 }
 
 type contextReadCloser struct {

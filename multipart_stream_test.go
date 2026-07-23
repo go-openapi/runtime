@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"strings"
 	"sync"
 	"testing"
@@ -143,7 +144,7 @@ func TestMultipartFormStreamPreservesPartOrderAndFields(t *testing.T) {
 	assert.EqualT(t, "three", request.Form.Get("after"))
 }
 
-func TestMultipartFormStreamBodyValuesPrecedeQueryValues(t *testing.T) {
+func TestMultipartFormStreamQueryValuesPrecedeBodyValues(t *testing.T) {
 	body, contentType := orderedMultipartBody(t,
 		orderedField{name: "shared", value: "body"},
 		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
@@ -156,8 +157,36 @@ func TestMultipartFormStreamBodyValuesPrecedeQueryValues(t *testing.T) {
 
 	_, err = stream.NextFile()
 	require.NoError(t, err)
-	assert.Equal(t, []string{"body", "query"}, request.Form["shared"])
-	assert.EqualT(t, "body", request.Form.Get("shared"))
+	assert.Equal(t, []string{"query", "body"}, request.Form["shared"])
+	assert.EqualT(t, "query", request.Form.Get("shared"))
+}
+
+func TestMultipartFormStreamIgnoresPartsWithoutFormName(t *testing.T) {
+	body, contentType := orderedMultipartBody(t,
+		orderedRawPart{
+			header: textproto.MIMEHeader{
+				"Content-Disposition": {`attachment; filename="ignored.bin"`},
+			},
+			content: "ignored attachment",
+		},
+		orderedRawPart{
+			header: textproto.MIMEHeader{
+				"Content-Disposition": {`form-data; filename="also-ignored.bin"`},
+			},
+			content: "ignored unnamed form part",
+		},
+		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+	)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, body)
+	request.Header.Set(HeaderContentType, contentType)
+	stream, err := NewMultipartFormStream(request)
+	require.NoError(t, err)
+	defer stream.Close()
+
+	file, err := stream.NextFile()
+	require.NoError(t, err)
+	assert.EqualT(t, testFieldFile, file.FieldName)
+	assert.EqualT(t, streamedFilename, file.Filename)
 }
 
 func TestMultipartFormStreamNextFileDrainsPreviousFile(t *testing.T) {
@@ -330,6 +359,23 @@ func TestMultipartFormStreamLimits(t *testing.T) {
 		assert.EqualT(t, testFieldFile, parseErr.Name)
 	})
 
+	t.Run("parts", func(t *testing.T) {
+		body, contentType := orderedMultipartBody(t,
+			orderedField{name: "first", value: "one"},
+			orderedField{name: "second", value: "two"},
+			orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+		)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, body)
+		request.Header.Set(HeaderContentType, contentType)
+		stream, err := NewMultipartFormStream(request, MultipartFormStreamMaxParts(1))
+		require.NoError(t, err)
+		defer stream.Close()
+
+		_, err = stream.NextFile()
+		var parseErr *errors.ParseError
+		require.True(t, stderrors.As(err, &parseErr), "expected *errors.ParseError, got %T", err)
+	})
+
 	t.Run("files", func(t *testing.T) {
 		body, contentType := orderedMultipartBody(t,
 			orderedFile{field: testFieldFile1, filename: testFileFieldA, content: "A"},
@@ -360,8 +406,44 @@ func TestNewMultipartFormStreamRejectsNonMultipartRequest(t *testing.T) {
 	require.True(t, stderrors.As(err, &parseErr), "expected *errors.ParseError, got %T", err)
 }
 
+func TestNewMultipartFormStreamRejectsMultipartMixed(t *testing.T) {
+	body, contentType := orderedMultipartBody(t,
+		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+	)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, body)
+	request.Header.Set(HeaderContentType, strings.Replace(contentType, MultipartFormMime, "multipart/mixed", 1))
+
+	_, err := NewMultipartFormStream(request)
+	var parseErr *errors.ParseError
+	require.True(t, stderrors.As(err, &parseErr), "expected *errors.ParseError, got %T", err)
+	require.ErrorIs(t, parseErr.Reason, http.ErrNotMultipart)
+}
+
+func TestNewMultipartFormStreamRejectsEmptyBoundary(t *testing.T) {
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, strings.NewReader("body"))
+	request.Header.Set(HeaderContentType, `multipart/form-data; boundary=""`)
+
+	_, err := NewMultipartFormStream(request)
+	var parseErr *errors.ParseError
+	require.True(t, stderrors.As(err, &parseErr), "expected *errors.ParseError, got %T", err)
+	require.ErrorIs(t, parseErr.Reason, http.ErrMissingBoundary)
+}
+
 type orderedMultipartPart interface {
 	writeTo(*testing.T, *multipart.Writer)
+}
+
+type orderedRawPart struct {
+	header  textproto.MIMEHeader
+	content string
+}
+
+func (p orderedRawPart) writeTo(t *testing.T, writer *multipart.Writer) {
+	t.Helper()
+	part, err := writer.CreatePart(p.header)
+	require.NoError(t, err)
+	_, err = io.WriteString(part, p.content)
+	require.NoError(t, err)
 }
 
 type orderedField struct {
