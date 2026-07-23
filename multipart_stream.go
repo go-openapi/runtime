@@ -228,74 +228,11 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 // NextFile returns io.EOF when no file parts remain. At that point all trailing
 // ordinary fields have been collected.
 func (s *MultipartFormStream) NextFile() (*StreamedFile, error) {
-	if s == nil {
-		return nil, io.ErrClosedPipe
-	}
-	if s.done {
-		return nil, io.EOF
-	}
-	if s.closed {
-		return nil, io.ErrClosedPipe
-	}
-	if err := s.closeCurrent(); err != nil {
-		return nil, s.abort(err)
+	if err := s.prepareNextFile(); err != nil {
+		return nil, err
 	}
 
-	for {
-		part, err := s.reader.NextPart()
-		if err != nil {
-			if stderrors.Is(err, io.EOF) {
-				s.done = true
-
-				return nil, io.EOF
-			}
-
-			return nil, s.abort(err)
-		}
-
-		s.parts++
-		if s.maxParts > 0 && s.parts > s.maxParts {
-			return nil, s.abort(errors.NewParseError("body", "formData", "",
-				fmt.Errorf("multipart form contains %d parts, exceeds limit %d", s.parts, s.maxParts)))
-		}
-
-		fieldName := part.FormName()
-		if fieldName == "" {
-			if err = discardPart(part); err != nil {
-				return nil, s.abort(err)
-			}
-
-			continue
-		}
-
-		filename := part.FileName()
-		if filename == "" {
-			if err = s.bindValue(part, fieldName); err != nil {
-				return nil, s.abort(err)
-			}
-
-			continue
-		}
-
-		s.files++
-		if s.maxFiles > 0 && s.files > s.maxFiles {
-			return nil, s.abort(errors.NewParseError("body", "formData", "",
-				fmt.Errorf("multipart form contains %d file parts, exceeds limit %d", s.files, s.maxFiles)))
-		}
-		if err := ValidateFilenameLength(fieldName, "formData", filename, s.maxFilenameLen); err != nil {
-			return nil, s.abort(err)
-		}
-
-		file := &StreamedFile{
-			FieldName: fieldName,
-			Filename:  filename,
-			Header:    part.Header,
-			part:      part,
-		}
-		s.current = file
-
-		return file, nil
-	}
+	return s.readNextFile()
 }
 
 // Drain consumes the rest of the multipart body.
@@ -393,4 +330,117 @@ func (r *contextReadCloser) Read(p []byte) (int, error) {
 	}
 
 	return r.ReadCloser.Read(p)
+}
+
+func (s *MultipartFormStream) prepareNextFile() error {
+	if s == nil {
+		return io.ErrClosedPipe
+	}
+	if s.done {
+		return io.EOF
+	}
+	if s.closed {
+		return io.ErrClosedPipe
+	}
+	if err := s.closeCurrent(); err != nil {
+		return s.abort(err)
+	}
+
+	return nil
+}
+
+func (s *MultipartFormStream) readNextFile() (*StreamedFile, error) {
+	for {
+		part, err := s.reader.NextPart()
+		if err != nil {
+			return nil, s.handleNextPartError(err)
+		}
+
+		s.parts++
+		if s.maxParts > 0 && s.parts > s.maxParts {
+			err := errors.NewParseError(
+				"body",
+				"formData",
+				"",
+				fmt.Errorf(
+					"multipart form contains %d parts, exceeds limit %d",
+					s.parts,
+					s.maxParts,
+				),
+			)
+
+			return nil, s.abort(err)
+		}
+
+		fieldName := part.FormName()
+		if fieldName == "" {
+			if err := discardPart(part); err != nil {
+				return nil, s.abort(err)
+			}
+
+			continue
+		}
+
+		filename := part.FileName()
+		if filename == "" {
+			if err := s.bindValue(part, fieldName); err != nil {
+				return nil, s.abort(err)
+			}
+
+			continue
+		}
+
+		return s.openFile(part, fieldName, filename)
+	}
+}
+
+func (s *MultipartFormStream) handleNextPartError(err error) error {
+	if stderrors.Is(err, io.EOF) {
+		s.done = true
+
+		return io.EOF
+	}
+
+	return s.abort(err)
+}
+
+func (s *MultipartFormStream) openFile(
+	part *multipart.Part,
+	fieldName string,
+	filename string,
+) (*StreamedFile, error) {
+	s.files++
+	if s.maxFiles > 0 && s.files > s.maxFiles {
+		err := errors.NewParseError(
+			"body",
+			"formData",
+			"",
+			fmt.Errorf(
+				"multipart form contains %d file parts, exceeds limit %d",
+				s.files,
+				s.maxFiles,
+			),
+		)
+
+		return nil, s.abort(err)
+	}
+
+	if err := ValidateFilenameLength(
+		fieldName,
+		"formData",
+		filename,
+		s.maxFilenameLen,
+	); err != nil {
+		return nil, s.abort(err)
+	}
+
+	file := &StreamedFile{
+		FieldName: fieldName,
+		Filename:  filename,
+		Header:    part.Header,
+		part:      part,
+	}
+	s.current = file
+
+	return file, nil
 }
