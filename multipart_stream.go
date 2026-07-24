@@ -22,10 +22,9 @@ type MultipartFormStreamOption func(*multipartFormStreamConfig)
 const defaultMultipartFormStreamMaxParts = 1000
 
 type multipartFormStreamConfig struct {
-	maxBody        int64
-	maxFiles       int
-	maxParts       int
-	maxFilenameLen int
+	multipartFormLimits
+
+	maxParts int
 }
 
 // MultipartFormStreamMaxBody caps the total number of request-body bytes read
@@ -61,7 +60,9 @@ func MultipartFormStreamMaxFilenameLen(n int) MultipartFormStreamOption {
 //
 // Reads block until bytes arrive from the client. StreamedFile is not seekable
 // and is not safe for concurrent use. Its form name, filename and MIME headers
-// are available before the payload is consumed.
+// are available before the payload is consumed. The underlying [multipart.Part]
+// remains private so callers cannot bypass Close and its error-preserving drain
+// semantics; Header exposes the part metadata without exposing that lifecycle.
 //
 // Closing a StreamedFile drains only the unread remainder of that file part.
 // Close may therefore block while the client is still uploading the current
@@ -125,30 +126,33 @@ func (f *StreamedFile) Close() error {
 // possible. Call [MultipartFormStream.Close] to stop multipart processing
 // without explicitly draining the remaining parts.
 type MultipartFormStream struct {
-	request        *http.Request
-	reader         *multipart.Reader
-	current        *StreamedFile
-	maxFiles       int
-	maxParts       int
-	maxFilenameLen int
-	files          int
-	parts          int
-	closed         bool
-	done           bool
+	multipartFormStreamConfig
+
+	request *http.Request
+	reader  *multipart.Reader
+	current *StreamedFile
+
+	files  int
+	parts  int
+	closed bool
+	done   bool
 }
 
 // NewMultipartFormStream creates a sequential multipart/form-data stream over
 // r.Body.
 //
-// The constructor accepts only multipart/form-data, validates that a non-empty
-// boundary is present, but does not consume multipart parts. It initializes
-// request.Form and request.PostForm in the same way as
-// [http.Request.ParseForm], then populates multipart values incrementally
-// as [MultipartFormStream.NextFile] advances.
+// For POST, PUT and PATCH requests, the constructor accepts only
+// multipart/form-data, validates that a non-empty boundary is present, but does
+// not consume multipart parts. For other methods, it returns an empty stream
+// whose NextFile method reports io.EOF without reading the request body.
 //
-// NewMultipartFormStream marks the request as handled by MultipartReader.
-// Callers must not subsequently call [http.Request.ParseMultipartForm] or
-// [BindForm] for the same request.
+// The constructor initializes request.Form and request.PostForm in the same way
+// as [http.Request.ParseForm], then populates multipart values incrementally as
+// [MultipartFormStream.NextFile] advances.
+//
+// For POST, PUT and PATCH requests, NewMultipartFormStream marks the request
+// as handled by MultipartReader. Callers must not subsequently call
+// [http.Request.ParseMultipartForm] or [BindForm] for the same request.
 //
 // File payloads are exposed directly from the request body and are not buffered
 // in memory or temporary files. Ordinary form values are read into memory as
@@ -163,8 +167,10 @@ type MultipartFormStream struct {
 // File names and MIME headers are supplied by the client and remain untrusted.
 func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) (*MultipartFormStream, error) {
 	cfg := multipartFormStreamConfig{
-		maxFilenameLen: DefaultMaxUploadFilenameLength,
-		maxParts:       defaultMultipartFormStreamMaxParts,
+		multipartFormLimits: multipartFormLimits{
+			maxFilenameLen: DefaultMaxUploadFilenameLength,
+		},
+		maxParts: defaultMultipartFormStreamMaxParts,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -173,6 +179,19 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 	if r == nil {
 		return nil, errors.NewParseError("body", "formData", "", stderrors.New("nil request"))
 	}
+
+	if !supportsMultipartFormStream(r.Method) {
+		if err := r.ParseForm(); err != nil {
+			return nil, errors.NewParseError("body", "formData", "", err)
+		}
+
+		return &MultipartFormStream{
+			request:                   r,
+			multipartFormStreamConfig: cfg,
+			done:                      true,
+		}, nil
+	}
+
 	if r.Body == nil {
 		return nil, errors.NewParseError("body", "formData", "", stderrors.New("nil request body"))
 	}
@@ -209,11 +228,9 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 	}
 
 	return &MultipartFormStream{
-		request:        r,
-		reader:         reader,
-		maxFiles:       cfg.maxFiles,
-		maxParts:       cfg.maxParts,
-		maxFilenameLen: cfg.maxFilenameLen,
+		request:                   r,
+		reader:                    reader,
+		multipartFormStreamConfig: cfg,
 	}, nil
 }
 
@@ -280,7 +297,20 @@ func (s *MultipartFormStream) Close() error {
 		s.current = nil
 	}
 
+	if s.request == nil || s.request.Body == nil {
+		return nil
+	}
+
 	return s.request.Body.Close()
+}
+
+func supportsMultipartFormStream(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *MultipartFormStream) abort(err error) error {

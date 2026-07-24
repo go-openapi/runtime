@@ -309,6 +309,62 @@ func TestMultipartFormStreamBodyLimit(t *testing.T) {
 	require.True(t, stderrors.As(err, &maxBytesErr), "expected *http.MaxBytesError, got %T", err)
 }
 
+func TestMultipartFormStreamPropagatesMaxBytesHandlerError(t *testing.T) {
+	const limit int64 = 512
+
+	tests := []struct {
+		name    string
+		consume func(*StreamedFile) error
+	}{
+		{
+			name: "read",
+			consume: func(file *StreamedFile) error {
+				_, err := io.ReadAll(file)
+
+				return err
+			},
+		},
+		{
+			name: "drain",
+			consume: func(file *StreamedFile) error {
+				return file.Close()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			body, contentType := orderedMultipartBody(t,
+				orderedFile{
+					field:    testFieldFile,
+					filename: streamedFilename,
+					content:  strings.Repeat("x", 1024),
+				},
+			)
+
+			var consumeErr error
+			handler := http.MaxBytesHandler(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+				stream, err := NewMultipartFormStream(request, MultipartFormStreamMaxBody(-1))
+				require.NoError(t, err)
+				defer stream.Close()
+
+				file, err := stream.NextFile()
+				require.NoError(t, err)
+				consumeErr = test.consume(file)
+			}), limit)
+
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, body)
+			request.Header.Set(HeaderContentType, contentType)
+			handler.ServeHTTP(httptest.NewRecorder(), request)
+
+			var maxBytesErr *http.MaxBytesError
+			require.True(t, stderrors.As(consumeErr, &maxBytesErr),
+				"expected *http.MaxBytesError, got %T", consumeErr)
+			assert.EqualT(t, limit, maxBytesErr.Limit)
+		})
+	}
+}
+
 func TestMultipartFormStreamMalformedBody(t *testing.T) {
 	body, contentType := orderedMultipartBody(t,
 		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
@@ -395,6 +451,36 @@ func TestMultipartFormStreamLimits(t *testing.T) {
 		var parseErr *errors.ParseError
 		require.True(t, stderrors.As(err, &parseErr), "expected *errors.ParseError, got %T", err)
 	})
+}
+
+func TestNewMultipartFormStreamReturnsEmptyForUnsupportedMethods(t *testing.T) {
+	methods := []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodDelete,
+		http.MethodOptions,
+	}
+
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			request := httptest.NewRequestWithContext(
+				t.Context(),
+				method,
+				testUploadPath+"?query=value",
+				strings.NewReader("this body must not be parsed as multipart"),
+			)
+			request.Header.Set(HeaderContentType, URLencodedFormMime)
+
+			stream, err := NewMultipartFormStream(request)
+			require.NoError(t, err)
+			defer stream.Close()
+
+			_, err = stream.NextFile()
+			require.ErrorIs(t, err, io.EOF)
+			assert.EqualT(t, "value", request.Form.Get("query"))
+			assert.Empty(t, request.PostForm)
+		})
+	}
 }
 
 func TestNewMultipartFormStreamRejectsNonMultipartRequest(t *testing.T) {
