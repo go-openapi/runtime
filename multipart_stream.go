@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 
 	"github.com/go-openapi/errors"
 )
@@ -75,6 +76,17 @@ type StreamedFile struct {
 	closeErr  error
 }
 
+// MultipartFileInfo describes a file part discovered by [MultipartFormStream].
+//
+// The payload reader is intentionally omitted. File parts remain sequential and
+// are consumed through [MultipartFormStream.NextFile]. Header is a snapshot of
+// the client-supplied MIME headers and must be treated as untrusted input.
+type MultipartFileInfo struct {
+	FieldName string
+	Filename  string
+	Header    textproto.MIMEHeader
+}
+
 // Read reads file payload bytes directly from the request body.
 func (f *StreamedFile) Read(p []byte) (int, error) {
 	if f == nil || f.part == nil {
@@ -125,6 +137,11 @@ func (f *StreamedFile) Close() error {
 // remaining body, collect trailing fields and allow HTTP connection reuse when
 // possible. Call [MultipartFormStream.Close] to stop multipart processing
 // without explicitly draining the remaining parts.
+//
+// [MultipartFormStream.Fields] and [MultipartFormStream.Files] expose snapshots
+// of the multipart fields and file metadata discovered so far. They never read
+// ahead: fields or files after the active file become visible only after the
+// stream advances.
 type MultipartFormStream struct {
 	multipartFormStreamConfig
 
@@ -132,10 +149,11 @@ type MultipartFormStream struct {
 	reader  *multipart.Reader
 	current *StreamedFile
 
-	files  int
-	parts  int
-	closed bool
-	done   bool
+	fields    url.Values
+	fileInfos []MultipartFileInfo
+	parts     int
+	closed    bool
+	done      bool
 }
 
 // NewMultipartFormStream creates a sequential multipart/form-data stream over
@@ -188,6 +206,7 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 		return &MultipartFormStream{
 			request:                   r,
 			multipartFormStreamConfig: cfg,
+			fields:                    make(url.Values),
 			done:                      true,
 		}, nil
 	}
@@ -231,7 +250,44 @@ func NewMultipartFormStream(r *http.Request, opts ...MultipartFormStreamOption) 
 		request:                   r,
 		reader:                    reader,
 		multipartFormStreamConfig: cfg,
+		fields:                    make(url.Values),
 	}, nil
+}
+
+// Fields returns a snapshot of ordinary multipart form fields discovered so far.
+//
+// URL query values are not included. Repeated multipart fields preserve their
+// encounter order. Fields after the active file are not visible until that file
+// is consumed or closed and the stream advances. Mutating the returned values
+// does not affect the stream or the request.
+func (s *MultipartFormStream) Fields() url.Values {
+	if s == nil {
+		return nil
+	}
+
+	return cloneMultipartValues(s.fields)
+}
+
+// Files returns snapshots of file metadata discovered so far in wire order.
+//
+// The currently active file is included as soon as NextFile returns it. Payload
+// readers are not retained in the index. Mutating the returned slice or MIME
+// headers does not affect the stream.
+func (s *MultipartFormStream) Files() []MultipartFileInfo {
+	if s == nil {
+		return nil
+	}
+
+	files := make([]MultipartFileInfo, len(s.fileInfos))
+	for i, file := range s.fileInfos {
+		files[i] = MultipartFileInfo{
+			FieldName: file.FieldName,
+			Filename:  file.Filename,
+			Header:    cloneMultipartMIMEHeader(file.Header),
+		}
+	}
+
+	return files
 }
 
 // NextFile advances through the multipart body and returns the next file part.
@@ -334,6 +390,7 @@ func (s *MultipartFormStream) bindValue(part *multipart.Part, name string) error
 		return err
 	}
 
+	s.fields.Add(name, string(value))
 	s.request.PostForm.Add(name, string(value))
 	// Match net/http.ParseMultipartForm: query values already present in Form
 	// keep precedence over multipart body values, which are appended.
@@ -346,6 +403,24 @@ func discardPart(part *multipart.Part) error {
 	_, err := io.Copy(io.Discard, part)
 
 	return err
+}
+
+func cloneMultipartValues(values url.Values) url.Values {
+	cloned := make(url.Values, len(values))
+	for name, entries := range values {
+		cloned[name] = append([]string(nil), entries...)
+	}
+
+	return cloned
+}
+
+func cloneMultipartMIMEHeader(header textproto.MIMEHeader) textproto.MIMEHeader {
+	cloned := make(textproto.MIMEHeader, len(header))
+	for name, entries := range header {
+		cloned[name] = append([]string(nil), entries...)
+	}
+
+	return cloned
 }
 
 type contextReadCloser struct {
@@ -439,15 +514,15 @@ func (s *MultipartFormStream) openFile(
 	fieldName string,
 	filename string,
 ) (*StreamedFile, error) {
-	s.files++
-	if s.maxFiles > 0 && s.files > s.maxFiles {
+	fileCount := len(s.fileInfos) + 1
+	if s.maxFiles > 0 && fileCount > s.maxFiles {
 		err := errors.NewParseError(
 			"body",
 			"formData",
 			"",
 			fmt.Errorf(
 				"multipart form contains %d file parts, exceeds limit %d",
-				s.files,
+				fileCount,
 				s.maxFiles,
 			),
 		)
@@ -470,6 +545,11 @@ func (s *MultipartFormStream) openFile(
 		Header:    part.Header,
 		part:      part,
 	}
+	s.fileInfos = append(s.fileInfos, MultipartFileInfo{
+		FieldName: fieldName,
+		Filename:  filename,
+		Header:    cloneMultipartMIMEHeader(part.Header),
+	})
 	s.current = file
 
 	return file, nil

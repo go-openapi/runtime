@@ -126,6 +126,12 @@ func TestMultipartFormStreamPreservesPartOrderAndFields(t *testing.T) {
 	assert.EqualT(t, testFieldFile1, first.FieldName)
 	assert.EqualT(t, "one", request.Form.Get("before"))
 	assert.Empty(t, request.Form.Get("between"))
+	assert.Equal(t, []string{"one"}, stream.Fields()["before"])
+	assert.Empty(t, stream.Fields()["between"])
+	firstFiles := stream.Files()
+	require.Len(t, firstFiles, 1)
+	assert.EqualT(t, testFieldFile1, firstFiles[0].FieldName)
+	assert.EqualT(t, testFileFieldA, firstFiles[0].Filename)
 	content, err := io.ReadAll(first)
 	require.NoError(t, err)
 	assert.EqualT(t, "AAA", string(content))
@@ -135,6 +141,13 @@ func TestMultipartFormStreamPreservesPartOrderAndFields(t *testing.T) {
 	assert.EqualT(t, testFieldFile2, second.FieldName)
 	assert.EqualT(t, "two", request.Form.Get("between"))
 	assert.Empty(t, request.Form.Get("after"))
+	assert.Equal(t, []string{"one"}, stream.Fields()["before"])
+	assert.Equal(t, []string{"two"}, stream.Fields()["between"])
+	assert.Empty(t, stream.Fields()["after"])
+	secondFiles := stream.Files()
+	require.Len(t, secondFiles, 2)
+	assert.EqualT(t, testFieldFile2, secondFiles[1].FieldName)
+	assert.EqualT(t, testFileFieldB, secondFiles[1].Filename)
 	content, err = io.ReadAll(second)
 	require.NoError(t, err)
 	assert.EqualT(t, "BBBB", string(content))
@@ -142,6 +155,47 @@ func TestMultipartFormStreamPreservesPartOrderAndFields(t *testing.T) {
 	_, err = stream.NextFile()
 	require.ErrorIs(t, err, io.EOF)
 	assert.EqualT(t, "three", request.Form.Get("after"))
+	assert.Equal(t, []string{"three"}, stream.Fields()["after"])
+}
+
+func TestMultipartFormStreamDiscoverySnapshots(t *testing.T) {
+	body, contentType := orderedMultipartBody(t,
+		orderedField{name: "tag", value: "one"},
+		orderedField{name: "tag", value: "two"},
+		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+	)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, body)
+	request.Header.Set(HeaderContentType, contentType)
+
+	stream, err := NewMultipartFormStream(request)
+	require.NoError(t, err)
+	defer stream.Close()
+
+	_, err = stream.NextFile()
+	require.NoError(t, err)
+
+	fields := stream.Fields()
+	assert.Equal(t, []string{"one", "two"}, fields["tag"])
+	files := stream.Files()
+	require.Len(t, files, 1)
+	assert.EqualT(t, testFieldFile, files[0].FieldName)
+	assert.EqualT(t, streamedFilename, files[0].Filename)
+	assert.NotEmpty(t, files[0].Header.Get("Content-Disposition"))
+
+	fields.Set("tag", "changed")
+	files[0].Filename = "changed.bin"
+	files[0].Header.Set("Content-Disposition", "changed")
+
+	assert.Equal(t, []string{"one", "two"}, stream.Fields()["tag"])
+	files = stream.Files()
+	require.Len(t, files, 1)
+	assert.EqualT(t, streamedFilename, files[0].Filename)
+	assert.NotEqual(t, "changed", files[0].Header.Get("Content-Disposition"))
+	assert.Equal(t, []string{"one", "two"}, request.PostForm["tag"])
+
+	var nilStream *MultipartFormStream
+	assert.Nil(t, nilStream.Fields())
+	assert.Nil(t, nilStream.Files())
 }
 
 func TestMultipartFormStreamQueryValuesPrecedeBodyValues(t *testing.T) {
@@ -159,6 +213,7 @@ func TestMultipartFormStreamQueryValuesPrecedeBodyValues(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"query", "body"}, request.Form["shared"])
 	assert.EqualT(t, "query", request.Form.Get("shared"))
+	assert.Equal(t, []string{"body"}, stream.Fields()["shared"])
 }
 
 func TestMultipartFormStreamIgnoresPartsWithoutFormName(t *testing.T) {
