@@ -59,7 +59,7 @@ func assertAPIError(t *testing.T, wantCode int, err error) {
 }
 
 func TestContentType_Issue264(t *testing.T) {
-	swspec, err := loads.Spec("../fixtures/bugs/264/swagger.yml")
+	swspec, err := loads.Spec("../testdata/bugs/264/swagger.yml")
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(swspec)
@@ -77,7 +77,7 @@ func TestContentType_Issue264(t *testing.T) {
 }
 
 func TestContentType_Issue172(t *testing.T) {
-	swspec, err := loads.Spec("../fixtures/bugs/172/swagger.yml")
+	swspec, err := loads.Spec("../testdata/bugs/172/swagger.yml")
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(swspec)
@@ -102,7 +102,7 @@ func TestContentType_Issue172(t *testing.T) {
 }
 
 func TestContentType_Issue174(t *testing.T) {
-	swspec, err := loads.Spec("../fixtures/bugs/174/swagger.yml")
+	swspec, err := loads.Spec("../testdata/bugs/174/swagger.yml")
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(swspec)
@@ -482,7 +482,7 @@ func TestContextBindValidRequest(t *testing.T) {
 }
 
 func TestContextBindValidRequest_Issue174(t *testing.T) {
-	spec, err := loads.Spec("../fixtures/bugs/174/swagger.yml")
+	spec, err := loads.Spec("../testdata/bugs/174/swagger.yml")
 	require.NoError(t, err)
 
 	api := untyped.NewAPI(spec)

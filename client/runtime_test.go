@@ -666,7 +666,6 @@ func TestRuntime_ChunkedResponse(t *testing.T) {
 		return nil
 	})
 
-	// specDoc, err := spec.Load("../../fixtures/codegen/todolist.simple.yml")
 	hu, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
