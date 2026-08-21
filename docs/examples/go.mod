@@ -11,8 +11,8 @@ require (
 	github.com/go-openapi/analysis v0.26.0
 	github.com/go-openapi/errors v0.22.8
 	github.com/go-openapi/loads v0.25.1
-	github.com/go-openapi/runtime v0.0.0
-	github.com/go-openapi/runtime/server-middleware v0.30.0
+	github.com/go-openapi/runtime v0.33.1
+	github.com/go-openapi/runtime/server-middleware v0.33.1
 	github.com/go-openapi/strfmt v0.27.0
 	github.com/go-openapi/testify/v2 v2.6.1
 	github.com/justinas/alice v1.2.0
