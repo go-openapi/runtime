@@ -186,7 +186,7 @@ func registerAuthorized() {
 func readPrincipal(r *http.Request) {
 	if r == nil {
 		// readPrincipal is invoked from main() for compile coverage; the
-		// snippet body itself is what gets rendered into the docs.
+		// snippet body itself is rendered into the docs.
 		return
 	}
 

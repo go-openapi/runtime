@@ -6,7 +6,7 @@
 // cannot rot silently.
 //
 // `go run .` exercises the demo (the SubmitContext call is expected to
-// fail against the placeholder host — wiring is what we demonstrate).
+// fail against the placeholder host — this demonstrates the wiring).
 package main
 
 import (

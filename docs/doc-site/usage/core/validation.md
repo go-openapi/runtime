@@ -79,4 +79,4 @@ named formats (`date-time`, `uuid`, `email`, …) into the validator. You
 rarely build one by hand — the server's `*Context` and the client `Runtime`
 each carry one and pass it down. To register a custom format
 (`x-go-type` style), call `strfmt.Default.Add(...)` once at startup; the
-default registry is what both sides use unless overridden.
+both sides use the default registry unless overridden.
