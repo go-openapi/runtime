@@ -5,7 +5,7 @@ require (
 	github.com/go-openapi/analysis v0.26.0
 	github.com/go-openapi/errors v0.22.8
 	github.com/go-openapi/loads v0.25.1
-	github.com/go-openapi/runtime/server-middleware v0.30.0
+	github.com/go-openapi/runtime/server-middleware v0.33.1
 	github.com/go-openapi/spec v0.22.9
 	github.com/go-openapi/strfmt v0.27.0
 	github.com/go-openapi/swag/conv v0.28.0
