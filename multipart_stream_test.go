@@ -325,6 +325,44 @@ func TestMultipartFormStreamDrainCollectsTrailingFieldsAndClosesBody(t *testing.
 	require.ErrorIs(t, err, io.EOF)
 }
 
+func TestMultipartFormStreamCloseIgnoresBodyCloseEOF(t *testing.T) {
+	// Since go1.27.0, a net/http server request body reports io.EOF from Close
+	// when it discards the unread remainder of the request. The stream must not
+	// pass that on as a failure.
+	body, contentType := orderedMultipartBody(t,
+		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+		orderedField{name: "after", value: "value"},
+	)
+	trackedBody := &observableReadCloser{Reader: body, closeErr: io.EOF}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, nil)
+	request.Body = trackedBody
+	request.Header.Set(HeaderContentType, contentType)
+	stream, err := NewMultipartFormStream(request)
+	require.NoError(t, err)
+
+	_, err = stream.NextFile()
+	require.NoError(t, err)
+	require.NoError(t, stream.Drain())
+	assert.EqualT(t, "value", request.Form.Get("after"))
+	assert.TrueT(t, trackedBody.Closed())
+}
+
+func TestMultipartFormStreamCloseReportsBodyCloseError(t *testing.T) {
+	body, contentType := orderedMultipartBody(t,
+		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
+	)
+	closeErr := stderrors.New("close failed")
+	trackedBody := &observableReadCloser{Reader: body, closeErr: closeErr}
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, testUploadPath, nil)
+	request.Body = trackedBody
+	request.Header.Set(HeaderContentType, contentType)
+	stream, err := NewMultipartFormStream(request)
+	require.NoError(t, err)
+
+	require.ErrorIs(t, stream.Close(), closeErr)
+	assert.TrueT(t, trackedBody.Closed())
+}
+
 func TestMultipartFormStreamCloseAbortsWithoutDraining(t *testing.T) {
 	body, contentType := orderedMultipartBody(t,
 		orderedFile{field: testFieldFile, filename: streamedFilename, content: "payload"},
@@ -626,6 +664,8 @@ func orderedMultipartBody(t *testing.T, parts ...orderedMultipartPart) (*bytes.B
 type observableReadCloser struct {
 	io.Reader
 
+	closeErr error
+
 	mu     sync.Mutex
 	closed bool
 }
@@ -635,7 +675,7 @@ func (r *observableReadCloser) Close() error {
 	defer r.mu.Unlock()
 	r.closed = true
 
-	return nil
+	return r.closeErr
 }
 
 func (r *observableReadCloser) Closed() bool {
