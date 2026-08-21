@@ -27,7 +27,7 @@ import (
 // doc stands in for a real `*loads.Document` loaded via `loads.Spec`.
 var doc *loads.Document
 
-// principal is what the authenticator returns on success. The runtime
+// principal is the value the authenticator returns on success. The runtime
 // stores it in the request context for the operation handler to use.
 type principal struct {
 	Subject string
