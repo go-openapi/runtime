@@ -41,13 +41,10 @@ func (c *countingReadCloser) Close() error {
 
 func TestDrainingReadCloser(t *testing.T) {
 	rdr := newCountingReader(bytes.NewBufferString("There are many things to do"), false)
-	prevDisc := io.Discard
 	disc := bytes.NewBuffer(nil)
-	io.Discard = disc
-	defer func() { io.Discard = prevDisc }()
 
 	buf := make([]byte, 5)
-	ts := &drainingReadCloser{rdr: rdr}
+	ts := &drainingReadCloser{rdr: rdr, discard: disc}
 	_, err := ts.Read(buf)
 	require.NoError(t, err)
 	require.NoError(t, ts.Close())
@@ -59,13 +56,10 @@ func TestDrainingReadCloser(t *testing.T) {
 
 func TestDrainingReadCloser_SeenEOF(t *testing.T) {
 	rdr := newCountingReader(bytes.NewBufferString("There are many things to do"), true)
-	prevDisc := io.Discard
 	disc := bytes.NewBuffer(nil)
-	io.Discard = disc
-	defer func() { io.Discard = prevDisc }()
 
 	buf := make([]byte, 5)
-	ts := &drainingReadCloser{rdr: rdr}
+	ts := &drainingReadCloser{rdr: rdr, discard: disc}
 	_, err := ts.Read(buf)
 	require.NoError(t, err)
 	_, err = ts.Read(nil)
