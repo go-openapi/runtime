@@ -13,7 +13,7 @@ require (
 	github.com/go-openapi/loads v0.25.2
 	github.com/go-openapi/runtime v0.33.2
 	github.com/go-openapi/runtime/server-middleware v0.33.2
-	github.com/go-openapi/strfmt v0.27.1
+	github.com/go-openapi/strfmt v0.27.2
 	github.com/go-openapi/testify/v2 v2.7.0
 	github.com/justinas/alice v1.2.0
 	go.opentelemetry.io/otel v1.46.0
@@ -27,7 +27,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.1 // indirect
-	github.com/go-openapi/spec v1.0.0 // indirect
+	github.com/go-openapi/spec v1.0.1 // indirect
 	github.com/go-openapi/swag/conv v0.29.1 // indirect
 	github.com/go-openapi/swag/fileutils v0.29.1 // indirect
 	github.com/go-openapi/swag/jsonutils v0.29.1 // indirect
