@@ -3,7 +3,7 @@ module github.com/go-openapi/runtime
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/go-openapi/analysis v1.0.0
-	github.com/go-openapi/errors v0.22.8
+	github.com/go-openapi/errors v0.22.9
 	github.com/go-openapi/loads v0.25.3
 	github.com/go-openapi/runtime/server-middleware v0.33.2
 	github.com/go-openapi/spec v1.0.1
