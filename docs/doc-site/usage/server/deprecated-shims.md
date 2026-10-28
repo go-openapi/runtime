@@ -73,6 +73,7 @@ Field-to-option mapping for the `*Opts` structs:
 | `Title`         | `WithUITitle(s)`          |
 | `Template`      | `WithUITemplate(s)`       |
 | `RapiDocURL` / `RedocURL` / `SwaggerURL` | `WithUIAssetsURL(s)` |
+| `RedocV2`       | `WithRedocV2()`           |
 | Swagger-UI-specific knobs (`OAuthCallbackURL`, presets, favicons) | `WithSwaggerUIOptions(docui.SwaggerUIOptions{…})` |
 
 Migration example:
