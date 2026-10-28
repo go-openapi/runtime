@@ -28,7 +28,48 @@ func TestRedocMiddleware(t *testing.T) {
 		body := recorder.Body.String()
 		assert.StringContainsT(t, body, fmt.Sprintf("<title>%s</title>", defaultDocsTitle))
 		assert.StringContainsT(t, body, fmt.Sprintf("<redoc spec-url='%s'></redoc>", defaultDocsURL))
-		assert.StringContainsT(t, body, redocLatest)
+		assert.StringContainsT(t, body, fmt.Sprintf(`<script type="module" src="%s">`, redocV3URL))
+	})
+
+	t.Run("with Redoc v2", func(t *testing.T) {
+		const customURL = "https://example.com/redoc@2.5.1/redoc.standalone.js"
+
+		for _, tc := range []struct {
+			name    string
+			opts    []Option
+			wantURL string
+		}{
+			{name: "default v2 URL", opts: []Option{WithRedocV2()}, wantURL: redocV2URL},
+			{name: "v2 option before URL", opts: []Option{WithRedocV2(), WithUIAssetsURL(customURL)}, wantURL: customURL},
+			{name: "v2 option after URL", opts: []Option{WithUIAssetsURL(customURL), WithRedocV2()}, wantURL: customURL},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				h := Redoc(nil, tc.opts...)
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/docs", nil)
+				require.NoError(t, err)
+				recorder := httptest.NewRecorder()
+
+				h.ServeHTTP(recorder, req)
+				assert.EqualT(t, http.StatusOK, recorder.Code)
+
+				body := recorder.Body.String()
+				assert.StringContainsT(t, body, fmt.Sprintf(`<script src="%s">`, tc.wantURL))
+				assert.StringNotContainsT(t, body, `type="module"`)
+			})
+		}
+	})
+
+	t.Run("with Redoc v2 and custom template", func(t *testing.T) {
+		const tpl = `<redoc spec-url='{{ .SpecURL }}'></redoc><script defer src="{{ .AssetsURL }}"></script>`
+
+		h := Redoc(nil, WithRedocV2(), WithUITemplate(tpl))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/docs", nil)
+		require.NoError(t, err)
+		recorder := httptest.NewRecorder()
+
+		h.ServeHTTP(recorder, req)
+		assert.EqualT(t, http.StatusOK, recorder.Code)
+		assert.StringContainsT(t, recorder.Body.String(), fmt.Sprintf(`<script defer src="%s">`, redocV2URL))
 	})
 
 	t.Run("with alternate path and spec URL", func(t *testing.T) {
@@ -54,7 +95,7 @@ func TestRedocMiddleware(t *testing.T) {
 
 		h.ServeHTTP(recorder, req)
 		assert.EqualT(t, http.StatusOK, recorder.Code)
-		assert.StringContainsT(t, recorder.Body.String(), `<script src="https://example.com/redoc.js">`)
+		assert.StringContainsT(t, recorder.Body.String(), `<script type="module" src="https://example.com/redoc.js">`)
 	})
 
 	t.Run("with custom template", func(t *testing.T) {

@@ -44,6 +44,17 @@ func TestDeprecatedDocUIForwarders(t *testing.T) {
 		assert.EqualT(t, http.StatusOK, rec.Code)
 	})
 
+	t.Run("middleware.Redoc serves Redoc v2 with RedocV2", func(t *testing.T) {
+		h := middleware.Redoc(middleware.RedocOpts{RedocV2: true}, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/docs", nil)
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		assert.EqualT(t, http.StatusOK, rec.Code)
+		assert.StringContainsT(t, rec.Body.String(), "/redoc@2/")
+		assert.StringNotContainsT(t, rec.Body.String(), `type="module"`)
+	})
+
 	t.Run("middleware.RapiDoc still serves the docs page", func(t *testing.T) {
 		h := middleware.RapiDoc(middleware.RapiDocOpts{}, nil)
 		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/docs", nil)

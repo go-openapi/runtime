@@ -55,7 +55,7 @@ your OAuth provider.
 | `WithUIBasePath(string)`      | Base path the UI is served from. Slash is prepended if missing.                          | `/`                                                                                                                                                                                                                  |
 | `WithUIPath(string)`          | Sub-path under the base path (final URL: `{base}/{path}`).                               | `docs`                                                                                                                                                                                                               |
 | `WithUITitle(string)`         | HTML `<title>` of the rendered page.                                                     | `API documentation`                                                                                                                                                                                                  |
-| `WithUIAssetsURL(string)`     | URL of the JS bundle for the UI.                                                         | Redoc → `https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js`<br/>RapiDoc → `https://unpkg.com/rapidoc/dist/rapidoc-min.js`<br/>Swagger UI → `https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js`     |
+| `WithUIAssetsURL(string)`     | URL of the JS bundle for the UI.                                                         | Redoc → `https://cdn.jsdelivr.net/npm/redoc@3/bundles/redoc.standalone.js`<br/>RapiDoc → `https://unpkg.com/rapidoc/dist/rapidoc-min.js`<br/>Swagger UI → `https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js`     |
 | `WithUITemplate(tpl)`         | Replace the bundled HTML template entirely (`~string` or `~[]byte`).                     | bundled minimal template                                                                                                                                                                                             |
 | `WithSpecURL(string)`         | URL the UI fetches the spec from.                                                        | `/swagger.json`                                                                                                                                                                                                      |
 | `WithSwaggerUIOptions(opts)`  | Pass-through for Swagger-UI-specific knobs (OAuth2 client id, layout, …).                | zero value                                                                                                                                                                                                           |
@@ -67,6 +67,14 @@ templates each UI accepts:
 - Redoc: <https://github.com/Redocly/redoc/blob/main/docs/deployment/html.md>
 - RapiDoc: <https://github.com/rapi-doc/RapiDoc>
 - Swagger UI: <https://github.com/swagger-api/swagger-ui>
+
+### Redoc v2
+
+`docui.Redoc` loads Redoc v3, which ships as an ES module: the default
+template uses `<script type="module">`. The Redoc v2 bundle does not load
+as a module. If you pin a Redoc v2 bundle with `WithUIAssetsURL`, add
+`WithRedocV2()`: it switches to a classic `<script>` template and, if you
+set no URL, to `https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js`.
 
 ## Serving the spec document — `ServeSpec` / `UseSpec`
 
