@@ -80,6 +80,22 @@ type Runtime struct {
 	// See [mediatype.AllowSuffix] for the semantics.
 	MatchSuffix bool
 
+	// TrustedRedirectHosts lists host names, without port, to which the
+	// credentials of an operation may follow a redirect, in addition to [Runtime.Host].
+	// A subdomain of a listed host is trusted too.
+	//
+	// By default, the client built by the runtime removes the credentials set by
+	// the auth writer (for example an API key set by [APIKeyAuth]), Authorization,
+	// Cookie and Referer when a redirect leaves the host of the request and its subdomains,
+	// or goes from https to http. A redirect from https to http always removes them,
+	// even to a trusted host.
+	//
+	// TrustedRedirectHosts is ignored when the runtime uses an [http.Client]
+	// supplied with [NewWithClient] or [runtime.ClientOperation.Client].
+	// Supply a client with your own CheckRedirect to define another policy,
+	// or with none to get the default policy of [http.Client].
+	TrustedRedirectHosts []string
+
 	clientOnce *sync.Once
 	client     *http.Client
 	schemes    []string
@@ -345,11 +361,14 @@ func transportOrDefault(left, right http.RoundTripper) http.RoundTripper {
 
 // ensureClient lazily initializes r.client from r.Transport and r.Jar
 // on first use. Safe under concurrent calls via sync.Once.
+//
+// The client removes credentials on a redirect to another host: see [Runtime.TrustedRedirectHosts].
 func (r *Runtime) ensureClient() {
 	r.clientOnce.Do(func() {
 		r.client = &http.Client{
-			Transport: r.Transport,
-			Jar:       r.Jar,
+			Transport:     r.Transport,
+			Jar:           r.Jar,
+			CheckRedirect: r.redirectPolicy,
 		}
 	})
 }
