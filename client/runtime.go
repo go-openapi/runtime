@@ -90,10 +90,13 @@ type Runtime struct {
 	// or goes from https to http. A redirect from https to http always removes them,
 	// even to a trusted host.
 	//
-	// TrustedRedirectHosts is ignored when the runtime uses an [http.Client]
-	// supplied with [NewWithClient] or [runtime.ClientOperation.Client].
-	// Supply a client with your own CheckRedirect to define another policy,
-	// or with none to get the default policy of [http.Client].
+	// An [http.Client] supplied with [NewWithClient] or [runtime.ClientOperation.Client]
+	// follows the same policy when its CheckRedirect is nil. The supplied client is not modified.
+	//
+	// A supplied client with a CheckRedirect of its own keeps its policy, and TrustedRedirectHosts
+	// does not apply to it. To get the default policy of [http.Client] back, supply a CheckRedirect
+	// that only stops after 10 redirects: net/http still removes Authorization and Cookie
+	// on a redirect to another host before it calls CheckRedirect.
 	TrustedRedirectHosts []string
 
 	clientOnce *sync.Once
@@ -257,7 +260,7 @@ func (r *Runtime) SubmitContext(parentCtx context.Context, operation *runtime.Cl
 		defer trace.finish()
 	}
 
-	res, err := r.pickClient(operation).Do(req)
+	res, err := r.withRedirectPolicy(r.pickClient(operation)).Do(req)
 	if err != nil {
 		if trace != nil {
 			trace.onRoundTripError(err)

@@ -290,16 +290,45 @@ func TestRedirectSuppliedClient(t *testing.T) {
 		assert.Empty(t, lab.landed)
 	})
 
-	t.Run("without CheckRedirect gets the default policy of net/http", func(t *testing.T) {
+	t.Run("without CheckRedirect gets the redirect policy of the runtime", func(t *testing.T) {
 		lab := newRedirectLab(t, routes)
-		rt := NewWithClient("api.test", "/", []string{"http"}, &http.Client{Transport: lab.transport()})
+		supplied := &http.Client{Transport: lab.transport()}
+		rt := NewWithClient("api.test", "/", []string{"http"}, supplied)
 
 		_, err := rt.Submit(redirectOperation("http"))
 		require.NoError(t, err)
 
 		got := lab.lastLanded(t)
 		assert.Empty(t, got.Header.Get(runtime.HeaderAuthorization))
-		assert.Equal(t, testHeaderKey, got.Header.Get("X-Api-Key"))
+		assert.Empty(t, got.Header.Get("X-Api-Key"))
+		assert.NotContains(t, got.URL.RawQuery, testQueryKey)
+		assert.Nil(t, supplied.CheckRedirect, "the supplied client is not modified")
+	})
+
+	t.Run("per-operation client without CheckRedirect gets the redirect policy of the runtime", func(t *testing.T) {
+		lab := newRedirectLab(t, routes)
+		rt := lab.runtime("http")
+		op := redirectOperation("http")
+		op.Client = &http.Client{Transport: lab.transport()}
+
+		_, err := rt.Submit(op)
+		require.NoError(t, err)
+
+		got := lab.lastLanded(t)
+		assert.Empty(t, got.Header.Get("X-Api-Key"))
+		assert.NotContains(t, got.URL.RawQuery, testQueryKey)
+		assert.Nil(t, op.Client.CheckRedirect, "the supplied client is not modified")
+	})
+
+	t.Run("with EnableConnectionReuse after NewWithClient", func(t *testing.T) {
+		lab := newRedirectLab(t, routes)
+		rt := NewWithClient("api.test", "/", []string{"http"}, &http.Client{Transport: lab.transport()})
+		rt.EnableConnectionReuse()
+
+		_, err := rt.Submit(redirectOperation("http"))
+		require.NoError(t, err)
+
+		assert.Empty(t, lab.lastLanded(t).Header.Get("X-Api-Key"))
 	})
 }
 

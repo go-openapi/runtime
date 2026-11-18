@@ -20,8 +20,9 @@ const maxRedirects = 10
 var errTooManyRedirects = errors.New("stopped after 10 redirects")
 
 // redirectPolicy is the CheckRedirect of the [http.Client] built by
-// [Runtime.ensureClient]. A client supplied with [NewWithClient] or
-// [runtime.ClientOperation.Client] keeps its own policy.
+// [Runtime.ensureClient], and of a client supplied with [NewWithClient] or
+// [runtime.ClientOperation.Client] when its CheckRedirect is nil (see [Runtime.withRedirectPolicy]).
+// A supplied client with a CheckRedirect of its own keeps its policy.
 //
 // It follows up to 10 redirects, like the default policy of [http.Client].
 //
@@ -86,6 +87,22 @@ func restoreCredentials(req, original *http.Request) {
 			req.Header[name] = slices.Clone(values)
 		}
 	}
+}
+
+// withRedirectPolicy returns client, or a shallow copy of it with [Runtime.redirectPolicy]
+// as CheckRedirect when client has none. The client of the caller is not modified.
+//
+// The copy is made for each request, so it sees a Transport replaced
+// later, for example by [Runtime.EnableConnectionReuse].
+func (r *Runtime) withRedirectPolicy(client *http.Client) *http.Client {
+	if client.CheckRedirect != nil {
+		return client
+	}
+
+	c := *client
+	c.CheckRedirect = r.redirectPolicy
+
+	return &c
 }
 
 // credentialsMayFollow reports whether credentials sent to initial may be sent to dest.
